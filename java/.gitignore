@@ -1,0 +1,18 @@
+# Ignore class and jar files
+*.class
+*.jar
+
+# Ignore generated Maven files
+target
+
+#
+bin
+
+##
+## Visual Studio Code
+##
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json

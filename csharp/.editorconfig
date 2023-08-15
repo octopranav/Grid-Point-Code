@@ -1,0 +1,33 @@
+# see https://aka.ms/editorconfigdocs
+
+root = true
+
+# C# files
+[*.{cs}]
+
+#### Core EditorConfig Options ####
+
+# Indentation and spacing
+indent_size = 4
+indent_style = space
+tab_width = 4
+
+# New line preferences
+end_of_line = crlf
+insert_final_newline = false
+
+# Default severity for analyzer diagnostics (escalated to build warnings)
+dotnet_analyzer_diagnostic.severity = warning
+
+csharp_new_line_before_open_brace = none
+csharp_new_line_before_else = false
+csharp_style_prefer_pattern_matching = false
+csharp_style_pattern_local_over_anonymous_function = false
+dotnet_style_prefer_conditional_expression_over_return = false
+
+# CA1308: Normalize strings to uppercase
+dotnet_diagnostic.CA1308.severity = silent
+
+# CA1508: Avoid dead conditional code
+dotnet_code_quality.CA1508.excluded_symbol_names = M:Ninja.Pranav.Algorithms.GridPointCode.GPC.SplitTo7(System.Int32,System.UInt64)
+
