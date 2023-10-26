@@ -1,22 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>Ninja.Pranav.Algorithms.GridPointCode</AssemblyName>
-    <TargetFramework>net5.0</TargetFramework>
+    <AssemblyName>Ca.Pranavpatel.Algo.GridPointCode</AssemblyName>
+    <TargetFramework>net6.0</TargetFramework>
     <AnalysisLevel>latest</AnalysisLevel>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-    <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+    <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
   </PropertyGroup>
   
   <!-- NuGet Package info -->
   <PropertyGroup>
-    <PackageId>Ninja.Pranav.Algorithms.GridPointCode</PackageId>
+    <PackageId>Ca.Pranavpatel.Algo.GridPointCode</PackageId>
     <PackageVersion>0.0.1</PackageVersion>
     <Description>"Grid Point Code" (GPC) gives unique global identification to homes, offices and all other places.</Description>
-    <Authors>pranav.ninja</Authors>
-    <PackageProjectUrl>https://github.com/pranav-ninja/Grid-Point-Code</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/pranav-ninja/Grid-Point-Code.git</RepositoryUrl>
+    <Authors>Pranavkumar Patel</Authors>
+    <PackageProjectUrl>https://github.com/octopranav/Grid-Point-Code</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/octopranav/Grid-Point-Code.git</RepositoryUrl>
     <RepositoryBranch>master</RepositoryBranch>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
@@ -26,10 +26,12 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Ninja.Pranav.Algorithms.Kombin" Version="1.0.2" />
+    <PackageReference Include="Ca.Pranavpatel.Algo.Kombin" Version="1.0.2" />
+    <None Include="..\README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 
 </Project>
