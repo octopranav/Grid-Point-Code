@@ -1,16 +1,16 @@
-package ninja.pranav.algorithms.gridpointcode;
+package ca.pranavpatel.algo.gridpointcode;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Locale;
 
-import ninja.pranav.algorithms.kombin.Table;
-import ninja.pranav.algorithms.kombin.Pair;
+import ca.pranavpatel.algo.kombin.Table;
+import ca.pranavpatel.algo.kombin.Pair;
 
 /**
  * <p>GPC class.</p>
  *
- * @author pranav.ninja
+ * @author Pranavkumar Patel
  * @version $Id: $Id
  */
 public final class GPC {

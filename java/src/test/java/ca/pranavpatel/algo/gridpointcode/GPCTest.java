@@ -1,4 +1,4 @@
-package ninja.pranav.algorithms.gridpointcode;
+package ca.pranavpatel.algo.gridpointcode;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -12,7 +12,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 /**
  * Unit tests for GPC class
  *
- * @author pranav.ninja
+ * @author Pranavkumar Patel
  * @version $Id: $Id
  * @since 0.0.1
  */

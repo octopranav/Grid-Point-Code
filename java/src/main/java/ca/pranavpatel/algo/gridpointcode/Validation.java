@@ -1,9 +1,9 @@
-package ninja.pranav.algorithms.gridpointcode;
+package ca.pranavpatel.algo.gridpointcode;
 
 /**
  * <p>Validation class.</p>
  *
- * @author pranav.ninja
+ * @author Pranavkumar Patel
  * @version $Id: $Id
  */
 public class Validation {

@@ -1,11 +1,11 @@
-package ninja.pranav.algorithms.gridpointcode;
+package ca.pranavpatel.algo.gridpointcode;
 
 import java.util.Objects;
 
 /**
  * <p>Coordinates class.</p>
  *
- * @author pranav.ninja
+ * @author Pranavkumar Patel
  * @version $Id: $Id
  */
 public class Coordinates {
