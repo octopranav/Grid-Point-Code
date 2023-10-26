@@ -1,6 +1,6 @@
 # #Grid-Point-Code
 
-[![Maven Central](https://img.shields.io/maven-central/v/ninja.pranav.algorithms/gridpointcode.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22ninja.pranav.algorithms%22%20AND%20a:%22gridpointcode%22)
+[![Maven Central](https://img.shields.io/maven-central/v/ninja.pranav.algorithms/gridpointcode.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/ca.pranavpatel.algo/gridpointcode)
 [![NuGet](https://img.shields.io/nuget/v/Ninja.Pranav.Algorithms.GridPointCode?label=NuGet)](https://www.nuget.org/packages/Ninja.Pranav.Algorithms.GridPointCode)
 
 - "Grid Point Code" (GPC) gives unique global identification to homes, offices and all other places.
