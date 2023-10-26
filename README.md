@@ -1,7 +1,7 @@
 # #Grid-Point-Code
 
 [![Maven Central](https://img.shields.io/maven-central/v/ninja.pranav.algorithms/gridpointcode.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/ca.pranavpatel.algo/gridpointcode)
-[![NuGet](https://img.shields.io/nuget/v/Ninja.Pranav.Algorithms.GridPointCode?label=NuGet)](https://www.nuget.org/packages/Ninja.Pranav.Algorithms.GridPointCode)
+[![NuGet](https://img.shields.io/nuget/v/Ca.Pranavpatel.Algo.GridPointCode?label=NuGet)](https://www.nuget.org/packages/Ca.Pranavpatel.Algo.GridPointCode)
 
 - "Grid Point Code" (GPC) gives unique global identification to homes, offices and all other places.
 - Encodes pinpoint location into alphanumeric characters.
