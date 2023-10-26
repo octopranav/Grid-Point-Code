@@ -2,7 +2,7 @@ using System;
 using Xunit;
 
 [assembly: CLSCompliant(false)]
-namespace Ninja.Pranav.Algorithms.GridPointCode.Tests {
+namespace Ca.Pranavpatel.Algo.GridPointCode.Tests {
     /// <summary>
     /// Tests for GPC class
     /// </summary>
@@ -76,7 +76,7 @@ namespace Ninja.Pranav.Algorithms.GridPointCode.Tests {
             Exception ex = Record.Exception(act);
             Assert.NotNull(ex);
             _ = Assert.IsType<ArgumentOutOfRangeException>(ex);
-            Assert.Equal("LATITUDE: value out of valid range. (Parameter 'latitude')", ex.Message);
+            Assert.Equal("LATITUDE: value out of valid range. (Parameter 'LATITUDE')", ex.Message);
         }
 
         [Theory]
@@ -87,7 +87,7 @@ namespace Ninja.Pranav.Algorithms.GridPointCode.Tests {
             Exception ex = Record.Exception(act);
             Assert.NotNull(ex);
             _ = Assert.IsType<ArgumentOutOfRangeException>(ex);
-            Assert.Equal("LONGITUDE: value out of valid range. (Parameter 'longitude')", ex.Message);
+            Assert.Equal("LONGITUDE: value out of valid range. (Parameter 'LONGITUDE')", ex.Message);
         }
 
         [Fact]

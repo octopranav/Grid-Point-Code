@@ -13,10 +13,10 @@
 //  limitations under the License.
 
 using System;
-using Ninja.Pranav.Algorithms.Kombin;
+using Ca.Pranavpatel.Algo.Kombin;
 
 [assembly: CLSCompliant(true)]
-namespace Ninja.Pranav.Algorithms.GridPointCode {
+namespace Ca.Pranavpatel.Algo.GridPointCode {
     /// <summary>
     /// Provides methods to encode coordinates to GPC and
     /// to decode GPC back to coordinates.
@@ -57,7 +57,7 @@ namespace Ninja.Pranav.Algorithms.GridPointCode {
             /*  Validating Latitude and Longitude values */
             (bool valid, string message) = IsValid(latitude, longitude);
             if (!valid) {
-                throw new ArgumentOutOfRangeException(paramName: message.ToLowerInvariant(),
+                throw new ArgumentOutOfRangeException(paramName: message.ToUpperInvariant(),
                     message: $"{message}: value out of valid range.");
             }
             /*  Getting a Point Number  */
