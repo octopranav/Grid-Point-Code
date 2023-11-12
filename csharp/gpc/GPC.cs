@@ -217,6 +217,10 @@ namespace Ca.Pranavpatel.Algo.GridPointCode {
         /// <param name="gridPointCode">Grid Point Code</param>
         /// <returns>Validity status with message if any</returns>
         public static (bool status, string message) IsValid(string gridPointCode) {
+            /*  Removing Format */
+            gridPointCode = gridPointCode.Replace(" ", null, StringComparison.Ordinal)
+                .Replace("-", null, StringComparison.Ordinal)
+                .Replace("#", null, StringComparison.Ordinal).Trim().ToUpperInvariant();
             if (string.IsNullOrWhiteSpace(gridPointCode)) {
                 return (false, "GPC_NULL");
             }
