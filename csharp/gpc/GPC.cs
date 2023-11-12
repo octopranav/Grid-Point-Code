@@ -225,7 +225,7 @@ namespace Ca.Pranavpatel.Algo.GridPointCode {
                 return (false, message);
             }
             (valid, message) = Validate(DecodeToPoint(gridPointCode) - ELEVEN);
-            if (valid) {
+            if (!valid) {
                 return (false, message);
             }
             return (true, string.Empty);
