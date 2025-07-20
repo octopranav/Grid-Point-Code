@@ -1,0 +1,14 @@
+# Folders
+.vscode
+node_modules
+src
+test
+docs
+
+# Files
+.editorconfig
+.eslintignore
+.eslintrc.js
+.gitignore
+.prettierrc.js
+tsconfig.json

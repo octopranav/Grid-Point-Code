@@ -1,0 +1,65 @@
+{
+  "name": "@pranavpatel.ca/algo-gridpointcode",
+  "version": "1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "mocha -r ts-node/register test/**/*.test.ts",
+    "lint": "eslint '*/**/*.{js,ts,tsx}' --quiet --fix"
+  },
+  "keywords": [
+    "encoding",
+    "offline",
+    "geocoding",
+    "mapping",
+    "location",
+    "geospatial",
+    "address",
+    "gis",
+    "spatial",
+    "decoding",
+    "latitude",
+    "longitude",
+    "coordinates",
+    "unique-identifier",
+    "proximity",
+    "precision",
+    "gpc",
+    "geographic",
+    "grid-point-code",
+    "global-code"
+  ],
+  "author": "Pranavkumar Patel",
+  "license": "Apache-2.0",
+  "description": "Grid Point Code (GPC) is a global geocoding system that provides a unique, lossless, and compact alphanumeric code for any geographic location (home, office, or other places). It enables precise identification and offline conversion between geographic coordinates and codes.",
+  "devDependencies": {
+    "@types/chai": "^5.2.2",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^24.0.14",
+    "@typescript-eslint/eslint-plugin": "^8.36.0",
+    "@typescript-eslint/parser": "^8.36.0",
+    "chai": "^5.2.1",
+    "eslint": "^9.31.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.5.1",
+    "mocha": "^11.7.1",
+    "prettier": "^3.6.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/octopranav/Grid-Point-Code.git"
+  },
+  "bugs": {
+    "url": "https://github.com/octopranav/Grid-Point-Code/issues"
+  },
+  "homepage": "https://github.com/octopranav/Grid-Point-Code#readme",
+  "dependencies": {
+    "@pranavpatel.ca/algo-kombin": "^1.0.3"
+  }
+}
