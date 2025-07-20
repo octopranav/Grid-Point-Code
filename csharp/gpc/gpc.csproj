@@ -13,7 +13,7 @@
   <PropertyGroup>
     <PackageId>Ca.Pranavpatel.Algo.GridPointCode</PackageId>
     <PackageVersion>1.0</PackageVersion>
-    <Description>"Grid Point Code" (GPC) gives unique global identification to homes, offices and all other places.</Description>
+    <Description>Grid Point Code (GPC) is a global geocoding system that provides a unique, lossless, and compact alphanumeric code for any geographic location (home, office, or other places). It enables precise identification and offline conversion between geographic coordinates and codes.</Description>
     <Authors>Pranavkumar Patel</Authors>
     <PackageProjectUrl>https://github.com/octopranav/Grid-Point-Code</PackageProjectUrl>
     <RepositoryUrl>https://github.com/octopranav/Grid-Point-Code.git</RepositoryUrl>
@@ -21,8 +21,8 @@
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <Copyright>Copyright 2017 © Pranavkumar Patel. All rights reserved.</Copyright>
-    <PackageTags>geographical;coordinates;encode;decode</PackageTags>
-    <Title>#Grid-Point-Code</Title>
+    <PackageTags>encoding;offline;geocoding;mapping;location;geospatial;address;gis;spatial;decoding;latitude;longitude;coordinates;unique-identifier;proximity;precision;gpc;geographic;grid-point-code;global-code</PackageTags>
+    <Title>Grid Point Code (GPC)</Title>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -30,7 +30,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Ca.Pranavpatel.Algo.Kombin" Version="1.0.2" />
+    <PackageReference Include="Ca.Pranavpatel.Algo.Kombin" Version="1.0.3" />
     <None Include="..\README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 
