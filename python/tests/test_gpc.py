@@ -13,7 +13,7 @@
 #  limitations under the License.
 
 import unittest
-from src.gpc_algo_pranavpatel_ca import GPC
+from src.gridpointcode_algo_pranavpatel_ca import GPC
 
 # Unit tests for the GPC (Grid Point Code) encoding and decoding functions
 class TestGPC(unittest.TestCase):
