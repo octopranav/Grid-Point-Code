@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gpc_algo_pranavpatel_ca"
+version = "1.0"
+authors = [
+  { name="Pranavkumar Patel", email="contact@pranavpatel.ca" },
+]
+description = "Grid Point Code (GPC) is a global geocoding system that provides a unique, lossless, and compact alphanumeric code for any geographic location (home, office, or other places). It enables precise identification and offline conversion between geographic coordinates and codes."
+dependencies = [
+  "kombin-algo-pranavpatel-ca"
+]
+readme = "README.md"
+requires-python = ">=3.6"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/octopranav/Grid-Point-Code"
+"Bug Tracker" = "https://github.com/octopranav/Grid-Point-Code/issues"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
