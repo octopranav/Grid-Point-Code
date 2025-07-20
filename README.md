@@ -31,8 +31,8 @@ Grid Point Code (GPC) is a global geocoding system that provides a unique, lossl
 using Ca.Pranavpatel.Algo.GridPointCode;
 
 // Encode latitude and longitude to GPC
-string gpc = GPC.Encode(37.7749, -122.4194); // San Francisco
-// Output: #XXXX-XXXX-XXX (example)
+string gpc = GPC.Encode(43.65000, -79.38000); // Toronto
+// Output: #FN5G-CDKL-HDC
 ```
 
 ### Decoding a GPC
@@ -41,13 +41,13 @@ string gpc = GPC.Encode(37.7749, -122.4194); // San Francisco
 using Ca.Pranavpatel.Algo.GridPointCode;
 
 // Decode GPC to latitude and longitude
-(double lat, double lng) = GPC.Decode("#XXXX-XXXX-XXX");
+(double lat, double lng) = GPC.Decode("#FN5G-CDKL-HDC");
 ```
 
 ### Validation
 
 ```csharp
-(bool isValid, string message) = GPC.IsValid("#XXXX-XXXX-XXX");
+(bool isValid, string message) = GPC.IsValid("#FN5G-CDKL-HDC");
 ```
 
 ## Format
