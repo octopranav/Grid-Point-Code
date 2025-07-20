@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <AssemblyName>Ca.Pranavpatel.Algo.GridPointCode</AssemblyName>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <AnalysisLevel>latest</AnalysisLevel>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
@@ -12,7 +12,7 @@
   <!-- NuGet Package info -->
   <PropertyGroup>
     <PackageId>Ca.Pranavpatel.Algo.GridPointCode</PackageId>
-    <PackageVersion>0.0.1.2</PackageVersion>
+    <PackageVersion>1.0</PackageVersion>
     <Description>"Grid Point Code" (GPC) gives unique global identification to homes, offices and all other places.</Description>
     <Authors>Pranavkumar Patel</Authors>
     <PackageProjectUrl>https://github.com/octopranav/Grid-Point-Code</PackageProjectUrl>

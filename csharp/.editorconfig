@@ -28,6 +28,17 @@ dotnet_style_prefer_conditional_expression_over_return = false
 # CA1308: Normalize strings to uppercase
 dotnet_diagnostic.CA1308.severity = silent
 
-# CA1508: Avoid dead conditional code
-dotnet_code_quality.CA1508.excluded_symbol_names = M:Ninja.Pranav.Algorithms.GridPointCode.GPC.SplitTo7(System.Int32,System.UInt64)
+# CA1515: Consider making public types internal
+dotnet_diagnostic.CA1515.severity = none
 
+# IDE0130: Namespace does not match folder structure
+dotnet_diagnostic.IDE0130.severity = none
+
+# IDE0039: Use local function
+dotnet_diagnostic.IDE0039.severity = none
+
+# CA1508: Avoid dead conditional code
+dotnet_diagnostic.CA1508.severity = none
+
+# CA1062: Validate arguments of public methods
+dotnet_diagnostic.CA1062.severity = none

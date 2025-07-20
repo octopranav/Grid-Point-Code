@@ -30,7 +30,7 @@ namespace Ca.Pranavpatel.Algo.GridPointCode {
         private const ulong ELEVEN = 205_881_132_094_649; // For Uniformity
         private const string CHARACTERS = "CDFGHJKLMNPRTVWXY0123456789"; // base27
         private const int GPC_LENGTH = 11;
-        private static readonly Table LatLongTable = new Table(180, 360, true);
+        private static readonly Table LatLongTable = new(180, 360, true);
 
         /*  PART 1 : ENCODE */
 
@@ -146,8 +146,7 @@ namespace Ca.Pranavpatel.Algo.GridPointCode {
         /// <param name="gridPointCode">Unformatted GPC</param>
         /// <returns>Formatted GPC</returns>
         private static string FormatGPC(string gridPointCode) {
-            return "#" + gridPointCode.Substring(0, 4) + "-"
-                + gridPointCode.Substring(4, 4) + "-" + gridPointCode.Substring(8, 3);
+            return $"#{gridPointCode[..4]}-{gridPointCode[4..8]}-{gridPointCode[8..11]}";
         }
 
         /*  PART 2 : DECODE */
