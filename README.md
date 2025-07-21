@@ -7,61 +7,153 @@
 
 ## Overview
 
-Grid Point Code (GPC) is a global geocoding system that provides a unique, lossless, and compact alphanumeric code for any geographic location (home, office, or other places). It enables precise identification and offline conversion between geographic coordinates and codes.
+**Grid Point Code (GPC)** is a geocoding system that provides a unique, lossless, and compact alphanumeric code for any geographic location—home, office, or otherwise. It enables offline conversion between geographic coordinates and standardized codes with high precision.
 
 ## Features
 
-- **Unique Global Identification:** Every location receives a unique code.
-- **Lossless Encoding & Decoding:** Convert between latitude/longitude and GPC without loss of precision (up to 5 decimal places).
-- **Offline Conversion:** No network required for encoding or decoding.
-- **Easy-to-Read Format:** Codes are formatted as `#xxxx-xxxx-xxx` for clarity.
-- **Proximity Awareness:** Similar codes represent nearby locations.
-- **Open Source:** Freely available for use and modification.
+* **Unique Global Codes** – Every location gets a unique, proximity-aware code
+* **Bidirectional Conversion** – Encode/decode with up to 5 decimal places of precision
+* **Offline Support** – Works without internet or APIs
+* **Formatted Output** – Easy-to-read `#XXXX-XXXX-XXX` format
+* **Open Source** – Licensed under Apache 2.0
 
-## How It Works
+## Code Structure
 
-- **Encoding:** Converts latitude and longitude into a unique 11-character code using a custom base-27 alphabet.
-- **Decoding:** Recovers the original coordinates from a GPC.
-- **Validation:** Ensures input coordinates and codes are within valid ranges.
-- **Formatting:** Provides formatted and unformatted code representations.
+* **GPC Format**: `#XXXX-XXXX-XXX` (11-character alphanumeric string)
+* **Encoding Base**: `CDFGHJKLMNPRTVWXY0123456789` (base-27)
+* **Precision**: \~5 decimal places for latitude/longitude
 
-## Usage
+---
 
-### Encoding Coordinates
+## Installation
+
+### Python
+
+```bash
+pip install gridpointcode-algo-pranavpatel-ca
+```
+
+### TypeScript (Node.js)
+
+```bash
+npm i @pranavpatel.ca/algo-gridpointcode
+```
+
+### C# (.NET)
+
+Add the project reference via NuGet:
+
+```bash
+dotnet add package Ca.Pranavpatel.Algo.GridPointCode
+```
+
+### Java (Maven)
+
+Add the following to your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>ca.pranavpatel.algo</groupId>
+    <artifactId>gridpointcode</artifactId>
+    <version>1.0</version>
+</dependency>
+```
+
+---
+
+## Usage Examples
+
+### ➤ Python
+
+```python
+from gridpointcode_algo_pranavpatel_ca import GPC
+
+# Encode
+gpc_code = GPC.encode(43.65000, -79.38000)
+print(gpc_code)  # Output: #FN5G-CDKL-HDC
+
+# Decode
+lat, lng = GPC.decode("#FN5G-CDKL-HDC")
+print(lat, lng)
+
+# Validate
+valid, msg = GPC.is_valid_gpc("#FN5G-CDKL-HDC")
+print(valid, msg)
+```
+
+---
+
+### ➤ TypeScript
+
+```ts
+import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
+
+// Encode
+const code = GPC.encode(43.65, -79.38);
+console.log(code);  // #FN5G-CDKL-HDC
+
+// Decode
+const [lat, lng] = GPC.decode('#FN5G-CDKL-HDC');
+console.log(lat, lng);
+
+// Validate
+const [valid, message] = GPC.isValid('#FN5G-CDKL-HDC');
+console.log(valid, message);
+```
+
+---
+
+### ➤ C\#
 
 ```csharp
 using Ca.Pranavpatel.Algo.GridPointCode;
 
-// Encode latitude and longitude to GPC
-string gpc = GPC.Encode(43.65000, -79.38000); // Toronto
+// Encode
+string gpc = GPC.Encode(43.65000, -79.38000);  // Toronto
 // Output: #FN5G-CDKL-HDC
-```
 
-### Decoding a GPC
-
-```csharp
-using Ca.Pranavpatel.Algo.GridPointCode;
-
-// Decode GPC to latitude and longitude
+// Decode
 (double lat, double lng) = GPC.Decode("#FN5G-CDKL-HDC");
-```
 
-### Validation
-
-```csharp
+// Validate
 (bool isValid, string message) = GPC.IsValid("#FN5G-CDKL-HDC");
 ```
 
-## Format
+---
 
-- **Code Structure:** `#xxxx-xxxx-xxx` (11 alphanumeric characters)
-- **Alphabet:** Uses base-27 characters: `CDFGHJKLMNPRTVWXY0123456789`
-- **Precision:** Up to 5 decimal places for coordinates
+### ➤ Java
+
+```java
+import ca.pranavpatel.algo.gridpointcode.GPC;
+import ca.pranavpatel.algo.gridpointcode.Coordinates;
+import ca.pranavpatel.algo.gridpointcode.Validation;
+
+// Encode
+String gpc = GPC.Encode(43.65, -79.38);  // Toronto
+// Output: #FN5G-CDKL-HDC
+
+// Decode
+Coordinates coords = GPC.Decode("#FN5G-CDKL-HDC");
+double lat = coords.Latitude;
+double lng = coords.Longitude;
+
+// Validate
+Validation result = GPC.IsValid("#FN5G-CDKL-HDC");
+boolean isValid = result.IsValid;
+String message = result.Message;
+```
+
+---
 
 ## License
 
-Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+Licensed under the [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
 ## Contributing
 
-Contributions are welcome! Please submit issues or pull requests via GitHub.
+Pull requests, issues, and suggestions are welcome!
+Please use GitHub to suggest features, report bugs, or contribute improvements.
+
+---
+
+Would you like me to export this to a `README.md` file for download or commit it directly to a repository?
