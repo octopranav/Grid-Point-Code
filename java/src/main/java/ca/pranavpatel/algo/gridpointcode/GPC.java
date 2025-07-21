@@ -101,7 +101,7 @@ public final class GPC {
      *
      * @param latitude Latitude in Decimal Degrees
      * @param longitude Longitude in Decimal Degrees
-     * @return {@link ninja.pranav.algorithms.gridpointcode.Validation} object containing status and message if any.
+     * @return {@link ca.pranavpatel.algo.gridpointcode.Validation} object containing status and message if any.
      */
     public static Validation IsValid(double latitude, double longitude) {
         if (latitude <= MIN_LAT || latitude >= MAX_LAT) {

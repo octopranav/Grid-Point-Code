@@ -7,8 +7,16 @@ import java.util.Objects;
  * Immutable and provides basic utility methods like equals, hashCode, and toString.
  */
 public class Coordinates {
+    /**
+     * Represents the latitude component of the coordinate.
+     */
     public final double Latitude;
+
+    /**
+     * Represents the longitude component of the coordinate.
+     */
     public final double Longitude;
+    
     /**
      * <p>Constructor for Coordinates.</p>
      *
