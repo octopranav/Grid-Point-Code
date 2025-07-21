@@ -7,7 +7,7 @@
 
 ## Overview
 
-**Grid Point Code (GPC)** is a geocoding system that provides a unique, lossless, and compact alphanumeric code for any geographic location—home, office, or otherwise. It enables offline conversion between geographic coordinates and standardized codes with high precision.
+**Grid Point Code (GPC)** is a geocoding system that provides a unique, lossless, and compact alphanumeric code for any geographic location - whether it is a home, office, or any other area. It enables offline conversion between geographic coordinates and standardized codes with high precision.
 
 ## Features
 
@@ -63,7 +63,7 @@ Add the following to your `pom.xml`:
 
 ## Usage Examples
 
-### ➤ Python
+### Python
 
 ```python
 from gridpointcode_algo_pranavpatel_ca import GPC
@@ -83,7 +83,7 @@ print(valid, msg)
 
 ---
 
-### ➤ TypeScript
+### TypeScript
 
 ```ts
 import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
@@ -103,7 +103,7 @@ console.log(valid, message);
 
 ---
 
-### ➤ C\#
+### C\#
 
 ```csharp
 using Ca.Pranavpatel.Algo.GridPointCode;
@@ -121,7 +121,7 @@ string gpc = GPC.Encode(43.65000, -79.38000);  // Toronto
 
 ---
 
-### ➤ Java
+### Java
 
 ```java
 import ca.pranavpatel.algo.gridpointcode.GPC;
@@ -153,7 +153,3 @@ Licensed under the [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2
 
 Pull requests, issues, and suggestions are welcome!
 Please use GitHub to suggest features, report bugs, or contribute improvements.
-
----
-
-Would you like me to export this to a `README.md` file for download or commit it directly to a repository?
