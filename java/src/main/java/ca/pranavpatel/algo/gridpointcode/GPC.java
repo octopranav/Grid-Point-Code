@@ -8,10 +8,9 @@ import ca.pranavpatel.algo.kombin.Table;
 import ca.pranavpatel.algo.kombin.Pair;
 
 /**
- * <p>GPC class.</p>
- *
- * @author Pranavkumar Patel
- * @version $Id: $Id
+ * Provides methods to encode geographic coordinates into a Grid Point Code (GPC)
+ * and decode GPC back to geographic coordinates.
+ * GPC is a custom geocode format optimized for compact and unique representation.
  */
 public final class GPC {
     private static final double MIN_LAT = -90;

@@ -3,10 +3,8 @@ package ca.pranavpatel.algo.gridpointcode;
 import java.util.Objects;
 
 /**
- * <p>Coordinates class.</p>
- *
- * @author Pranavkumar Patel
- * @version $Id: $Id
+ * Represents a pair of geographic coordinates (latitude and longitude).
+ * Immutable and provides basic utility methods like equals, hashCode, and toString.
  */
 public class Coordinates {
     public final double Latitude;

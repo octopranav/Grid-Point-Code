@@ -1,10 +1,7 @@
 package ca.pranavpatel.algo.gridpointcode;
 
 /**
- * <p>Validation class.</p>
- *
- * @author Pranavkumar Patel
- * @version $Id: $Id
+ * Provides static methods to validate geographic coordinates and Grid Point Codes.
  */
 public class Validation {
     public final boolean IsValid;

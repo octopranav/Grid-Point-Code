@@ -10,11 +10,9 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Unit tests for GPC class
- *
- * @author Pranavkumar Patel
- * @version $Id: $Id
- * @since 0.0.1
+ * Tests for the GPC (Grid Point Code) encoding and decoding functionality.
+ * Validates that GPC can be correctly encoded from geographic coordinates
+ * and decoded back to the original coordinates.
  */
 public class GPCTest {
 
