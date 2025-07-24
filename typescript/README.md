@@ -15,7 +15,7 @@
 
 ## Installation
 
-Add the package (assumes you publish it to npm):
+Add the package:
 
 ```bash
 npm install @pranavpatel.ca/algo-gridpointcode
