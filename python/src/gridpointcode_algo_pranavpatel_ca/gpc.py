@@ -13,17 +13,22 @@
 #  limitations under the License.
 
 import re
-from kombin_algo_pranavpatel_ca import Table
+from decimal import Decimal
+
+from .table import Table
 
 # Constants
 MIN_LAT = -90
 MAX_LAT = 90
 MIN_LONG = -180
 MAX_LONG = 180
+MIN_POINT = 10_000_000_000
 MAX_POINT = 648_009_999_999_999
 ELEVEN = 205_881_132_094_649
 CHARACTERS = "CDFGHJKLMNPRTVWXY0123456789"  # base27
 GPC_LENGTH = 11
+MAX_WHOLE_LAT = 89
+MAX_WHOLE_LONG = 179
 
 LatLongTable = Table(180, 360, True)
 
@@ -93,8 +98,8 @@ class GPC:
         Returns:
             int: Encoded point value.
         """
-        lat7 = GPC.split_to_7(format(latitude, '.10f'))
-        long7 = GPC.split_to_7(format(longitude, '.10f'))
+        lat7 = GPC.split_to_7(latitude, MAX_WHOLE_LAT)
+        long7 = GPC.split_to_7(longitude, MAX_WHOLE_LONG)
         
         point = int(10 ** 10 * (
             LatLongTable.GetIndexOfElements(
@@ -112,22 +117,31 @@ class GPC:
         return point
 
     @staticmethod
-    def split_to_7(coordinate: str) -> list[int]:
+    def split_to_7(coordinate: float, max_whole: int) -> list[int]:
         """
-        Splits a coordinate string into a 7-element list for encoding.
+        Splits a coordinate into a 7-element list for encoding.
 
         The 7 elements include sign, integer part, and 5 digits of fractional precision.
 
         Args:
-            coordinate (str): String representation of the coordinate.
+            coordinate (float): Latitude or longitude in decimal degrees.
+            max_whole (int): Highest whole-degree part the grid holds, 89 for
+                latitude and 179 for longitude.
 
         Returns:
             list[int]: 7-element list representing the coordinate.
         """
-        coordinate = format(float(coordinate), '.10f')
+        value = float(coordinate)
+        # Negative zero and positive zero are the same point, so give them the
+        # same sign and therefore the same code.
+        if value == 0:
+            value = 0.0
         coord = [0] * 7
-        coord[0] = -1 if coordinate.startswith("-") else 1
-        coordinate = coordinate.lstrip("-+")
+        coord[0] = -1 if value < 0 else 1
+        # The shortest decimal string that reads back as this double is the
+        # number the caller wrote. Every port truncates that one string, so no
+        # two ports can disagree about the digits.
+        coordinate = format(Decimal(repr(abs(value))), 'f')
         fractional = ""
         
         if "." in coordinate:
@@ -140,6 +154,13 @@ class GPC:
         fractional = (fractional + "00000")[:5]
         
         coord[2:7] = [int(fractional[i]) for i in range(5)]
+        
+        # A coordinate just short of the limit can round up to the limit itself
+        # while being formatted. Hold it in the last cell of the grid instead of
+        # letting an out-of-domain whole part reach the table.
+        if coord[1] > max_whole:
+            coord[1] = max_whole
+            coord[2:7] = [9] * 5
         
         return coord
 
@@ -243,7 +264,7 @@ class GPC:
     @staticmethod
     def validate_point(point: int) -> tuple[bool, str]:
         """
-        Validates if the decoded point lies within the maximum allowed range.
+        Validates if the decoded point lies within the allowed range.
 
         Args:
             point (int): Integer point to validate.
@@ -251,7 +272,7 @@ class GPC:
         Returns:
             tuple[bool, str]: Validation result and message.
         """
-        if point > MAX_POINT:
+        if point < MIN_POINT or point > MAX_POINT:
             return False, "GPC_RANGE"
         return True, ""
 

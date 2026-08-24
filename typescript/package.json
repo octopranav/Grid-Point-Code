@@ -1,12 +1,13 @@
 {
   "name": "@pranavpatel.ca/algo-gridpointcode",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "test": "mocha -r ts-node/register test/**/*.test.ts",
-    "lint": "eslint '*/**/*.{js,ts,tsx}' --quiet --fix"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "keywords": [
     "encoding",
@@ -17,13 +18,11 @@
     "geospatial",
     "address",
     "gis",
-    "spatial",
     "decoding",
     "latitude",
     "longitude",
     "coordinates",
     "unique-identifier",
-    "proximity",
     "precision",
     "gpc",
     "geographic",
@@ -32,21 +31,21 @@
   ],
   "author": "Pranavkumar Patel",
   "license": "Apache-2.0",
-  "description": "Grid Point Code (GPC) is a global geocoding system that provides a unique, lossless, and compact alphanumeric code for any geographic location (home, office, or other places). It enables precise identification and offline conversion between geographic coordinates and codes.",
+  "description": "Grid Point Code (GPC) is a global geocoding system that gives any location a compact 11-character alphanumeric code. Encoding and decoding run offline, with no network or API, and round-trip exactly at the code's fixed precision of five decimal places of latitude and longitude.",
   "devDependencies": {
-    "@types/chai": "^5.2.2",
+    "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^24.0.14",
-    "@typescript-eslint/eslint-plugin": "^8.36.0",
-    "@typescript-eslint/parser": "^8.36.0",
-    "chai": "^5.2.1",
-    "eslint": "^9.31.0",
-    "eslint-config-prettier": "^10.1.5",
-    "eslint-plugin-prettier": "^5.5.1",
-    "mocha": "^11.7.1",
-    "prettier": "^3.6.2",
+    "@types/node": "^26.2.0",
+    "@typescript-eslint/eslint-plugin": "^8.67.0",
+    "@typescript-eslint/parser": "^8.67.0",
+    "chai": "^6.2.2",
+    "eslint": "^10.9.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "mocha": "^11.8.0",
+    "prettier": "^3.9.6",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.3"
   },
   "directories": {
     "test": "test"
@@ -59,7 +58,8 @@
     "url": "https://github.com/octopranav/Grid-Point-Code/issues"
   },
   "homepage": "https://github.com/octopranav/Grid-Point-Code#readme",
-  "dependencies": {
-    "@pranavpatel.ca/algo-kombin": "^1.0.3"
+  "overrides": {
+    "serialize-javascript": "^7.1.0",
+    "diff": "^8.0.4"
   }
 }

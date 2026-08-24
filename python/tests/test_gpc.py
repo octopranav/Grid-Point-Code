@@ -119,3 +119,29 @@ class TestGPC(unittest.TestCase):
             with self.assertRaises(ValueError) as cm:
                 GPC.decode(code)
             self.assertEqual(str(cm.exception), "GPC_RANGE: Invalid GPC.")
+
+    # Test coordinates that round up to the grid limit stay in the last cell
+    def test_near_limit_clamped(self):
+        self.assertEqual("#D4GP-770H-J19", GPC.encode(89.9999999999999, 0))
+        self.assertEqual((89.99999, 0), GPC.decode("#D4GP-770H-J19"))
+        self.assertEqual("#GNPK-GGM8-DK1", GPC.encode(0, 179.9999999999999))
+        self.assertEqual((0, 179.99999), GPC.decode("#GNPK-GGM8-DK1"))
+        self.assertEqual("#HG9P-JLHJ-X69", GPC.encode(-89.9999999999999, -179.9999999999999))
+
+    # Test negative zero and positive zero give one code for the one point
+    def test_negative_zero(self):
+        self.assertEqual(GPC.encode(0.0, 0.0), GPC.encode(-0.0, -0.0))
+        self.assertEqual("#DCCC-CCCC-CCC", GPC.encode(-0.0, -0.0))
+
+    # Test codes below the lowest valid point are rejected, not decoded
+    def test_gpc_below_range(self):
+        self.assertEqual((False, "GPC_RANGE"), GPC.is_valid_gpc("CCCC-CCCC-CCC"))
+        with self.assertRaises(ValueError) as cm:
+            GPC.decode("CCCC-CCCC-CCC")
+        self.assertEqual(str(cm.exception), "GPC_RANGE: Invalid GPC.")
+
+    # Test the digits come from the shortest decimal that reads back as the input
+    def test_shortest_decimal_pinned(self):
+        self.assertEqual("#DCCT-RW78-KY4", GPC.encode(1.999999999999999, 1.999999999999999))
+        self.assertEqual("#GH1J-5VH9-1WL", GPC.encode(6.999999999999987, 163.39847676453326))
+

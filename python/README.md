@@ -2,15 +2,14 @@
 
 ## Overview
 
-Grid Point Code (GPC) is a geocoding system that provides a unique, compact, and lossless alphanumeric code for any global geographic location. This Python implementation allows offline encoding and decoding between latitude/longitude coordinates and GPCs with high precision.
+Grid Point Code (GPC) is a geocoding system that gives any global geographic location a compact 11-character alphanumeric code. This Python implementation encodes and decodes between latitude/longitude coordinates and GPCs offline, at the format's fixed precision of five decimal places.
 
 ## Features
 
-* **Unique Global Codes:** Every location is mapped to a unique alphanumeric string.
-* **Lossless Bi-directional Conversion:** Accurate up to 5 decimal places.
+* **Unique Global Codes:** Every location is mapped to its own alphanumeric string.
+* **Bi-directional Conversion:** Exact at a fixed precision of 5 decimal places.
 * **Offline Functionality:** No network access required.
 * **Formatted Output:** Standardized format: `#XXXX-XXXX-XXX`.
-* **Proximity Awareness:** Similar codes correspond to nearby locations.
 * **Open Source:** Available under the Apache License 2.0.
 
 ## How It Works
@@ -60,7 +59,12 @@ print(valid, message)
 
 * **GPC Structure:** `#XXXX-XXXX-XXX` (11 base-27 characters)
 * **Alphabet:** `"CDFGHJKLMNPRTVWXY0123456789"` (base-27)
-* **Precision:** Approx. 5 decimal places in latitude/longitude
+* **Precision:** 5 decimal places in latitude/longitude
+
+## Precision and Limits
+
+* A code addresses a cell of five decimal places of latitude and longitude, roughly 1.1 m across at the equator. `decode` returns the coordinates of that cell, so a value carrying more than five decimals does not come back unchanged: encoding and then decoding is exact only to the format's fixed precision.
+* Codes are not ordered by geography. Two codes that look alike may be anywhere on Earth, and two neighbouring locations may be given codes with nothing in common. Never read distance or containment out of the characters themselves; decode both codes and compare the coordinates.
 
 ## License
 

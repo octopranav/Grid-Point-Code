@@ -2,15 +2,14 @@
 
 ## Overview
 
-Grid Point Code (GPC) is a global geocoding system that provides a unique, lossless, and compact alphanumeric code for any geographic location (home, office, or other places). It enables precise identification and offline conversion between geographic coordinates and codes.
+Grid Point Code (GPC) is a global geocoding system that gives any geographic location (home, office, or other places) a compact 11-character alphanumeric code. Conversion runs offline in both directions, at the format's fixed precision of five decimal places.
 
 ## Features
 
-- **Unique Global Identification:** Every location receives a unique code.
-- **Lossless Encoding & Decoding:** Convert between latitude/longitude and GPC without loss of precision (up to 5 decimal places).
+- **Unique Global Identification:** Every location receives its own code.
+- **Encoding & Decoding:** Convert between latitude/longitude and GPC at a fixed precision of 5 decimal places.
 - **Offline Conversion:** No network required for encoding or decoding.
 - **Easy-to-Read Format:** Codes are formatted as `#xxxx-xxxx-xxx` for clarity.
-- **Proximity Awareness:** Similar codes represent nearby locations.
 - **Open Source:** Freely available for use and modification.
 
 ## How It Works
@@ -59,7 +58,12 @@ String message = result.Message;
 
 - **Code Structure:** `#xxxx-xxxx-xxx` (11 alphanumeric characters)
 - **Alphabet:** Uses base-27 characters: `CDFGHJKLMNPRTVWXY0123456789`
-- **Precision:** Up to 5 decimal places for coordinates
+- **Precision:** 5 decimal places for coordinates
+
+## Precision and Limits
+
+* A code addresses a cell of five decimal places of latitude and longitude, roughly 1.1 m across at the equator. `decode` returns the coordinates of that cell, so a value carrying more than five decimals does not come back unchanged: encoding and then decoding is exact only to the format's fixed precision.
+* Codes are not ordered by geography. Two codes that look alike may be anywhere on Earth, and two neighbouring locations may be given codes with nothing in common. Never read distance or containment out of the characters themselves; decode both codes and compare the coordinates.
 
 ## License
 

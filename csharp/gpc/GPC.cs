@@ -13,7 +13,7 @@
 //  limitations under the License.
 
 using System;
-using Ca.Pranavpatel.Algo.Kombin;
+using System.Globalization;
 
 [assembly: CLSCompliant(true)]
 namespace Ca.Pranavpatel.Algo.GridPointCode {
@@ -26,10 +26,13 @@ namespace Ca.Pranavpatel.Algo.GridPointCode {
         private const double MAX_LAT = 90;
         private const double MIN_LONG = -180;
         private const double MAX_LONG = 180;
-        private const ulong MAX_POINT = 648_009_999_999_999; // MIN_POINT = 10_000_000_000
+        private const ulong MIN_POINT = 10_000_000_000;
+        private const ulong MAX_POINT = 648_009_999_999_999;
         private const ulong ELEVEN = 205_881_132_094_649; // For Uniformity
         private const string CHARACTERS = "CDFGHJKLMNPRTVWXY0123456789"; // base27
         private const int GPC_LENGTH = 11;
+        private const int MAX_WHOLE_LAT = 89;
+        private const int MAX_WHOLE_LONG = 179;
         private static readonly Table LatLongTable = new(180, 360, true);
 
         /*  PART 1 : ENCODE */
@@ -90,8 +93,8 @@ namespace Ca.Pranavpatel.Algo.GridPointCode {
         /// <param name="longitude">Longitude from Geographic coordinate</param>
         /// <returns>Point</returns>
         private static ulong GetPoint(double latitude, double longitude) {
-            int[] Lat7 = SplitTo7(latitude);
-            int[] Long7 = SplitTo7(longitude);
+            int[] Lat7 = SplitTo7(latitude, MAX_WHOLE_LAT);
+            int[] Long7 = SplitTo7(longitude, MAX_WHOLE_LONG);
             // Whole-Number Part
             ulong Point = (ulong)(Math.Pow(10, 10) *
                 ((int)LatLongTable.GetIndexOfElements(
@@ -111,16 +114,36 @@ namespace Ca.Pranavpatel.Algo.GridPointCode {
 
         /// <summary>Split Coordinate into 7 parts</summary>
         /// <param name="coordinate">Latitude or Longitude in Decimal Degrees</param>
+        /// <param name="maxWhole">
+        /// Highest whole-degree part the grid holds, 89 for latitude and 179 for longitude
+        /// </param>
         /// <returns>Integer array of coordinate</returns>
-        private static int[] SplitTo7(double coordinate) {
+        private static int[] SplitTo7(double coordinate, int maxWhole) {
             int[] Coord = new int[7];
-            // Sign
+            // Sign. Negative zero is not less than zero, so it takes the positive
+            // sign and one point yields one code.
             Coord[0] = coordinate < 0 ? -1 : 1;
-            // Whole-Number
-            Coord[1] = (int)Math.Truncate(Math.Abs(coordinate));
-            // Fractional
-            decimal AbsCoordinate = (decimal)Math.Abs(coordinate);
-            decimal Fractional = AbsCoordinate - (int)Math.Truncate(AbsCoordinate);
+            // Whole-Number and Fractional, both read off the same decimal value so
+            // that the two halves cannot disagree about where the whole part ends.
+            // The shortest decimal string that reads back as this double is the
+            // number the caller wrote. Every port truncates that one string, so no
+            // two ports can disagree about the digits.
+            decimal AbsCoordinate = decimal.Parse(
+                Math.Abs(coordinate).ToString("R", CultureInfo.InvariantCulture),
+                NumberStyles.Float, CultureInfo.InvariantCulture);
+            int Whole = (int)decimal.Truncate(AbsCoordinate);
+            // A coordinate just short of the limit can round up to the limit itself
+            // when it is converted to decimal. Hold it in the last cell of the grid
+            // instead of letting an out-of-domain whole part reach the table.
+            if (Whole > maxWhole) {
+                Coord[1] = maxWhole;
+                for (int x = 2; x <= 6; x++) {
+                    Coord[x] = 9;
+                }
+                return Coord;
+            }
+            Coord[1] = Whole;
+            decimal Fractional = AbsCoordinate - Whole;
             decimal Power10;
             for (int x = 1; x <= 5; x++) {
                 Power10 = Fractional * 10;
@@ -206,7 +229,7 @@ namespace Ca.Pranavpatel.Algo.GridPointCode {
         /// <param name="point">Point number</param>
         /// <returns>Validity status with message if any</returns>
         private static (bool status, string message) Validate(ulong point) {
-            if (point > MAX_POINT) {
+            if (point < MIN_POINT || point > MAX_POINT) {
                 return (false, "GPC_RANGE");
             }
             return (true, string.Empty);

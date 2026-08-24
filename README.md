@@ -7,12 +7,12 @@
 
 ## Overview
 
-**Grid Point Code (GPC)** is a geocoding system that provides a unique, lossless, and compact alphanumeric code for any geographic location - whether it is a home, office, or any other area. It enables offline conversion between geographic coordinates and standardized codes with high precision.
+**Grid Point Code (GPC)** is a geocoding system that gives any geographic location - a home, an office, or any other place - a compact 11-character alphanumeric code. Conversion runs offline in both directions, and a code round-trips exactly at the format's fixed precision of five decimal places of latitude and longitude.
 
 ## Features
 
-* **Unique Global Codes** – Every location gets a unique, proximity-aware code
-* **Bidirectional Conversion** – Encode/decode with up to 5 decimal places of precision
+* **Unique Global Codes** – Every location gets its own code
+* **Bidirectional Conversion** – Encode and decode at a fixed precision of 5 decimal places
 * **Offline Support** – Works without internet or APIs
 * **Formatted Output** – Easy-to-read `#XXXX-XXXX-XXX` format
 * **Open Source** – Licensed under Apache 2.0
@@ -21,7 +21,12 @@
 
 * **GPC Format**: `#XXXX-XXXX-XXX` (11-character alphanumeric string)
 * **Encoding Base**: `CDFGHJKLMNPRTVWXY0123456789` (base-27)
-* **Precision**: \~5 decimal places for latitude/longitude
+* **Precision**: 5 decimal places for latitude/longitude
+
+## Precision and Limits
+
+* A code addresses a cell of five decimal places of latitude and longitude, roughly 1.1 m across at the equator. `decode` returns the coordinates of that cell, so a value carrying more than five decimals does not come back unchanged: encoding and then decoding is exact only to the format's fixed precision.
+* Codes are not ordered by geography. Two codes that look alike may be anywhere on Earth, and two neighbouring locations may be given codes with nothing in common. Never read distance or containment out of the characters themselves; decode both codes and compare the coordinates.
 
 ---
 
@@ -55,7 +60,7 @@ Add the following to your `pom.xml`:
 <dependency>
     <groupId>ca.pranavpatel.algo</groupId>
     <artifactId>gridpointcode</artifactId>
-    <version>1.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 

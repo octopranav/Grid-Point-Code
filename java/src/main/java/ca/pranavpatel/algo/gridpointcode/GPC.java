@@ -4,9 +4,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Locale;
 
-import ca.pranavpatel.algo.kombin.Table;
-import ca.pranavpatel.algo.kombin.Pair;
-
 /**
  * Provides methods to encode geographic coordinates into a Grid Point Code (GPC)
  * and decode GPC back to geographic coordinates.
@@ -17,12 +14,14 @@ public final class GPC {
     private static final double MAX_LAT = 90;
     private static final double MIN_LONG = -180;
     private static final double MAX_LONG = 180;
-    // MIN_POINT = 10_000_000_000
+    private static final long MIN_POINT = 10_000_000_000L;
     private static final long MAX_POINT = 648_009_999_999_999L;
     // For Uniformity
     private static final long ELEVEN = 205_881_132_094_649L;
     private static final String CHARACTERS = "CDFGHJKLMNPRTVWXY0123456789"; // base27
     private static final int GPC_LENGTH = 11;
+    private static final int MAX_WHOLE_LAT = 89;
+    private static final int MAX_WHOLE_LONG = 179;
     private static final char PREFIX = 35;
     private static final char SEPERATOR = 45;
     private static final Table LatLongTable = new Table(180, 360, true);
@@ -120,8 +119,8 @@ public final class GPC {
      * @return Point
      */
     private static long GetPoint(double latitude, double longitude) {
-        int[] Lat7 = SplitTo7(latitude);
-        int[] Long7 = SplitTo7(longitude);
+        int[] Lat7 = SplitTo7(latitude, MAX_WHOLE_LAT);
+        int[] Long7 = SplitTo7(longitude, MAX_WHOLE_LONG);
         // Whole-Number Part
         long Point = (long)(Math.pow(10, 10) *
             (LatLongTable.GetIndexOfElements(
@@ -142,16 +141,30 @@ public final class GPC {
     /**
      * Split Coordinate into 7 parts
      * @param coordinate Latitude or Longitude in Decimal Degrees
+     * @param maxWhole Highest whole-degree part the grid holds,
+     *  89 for latitude and 179 for longitude
      * @return Integer array of coordinate
      */
-    private static int[] SplitTo7(double coordinate) {
+    private static int[] SplitTo7(double coordinate, int maxWhole) {
         int[] Coord = new int[7];
-        // Sign
+        // Sign. Negative zero is not less than zero, so it takes the positive
+        // sign and one point yields one code.
         Coord[0] = coordinate < 0 ? -1 : 1;
-        // Whole-Number
-        Coord[1] = (int)Truncate(Math.abs(coordinate));
-        // Fractional
+        // Whole-Number and Fractional, both read off the same decimal value so
+        // that the two halves cannot disagree about where the whole part ends.
         BigDecimal AbsCoordinate = BigDecimal.valueOf(Math.abs(coordinate));
+        int Whole = Truncate(AbsCoordinate).intValue();
+        // A coordinate just short of the limit can round up to the limit itself
+        // when it is converted to decimal. Hold it in the last cell of the grid
+        // instead of letting an out-of-domain whole part reach the table.
+        if (Whole > maxWhole) {
+            Coord[1] = maxWhole;
+            for (int x = 2; x <= 6; x++) {
+                Coord[x] = 9;
+            }
+            return Coord;
+        }
+        Coord[1] = Whole;
         BigDecimal Fractional = AbsCoordinate.subtract(Truncate(AbsCoordinate));
         BigDecimal Power10;
         for (int x = 1; x <= 5; x++) {
@@ -245,7 +258,7 @@ public final class GPC {
      * @return Validity status with message if any
      */
     private static Validation Validate(long point) {
-        if (point > MAX_POINT) {
+        if (point < MIN_POINT || point > MAX_POINT) {
             return new Validation(false, "GPC_RANGE");
         }
         return new Validation(true, "");
@@ -258,6 +271,12 @@ public final class GPC {
      * @return Validity status with message if any
      */
     public static Validation IsValid(String gridPointCode) {
+        if (gridPointCode == null) {
+            return new Validation(false, "GPC_NULL");
+        }
+        /*  Removing Format */
+        gridPointCode = gridPointCode.replace(" ", "").replace("-", "")
+            .replace("#", "").trim().toUpperCase(Locale.ENGLISH);
         if (gridPointCode.isBlank()) {
             return new Validation(false, "GPC_NULL");
         }
