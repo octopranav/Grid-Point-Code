@@ -1,7 +1,9 @@
 package ca.pranavpatel.algo.gridpointcode;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -142,5 +144,73 @@ public class GPCTest {
         public void testGPCRange(String gridPointCode) {
             Throwable ex = assertThrows(IllegalArgumentException.class, () -> GPC.Decode(gridPointCode));
             assertEquals("GPC_RANGE: Invalid GPC.", ex.getMessage());
+        }
+
+        /**
+         * <p>testNearLimitClamped.</p>
+         *
+         * @param gridPointCode a {@link java.lang.String} object.
+         * @param latitude a double.
+         * @param longitude a double.
+         * @param expectedLatitude a double.
+         * @param expectedLongitude a double.
+         */
+        @ParameterizedTest
+        @CsvSource({
+            "'#D4GP-770H-J19', 89.9999999999999, 0, 89.99999, 0",
+            "'#GNPK-GGM8-DK1', 0, 179.9999999999999, 0, 179.99999",
+            "'#HG9P-JLHJ-X69', -89.9999999999999, -179.9999999999999, -89.99999, -179.99999"
+        })
+        public void testNearLimitClamped(String gridPointCode, double latitude, double longitude,
+                double expectedLatitude, double expectedLongitude) {
+            assertEquals(gridPointCode, GPC.Encode(latitude, longitude));
+            assertEquals(new Coordinates(expectedLatitude, expectedLongitude), GPC.Decode(gridPointCode));
+        }
+
+        /**
+         * <p>testNegativeZero.</p>
+         */
+        @Test
+        public void testNegativeZero() {
+            assertEquals(GPC.Encode(0.0, 0.0), GPC.Encode(-0.0, -0.0));
+            assertEquals("#DCCC-CCCC-CCC", GPC.Encode(-0.0, -0.0));
+        }
+
+        /**
+         * <p>testGPCBelowRange.</p>
+         */
+        @Test
+        public void testGPCBelowRange() {
+            Validation result = GPC.IsValid("CCCC-CCCC-CCC");
+            assertFalse(result.IsValid);
+            assertEquals("GPC_RANGE", result.Message);
+            Throwable ex = assertThrows(IllegalArgumentException.class, () -> GPC.Decode("CCCC-CCCC-CCC"));
+            assertEquals("GPC_RANGE: Invalid GPC.", ex.getMessage());
+        }
+
+        /**
+         * <p>testIsValidAcceptsFormattedCode.</p>
+         */
+        @Test
+        public void testIsValidAcceptsFormattedCode() {
+            Validation result = GPC.IsValid("#FN5G-CDKL-HDC");
+            assertTrue(result.IsValid);
+            assertEquals("", result.Message);
+        }
+
+        /**
+         * <p>testShortestDecimalPinned.</p>
+         *
+         * @param gridPointCode a {@link java.lang.String} object.
+         * @param latitude a double.
+         * @param longitude a double.
+         */
+        @ParameterizedTest
+        @CsvSource({
+            "'#DCCT-RW78-KY4', 1.999999999999999, 1.999999999999999",
+            "'#GH1J-5VH9-1WL', 6.999999999999987, 163.39847676453326"
+        })
+        public void testShortestDecimalPinned(String gridPointCode, double latitude, double longitude) {
+            assertEquals(gridPointCode, GPC.Encode(latitude, longitude));
         }
 }

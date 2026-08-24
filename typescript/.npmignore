@@ -7,8 +7,7 @@ docs
 
 # Files
 .editorconfig
-.eslintignore
-.eslintrc.js
+eslint.config.js
 .gitignore
 .prettierrc.js
 tsconfig.json

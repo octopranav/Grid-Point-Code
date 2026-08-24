@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Xunit;
 
 [assembly: CLSCompliant(false)]
@@ -209,6 +209,61 @@ namespace Ca.Pranavpatel.Algo.GridPointCode.Tests {
             Assert.NotNull(ex);
             _ = Assert.IsType<ArgumentOutOfRangeException>(ex);
             Assert.Equal("GPC_RANGE: Invalid GPC. (Parameter 'gridPointCode')", ex.Message);
+        }
+
+        /// <summary>
+        /// Tests that a coordinate which rounds up to the grid limit is held in the last
+        /// cell instead of reaching an out-of-domain table index.
+        /// </summary>
+        /// <param name="latitude">Latitude in Decimal Degrees.</param>
+        /// <param name="longitude">Longitude in Decimal Degrees.</param>
+        /// <param name="gridPointCode">The expected grid point code.</param>
+        /// <param name="expectedLatitude">The latitude the code decodes to.</param>
+        /// <param name="expectedLongitude">The longitude the code decodes to.</param>
+        [Theory]
+        [InlineData(89.9999999999999, 0, "#D4GP-770H-J19", 89.99999, 0)]
+        [InlineData(0, 179.9999999999999, "#GNPK-GGM8-DK1", 0, 179.99999)]
+        [InlineData(-89.9999999999999, -179.9999999999999, "#HG9P-JLHJ-X69", -89.99999, -179.99999)]
+        public void TestNearLimitClamped(double latitude, double longitude, string gridPointCode,
+                double expectedLatitude, double expectedLongitude) {
+            Assert.Equal(gridPointCode, GPC.Encode(latitude, longitude));
+            Assert.Equal((expectedLatitude, expectedLongitude), GPC.Decode(gridPointCode));
+        }
+
+        /// <summary>
+        /// Tests that negative zero and positive zero are the one point and get the one code.
+        /// </summary>
+        [Fact]
+        public void TestNegativeZero() {
+            Assert.Equal(GPC.Encode(0.0, 0.0), GPC.Encode(-0.0, -0.0));
+            Assert.Equal("#DCCC-CCCC-CCC", GPC.Encode(-0.0, -0.0));
+        }
+
+        /// <summary>
+        /// Tests that a code below the lowest valid point is rejected rather than decoded.
+        /// </summary>
+        [Fact]
+        public void TestGPCBelowRange() {
+            Assert.Equal((false, "GPC_RANGE"), GPC.IsValid("CCCC-CCCC-CCC"));
+            Action act = () => GPC.Decode("CCCC-CCCC-CCC");
+            Exception ex = Record.Exception(act);
+            Assert.NotNull(ex);
+            _ = Assert.IsType<ArgumentOutOfRangeException>(ex);
+            Assert.Equal("GPC_RANGE: Invalid GPC. (Parameter 'gridPointCode')", ex.Message);
+        }
+
+        /// <summary>
+        /// Tests that the five digits are taken from the shortest decimal string that
+        /// reads back as the given double, which is what keeps every port in step.
+        /// </summary>
+        /// <param name="latitude">Latitude in Decimal Degrees.</param>
+        /// <param name="longitude">Longitude in Decimal Degrees.</param>
+        /// <param name="gridPointCode">The expected grid point code.</param>
+        [Theory]
+        [InlineData(1.999999999999999, 1.999999999999999, "#DCCT-RW78-KY4")]
+        [InlineData(6.999999999999987, 163.39847676453326, "#GH1J-5VH9-1WL")]
+        public void TestShortestDecimalPinned(double latitude, double longitude, string gridPointCode) {
+            Assert.Equal(gridPointCode, GPC.Encode(latitude, longitude));
         }
 
     }

@@ -1,2 +1,1 @@
-
 export { GPC } from './GPC';

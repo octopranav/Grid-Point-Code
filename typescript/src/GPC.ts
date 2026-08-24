@@ -1,7 +1,7 @@
 // Copyright 2017 Pranavkumar Patel
 // Licensed under the Apache License, Version 2.0
 
-import { Table } from '@pranavpatel.ca/algo-kombin';
+import { Table } from './Table';
 
 /**
  * The GPC (Grid Point Code) class provides methods for encoding geographic
@@ -16,10 +16,13 @@ export class GPC {
     private static readonly MAX_LAT = 90;
     private static readonly MIN_LONG = -180;
     private static readonly MAX_LONG = 180;
+    private static readonly MIN_POINT = 10_000_000_000n;
     private static readonly MAX_POINT = 648_009_999_999_999n;
     private static readonly ELEVEN = 205_881_132_094_649n;
-    private static readonly CHARACTERS = "CDFGHJKLMNPRTVWXY0123456789";
+    private static readonly CHARACTERS = 'CDFGHJKLMNPRTVWXY0123456789';
     private static readonly GPC_LENGTH = 11;
+    private static readonly MAX_WHOLE_LAT = 89;
+    private static readonly MAX_WHOLE_LONG = 179;
     private static readonly LatLongTable = new Table(180, 360, true);
 
     /**
@@ -51,7 +54,7 @@ export class GPC {
      */
     public static decode(gridPointCode: string): [number, number] {
         if (!gridPointCode || gridPointCode.trim() === '') {
-            throw new Error("GPC_NULL: Invalid GPC.");
+            throw new Error('GPC_NULL: Invalid GPC.');
         }
 
         gridPointCode = gridPointCode.replace(/[\s#-]/g, '').toUpperCase();
@@ -72,9 +75,9 @@ export class GPC {
      * @returns [true, ""] if valid, otherwise [false, "LATITUDE" or "LONGITUDE"].
      */
     public static isValidCoordinates(latitude: number, longitude: number): [boolean, string] {
-        if (latitude <= this.MIN_LAT || latitude >= this.MAX_LAT) return [false, "LATITUDE"];
-        if (longitude <= this.MIN_LONG || longitude >= this.MAX_LONG) return [false, "LONGITUDE"];
-        return [true, ""];
+        if (latitude <= this.MIN_LAT || latitude >= this.MAX_LAT) return [false, 'LATITUDE'];
+        if (longitude <= this.MIN_LONG || longitude >= this.MAX_LONG) return [false, 'LONGITUDE'];
+        return [true, ''];
     }
 
     /**
@@ -84,7 +87,7 @@ export class GPC {
      */
     public static isValid(gridPointCode: string): [boolean, string] {
         gridPointCode = gridPointCode.replace(/[\s#-]/g, '').toUpperCase();
-        if (!gridPointCode) return [false, "GPC_NULL"];
+        if (!gridPointCode) return [false, 'GPC_NULL'];
 
         let [valid, message] = this.validateGPC(gridPointCode);
         if (!valid) return [false, message];
@@ -92,7 +95,7 @@ export class GPC {
         [valid, message] = this.validatePoint(this.decodeToPoint(gridPointCode) - this.ELEVEN);
         if (!valid) return [false, message];
 
-        return [true, ""];
+        return [true, ''];
     }
 
     /**
@@ -103,15 +106,16 @@ export class GPC {
      * @returns A bigint representing the point.
      */
     private static getPoint(lat: number, long: number): bigint {
-        const lat7 = this.splitTo7(lat);
-        const long7 = this.splitTo7(long);
+        const lat7 = this.splitTo7(lat, this.MAX_WHOLE_LAT);
+        const long7 = this.splitTo7(long, this.MAX_WHOLE_LONG);
 
         let point = BigInt(
             Math.pow(10, 10) *
-            (this.LatLongTable.GetIndexOfElements(
-                (lat7[1] * 2) + (lat7[0] === -1 ? 1 : 0),
-                (long7[1] * 2) + (long7[0] === -1 ? 1 : 0)
-            ) + 1)
+                (this.LatLongTable.GetIndexOfElements(
+                    lat7[1] * 2 + (lat7[0] === -1 ? 1 : 0),
+                    long7[1] * 2 + (long7[0] === -1 ? 1 : 0),
+                ) +
+                    1),
         );
 
         let power = 9;
@@ -127,22 +131,39 @@ export class GPC {
      * Converts a decimal coordinate to a 7-part array:
      * [sign, integer, fractional_digit1...fractional_digit5]
      * @param coord Coordinate value as number.
+     * @param maxWhole Highest whole-degree part the grid holds, 89 for latitude
+     * and 179 for longitude.
      * @returns An array of 7 integers.
      */
-    private static splitTo7(coord: number): number[] {
+    private static splitTo7(coord: number, maxWhole: number): number[] {
         const result = new Array(7).fill(0);
-        
-        const coordStr = coord.toFixed(10);
-        result[0] = coordStr.startsWith('-') ? -1 : 1;
 
-        const cleaned = coordStr.replace(/^[-+]/, '');
-        const [integerPart, fractionalPartRaw = ''] = cleaned.split('.');
+        // Negative zero is not less than zero, so it takes the positive sign
+        // and one point yields one code.
+        result[0] = coord < 0 ? -1 : 1;
+
+        // The shortest decimal string that reads back as this double is the
+        // number the caller wrote. Every port truncates that one string, so no
+        // two ports can disagree about the digits. Below 1e-6 the string turns
+        // exponential, and every such value truncates to no fraction at all.
+        const magnitude = Math.abs(coord);
+        const coordStr = magnitude < 1e-6 ? '0' : magnitude.toString();
+
+        const [integerPart, fractionalPartRaw = ''] = coordStr.split('.');
         result[1] = parseInt(integerPart, 10);
 
         const fractionalPart = (fractionalPartRaw + '00000').slice(0, 5);
 
         for (let i = 0; i < 5; i++) {
             result[i + 2] = parseInt(fractionalPart[i], 10);
+        }
+
+        // A coordinate just short of the limit can round up to the limit itself
+        // while being formatted. Hold it in the last cell of the grid instead of
+        // letting an out-of-domain whole part reach the table.
+        if (result[1] > maxWhole) {
+            result[1] = maxWhole;
+            result.fill(9, 2, 7);
         }
 
         return result;
@@ -178,11 +199,11 @@ export class GPC {
      * @returns [true, ""] if valid, otherwise [false, error reason].
      */
     private static validateGPC(gpc: string): [boolean, string] {
-        if (gpc.length !== this.GPC_LENGTH) return [false, "GPC_LENGTH"];
+        if (gpc.length !== this.GPC_LENGTH) return [false, 'GPC_LENGTH'];
         for (const char of gpc) {
-            if (!this.CHARACTERS.includes(char)) return [false, "GPC_CHAR"];
+            if (!this.CHARACTERS.includes(char)) return [false, 'GPC_CHAR'];
         }
-        return [true, ""];
+        return [true, ''];
     }
 
     /**
@@ -191,8 +212,8 @@ export class GPC {
      * @returns [true, ""] if valid, otherwise [false, "GPC_RANGE"].
      */
     private static validatePoint(point: bigint): [boolean, string] {
-        if (point > this.MAX_POINT) return [false, "GPC_RANGE"];
-        return [true, ""];
+        if (point < this.MIN_POINT || point > this.MAX_POINT) return [false, 'GPC_RANGE'];
+        return [true, ''];
     }
 
     /**
@@ -221,17 +242,15 @@ export class GPC {
         const [lat7, long7] = this.splitPointTo7(latLongIndex, fractional);
 
         let power = 0;
-        let tempLat = 0, tempLong = 0;
+        let tempLat = 0,
+            tempLong = 0;
 
         for (let i = 6; i >= 1; i--) {
             tempLat += lat7[i] * Math.pow(10, power);
             tempLong += long7[i] * Math.pow(10, power++);
         }
 
-        return [
-            tempLat / Math.pow(10, 5) * lat7[0],
-            tempLong / Math.pow(10, 5) * long7[0]
-        ];
+        return [(tempLat / Math.pow(10, 5)) * lat7[0], (tempLong / Math.pow(10, 5)) * long7[0]];
     }
 
     /**
