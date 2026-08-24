@@ -9,6 +9,7 @@
 * **Compact Global Codes**: Unique alphanumeric string for every lat/lng location
 * **Bidirectional Conversion**: Encode and decode at a fixed precision of 5 decimal places
 * **Offline Support**: No internet or API required
+* **No Dependencies**: No third-party packages at runtime
 * **Formatted Output**: Default format is `#XXXX-XXXX-XXX` for easy readability
 * **Open Source**: Licensed under Apache License 2.0
 
@@ -19,6 +20,11 @@ Add the package:
 ```bash
 npm install @pranavpatel.ca/algo-gridpointcode
 ```
+
+## Requirements
+
+Node.js 18 or later. Compiled to ES2022 CommonJS, with type declarations
+included. No runtime dependencies.
 
 ## Usage
 
@@ -67,6 +73,10 @@ Checks if latitude and longitude are within valid global ranges.
 ### `GPC.isValid(code: string): [boolean, string]`
 
 Validates the GPC format and ensures it maps to a valid point.
+
+## Changelog
+
+See [CHANGELOG.md](https://github.com/octopranav/Grid-Point-Code/blob/main/CHANGELOG.md) for what changed in each release.
 
 ## License
 

@@ -9,6 +9,7 @@ Grid Point Code (GPC) is a global geocoding system that gives any geographic loc
 - **Unique Global Identification:** Every location receives its own code.
 - **Encoding & Decoding:** Convert between latitude/longitude and GPC at a fixed precision of 5 decimal places.
 - **Offline Conversion:** No network required for encoding or decoding.
+- **No Dependencies:** Nothing beyond the Java standard library.
 - **Easy-to-Read Format:** Codes are formatted as `#xxxx-xxxx-xxx` for clarity.
 - **Open Source:** Freely available for use and modification.
 
@@ -19,6 +20,10 @@ Grid Point Code (GPC) is a global geocoding system that gives any geographic loc
 - **Validation:** Ensures input coordinates and codes are within valid ranges.
 - **Formatting:** Provides formatted and unformatted code representations.
 
+## Requirements
+
+Java 21 or later. No third-party dependencies.
+
 ## Usage
 
 ### Encoding Coordinates
@@ -28,7 +33,7 @@ import ca.pranavpatel.algo.gridpointcode.GPC;
 
 // Encode latitude and longitude to GPC
 String gpc = GPC.Encode(37.7749, -122.4194); // San Francisco
-// Output: #XXXX-XXXX-XXX (example)
+// Output: #GCLM-R057-RLR
 ```
 
 ### Decoding a GPC
@@ -38,7 +43,7 @@ import ca.pranavpatel.algo.gridpointcode.GPC;
 import ca.pranavpatel.algo.gridpointcode.Coordinates;
 
 // Decode GPC to latitude and longitude
-Coordinates coords = GPC.Decode("#XXXX-XXXX-XXX");
+Coordinates coords = GPC.Decode("#GCLM-R057-RLR");
 double lat = coords.Latitude;
 double lng = coords.Longitude;
 ```
@@ -49,7 +54,7 @@ double lng = coords.Longitude;
 import ca.pranavpatel.algo.gridpointcode.GPC;
 import ca.pranavpatel.algo.gridpointcode.Validation;
 
-Validation result = GPC.IsValid("#XXXX-XXXX-XXX");
+Validation result = GPC.IsValid("#GCLM-R057-RLR");
 boolean isValid = result.IsValid;
 String message = result.Message;
 ```
@@ -64,6 +69,10 @@ String message = result.Message;
 
 * A code addresses a cell of five decimal places of latitude and longitude, roughly 1.1 m across at the equator. `decode` returns the coordinates of that cell, so a value carrying more than five decimals does not come back unchanged: encoding and then decoding is exact only to the format's fixed precision.
 * Codes are not ordered by geography. Two codes that look alike may be anywhere on Earth, and two neighbouring locations may be given codes with nothing in common. Never read distance or containment out of the characters themselves; decode both codes and compare the coordinates.
+
+## Changelog
+
+See [CHANGELOG.md](https://github.com/octopranav/Grid-Point-Code/blob/main/CHANGELOG.md) for what changed in each release.
 
 ## License
 

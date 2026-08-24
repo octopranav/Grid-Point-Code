@@ -14,6 +14,7 @@
 * **Unique Global Codes** – Every location gets its own code
 * **Bidirectional Conversion** – Encode and decode at a fixed precision of 5 decimal places
 * **Offline Support** – Works without internet or APIs
+* **Zero Dependencies** – No third-party packages in any of the four ports
 * **Formatted Output** – Easy-to-read `#XXXX-XXXX-XXX` format
 * **Open Source** – Licensed under Apache 2.0
 
@@ -29,6 +30,17 @@
 * Codes are not ordered by geography. Two codes that look alike may be anywhere on Earth, and two neighbouring locations may be given codes with nothing in common. Never read distance or containment out of the characters themselves; decode both codes and compare the coordinates.
 
 ---
+
+## Requirements
+
+| Port | Requires |
+| --- | --- |
+| Python | 3.9 or later |
+| TypeScript | Node.js 18 or later |
+| C# | .NET 9.0 or .NET 10.0 |
+| Java | Java 21 or later |
+
+None of the four ports has a third-party dependency.
 
 ## Installation
 
@@ -149,6 +161,10 @@ String message = result.Message;
 ```
 
 ---
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 
 ## License
 

@@ -9,6 +9,7 @@ Grid Point Code (GPC) is a geocoding system that gives any global geographic loc
 * **Unique Global Codes:** Every location is mapped to its own alphanumeric string.
 * **Bi-directional Conversion:** Exact at a fixed precision of 5 decimal places.
 * **Offline Functionality:** No network access required.
+* **No Dependencies:** Nothing beyond the Python standard library.
 * **Formatted Output:** Standardized format: `#XXXX-XXXX-XXX`.
 * **Open Source:** Available under the Apache License 2.0.
 
@@ -26,6 +27,10 @@ Install from PyPI:
 ```bash
 pip install gridpointcode-algo-pranavpatel-ca
 ```
+
+## Requirements
+
+Python 3.9 or later. No third-party dependencies.
 
 ## Usage
 
@@ -65,6 +70,10 @@ print(valid, message)
 
 * A code addresses a cell of five decimal places of latitude and longitude, roughly 1.1 m across at the equator. `decode` returns the coordinates of that cell, so a value carrying more than five decimals does not come back unchanged: encoding and then decoding is exact only to the format's fixed precision.
 * Codes are not ordered by geography. Two codes that look alike may be anywhere on Earth, and two neighbouring locations may be given codes with nothing in common. Never read distance or containment out of the characters themselves; decode both codes and compare the coordinates.
+
+## Changelog
+
+See [CHANGELOG.md](https://github.com/octopranav/Grid-Point-Code/blob/main/CHANGELOG.md) for what changed in each release.
 
 ## License
 
