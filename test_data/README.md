@@ -4,6 +4,11 @@ These files are the shared source of truth for every port. All four
 implementations read the same bytes and must produce the same results, so a
 divergence between languages fails a test instead of reaching a release.
 
+The files described below are the version 1 vectors. Version 2 adds a parallel
+set, `v2_*.csv`, whose fields and required edge cases are specified in
+[section 18 of SPEC.md](../SPEC.md#18-conformance). The conventions on this
+page — encoding, line endings, comments, field order — apply to both sets.
+
 Each port has two runners that read these files directly:
 
 | Port | Runners | Command, from that port's directory |
