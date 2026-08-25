@@ -217,6 +217,23 @@ namespace Ca.Pranavpatel.Algo.GridPointCode.Tests {
             Assert.Equal((CodeClass.Invalid, "GPC_CHAR"), GPC.Validate("G3RJM98NMY"));
         }
 
+        /// <summary>
+        /// Space, tab, line feed, vertical tab, form feed and carriage return,
+        /// and nothing wider. A port that also stripped the Unicode spaces
+        /// would accept what another port rejects, which is the whole thing
+        /// the shared vectors exist to prevent.
+        /// </summary>
+        [Fact]
+        public void StripsTheAsciiWhitespaceSetAndNothingWider() {
+            (double Latitude, double Longitude) expected = GPC.Decode("G3RJM98NM9");
+            foreach (string space in new[] { " ", "\t", "\n", "\v", "\f", "\r" }) {
+                Assert.Equal(expected, GPC.Decode(space + "G3RJM" + space + "98NM9" + space));
+                Assert.Equal((CodeClass.Invalid, "GPC_NULL"), GPC.Validate(space + space + space));
+            }
+            // U+00A0 is a space to Unicode and a symbol outside this alphabet.
+            Assert.Equal((CodeClass.Invalid, "GPC_CHAR"), GPC.Validate("\u00a03RJM98NM9"));
+        }
+
         /// <summary>Normalising an already normalised code returns it unchanged.</summary>
         [Fact]
         public void IsIdempotent() {

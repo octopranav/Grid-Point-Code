@@ -191,6 +191,25 @@ class GPCTest {
         assertEquals(new Classification(CodeClass.INVALID, "GPC_CHAR"), GPC.Validate("G3RJM98NMY"));
     }
 
+    /**
+     * Space, tab, line feed, vertical tab, form feed and carriage return, and
+     * nothing wider. A port that also stripped the Unicode spaces would accept
+     * what another port rejects, which is the whole thing the shared vectors
+     * exist to prevent.
+     */
+    @Test
+    void stripsTheAsciiWhitespaceSetAndNothingWider() {
+        Coordinates expected = GPC.Decode("G3RJM98NM9");
+        for (String space : new String[] {" ", "\t", "\n", String.valueOf((char)0x0B), "\f", "\r"}) {
+            assertEquals(expected, GPC.Decode(space + "G3RJM" + space + "98NM9" + space), space);
+            assertEquals(new Classification(CodeClass.INVALID, "GPC_NULL"),
+                    GPC.Validate(space + space + space), space);
+        }
+        // U+00A0 is a space to Unicode and a symbol outside this alphabet.
+        assertEquals(new Classification(CodeClass.INVALID, "GPC_CHAR"),
+                GPC.Validate("\u00a03RJM98NM9"));
+    }
+
     @Test
     void isIdempotent() {
         String once = GPC.Normalise("#g3rjm-98nm9")[0];

@@ -187,6 +187,20 @@ class TestParsing(unittest.TestCase):
     def test_case_folding_is_ascii_only(self):
         self.assertEqual(GPC.decode("G3RJM98NM9"), GPC.decode("g3rjm98nm9"))
 
+    def test_the_whitespace_set_is_ascii_and_is_the_same_everywhere(self):
+        """Space, tab, line feed, vertical tab, form feed and carriage return,
+        and nothing wider. A port that also stripped the Unicode spaces would
+        accept what another port rejects, which is the whole thing the shared
+        vectors exist to prevent."""
+        expected = GPC.decode("G3RJM98NM9")
+        for space in [" ", "\t", "\n", "\v", "\f", "\r"]:
+            with self.subTest(space=repr(space)):
+                self.assertEqual(
+                    expected, GPC.decode(space + "G3RJM" + space + "98NM9" + space))
+                self.assertEqual((INVALID, "GPC_NULL"), GPC.validate(space * 3))
+        # U+00A0 is a space to Unicode and a symbol outside this alphabet.
+        self.assertEqual((INVALID, "GPC_CHAR"), GPC.validate("\u00a03RJM98NM9"))
+
     def test_normalisation_is_idempotent(self):
         once, _ = GPC.normalise("#g3rjm-98nm9")
         twice, _ = GPC.normalise(once)

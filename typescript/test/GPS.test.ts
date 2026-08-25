@@ -195,6 +195,20 @@ describe('Parsing', () => {
         }
     });
 
+    // Space, tab, line feed, vertical tab, form feed and carriage return, and
+    // nothing wider. A port that also stripped the Unicode spaces would accept
+    // what another port rejects, which is the whole thing the shared vectors
+    // exist to prevent.
+    it('strips the ASCII whitespace set and nothing wider', () => {
+        const expected = GPC.decode('G3RJM98NM9');
+        for (const space of [' ', '\t', '\n', '\v', '\f', '\r']) {
+            expect(GPC.decode(space + 'G3RJM' + space + '98NM9' + space)).to.deep.equal(expected);
+            expect(GPC.validate(space.repeat(3))).to.deep.equal([CodeClass.INVALID, 'GPC_NULL']);
+        }
+        // U+00A0 is a space to Unicode and a symbol outside this alphabet.
+        expect(GPC.validate('\u00a03RJM98NM9')).to.deep.equal([CodeClass.INVALID, 'GPC_CHAR']);
+    });
+
     it('is idempotent', () => {
         const [once] = GPC.normalise('#g3rjm-98nm9');
         const [twice] = GPC.normalise(once);
