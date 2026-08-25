@@ -43,6 +43,12 @@ dotnet_diagnostic.CA1508.severity = none
 # CA1062: Validate arguments of public methods
 dotnet_diagnostic.CA1062.severity = none
 
+# CA1700: Do not name enum values 'Reserved'
+# CodeClass.Reserved is the specification's own word for a code that is well
+# formed, begins with X and names no cell. The rule guards against a placeholder
+# nobody has decided about; this one is decided, in Appendix C.
+dotnet_diagnostic.CA1700.severity = none
+
 
 # Vendored source, kept as published rather than restyled
 [gpc/Table.cs]

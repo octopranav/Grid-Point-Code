@@ -417,6 +417,23 @@ for code in v2_candidates:
         seen.add(code)
         v2_codes.append(code)
 
+# The alias table of section 8, asserted through the decoded value rather than
+# through classification: a code spelled with a confusable letter has to reach
+# the same cell as the code spelled with the symbol it stands for. Classifying
+# it is not enough -- a port that aliases V to the wrong symbol still produces a
+# well-formed code, just not this one.
+ALIAS_PAIRS = [("O", "0"), ("I", "1"), ("S", "5"), ("Z", "2"),
+               ("B", "8"), ("A", "4"), ("E", "3"), ("V", "W")]
+alias_rows = []
+for typed, meant in ALIAS_PAIRS:
+    for position in (1, 5, 9):
+        base = "G3RJM98NM9"
+        spelled = base[:position] + meant + base[position + 1:]
+        if spelled[0] == "X":
+            continue
+        alias_rows.append((base[:position] + typed + base[position + 1:],
+                           GPC.decode(spelled)))
+
 lines = ["# code,latitude,longitude",
          "# Version 2. A code names a cell and decodes to that cell's centre,",
          "# rounded to six decimal places. Equality, not tolerance.",
@@ -426,8 +443,12 @@ for code in v2_codes:
     latitude, longitude = GPC.decode(code)
     lines.append(f"{code},{fmt(latitude)},{fmt(longitude)}")
 lines.append("")
+lines.append("# --- The alias table: a confusable letter reaches the symbol's own cell")
+for code, (latitude, longitude) in alias_rows:
+    lines.append(f"{code},{fmt(latitude)},{fmt(longitude)}")
+lines.append("")
 write("v2_decoding.csv", lines)
-print(f"v2_decoding.csv           {len(v2_codes):5} vectors")
+print(f"v2_decoding.csv           {len(v2_codes) + len(alias_rows):5} vectors")
 
 # ------------------------------------------------------------------- v2 area --
 
