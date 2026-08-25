@@ -8,27 +8,37 @@
 
 ## Overview
 
-**Grid Point Code (GPC)** is a geocoding system that gives any geographic location - a home, an office, or any other place - a compact 11-character alphanumeric code. Conversion runs offline in both directions, and a code round-trips exactly at the format's fixed precision of five decimal places of latitude and longitude.
+**Grid Point Code (GPC)** names one cell of a fixed grid laid over the Earth with a compact ten-character code. Conversion runs offline in both directions, and every character is a refinement of the ones before it, so **two codes that begin with the same k characters name points in the same level-k cell.**
 
 ## Features
 
-* **Unique Global Codes** – Every location gets its own code
-* **Bidirectional Conversion** – Encode and decode at a fixed precision of 5 decimal places
+* **Ten Characters, Fixed** – Every location, everywhere, same length
+* **Prefix Locality** – A shared prefix means a shared cell, for every pair of points
 * **Offline Support** – Works without internet or APIs
 * **Zero Dependencies** – No third-party packages in any of the four ports
-* **Formatted Output** – Easy-to-read `#XXXX-XXXX-XXX` format
+* **Formatted Output** – Easy-to-read `#XXXXX-XXXXX` format
+* **Reads Version 1 Codes** – Every code ever issued still resolves
 * **Open Source** – Licensed under Apache 2.0
 
 ## Code Structure
 
-* **GPC Format**: `#XXXX-XXXX-XXX` (11-character alphanumeric string)
-* **Encoding Base**: `CDFGHJKLMNPRTVWXY0123456789` (base-27)
-* **Precision**: 5 decimal places for latitude/longitude
+* **GPC Format**: `#XXXXX-XXXXX` (10-character alphanumeric string)
+* **Alphabet**: `0123456789CDFGHJKLMNPRTWX` (25 symbols, no vowels, digits first)
+* **Cell**: 2.56 m north to south by 3.42 m east to west at the equator
+
+| Shared characters | Cell, north-south | Cell, east-west | Scale |
+| ---: | ---: | ---: | --- |
+| 1 | 5,000.9 km | 6,679.2 km | Continent |
+| 3 | 200.0 km | 267.2 km | Region |
+| 5 | 8.0 km | 10.7 km | District |
+| 7 | 320.1 m | 427.5 m | Street |
+| 10 | 2.6 m | 3.4 m | Doorway |
 
 ## Precision and Limits
 
-* A code addresses a cell of five decimal places of latitude and longitude, roughly 1.1 m across at the equator. `decode` returns the coordinates of that cell, so a value carrying more than five decimals does not come back unchanged: encoding and then decoding is exact only to the format's fixed precision.
-* Codes are not ordered by geography. Two codes that look alike may be anywhere on Earth, and two neighbouring locations may be given codes with nothing in common. Never read distance or containment out of the characters themselves; decode both codes and compare the coordinates.
+* A code names a cell, not a point. `decode` returns the centre of that cell, so a coordinate carrying more precision than the 2.56 m cell does not come back unchanged. Encoding what you decoded always returns the same code.
+* A shared prefix proves proximity. Proximity does not promise a shared prefix: level-1 boundaries lie on the equator, on 45 degrees north and south, and on every 60th meridian, and two points a few metres apart across one of those lines share nothing at all. Of random pairs 100 m apart, 91.45 % share at least six characters.
+* Nearly 29 % of single-character typos produce a location in the right region and the wrong place. Show the decoded point on a map, or check it against something the reader recognises, before acting on it.
 
 ---
 
@@ -88,15 +98,18 @@ from gridpointcode_algo_pranavpatel_ca import GPC
 
 # Encode
 gpc_code = GPC.encode(43.65000, -79.38000)
-print(gpc_code)  # Output: #FN5G-CDKL-HDC
+print(gpc_code)  # Output: #G3RJM-98NM9
 
 # Decode
-lat, lng = GPC.decode("#FN5G-CDKL-HDC")
-print(lat, lng)
+lat, lng = GPC.decode("#G3RJM-98NM9")
+print(lat, lng)  # 43.650006 -79.380004
 
-# Validate
-valid, msg = GPC.is_valid_gpc("#FN5G-CDKL-HDC")
-print(valid, msg)
+# Validate and classify
+print(GPC.is_valid("#G3RJM-98NM9"))   # True
+print(GPC.classify("XG3RJ98NM9"))     # RESERVED
+
+# Version 1 codes still decode
+print(GPC.decode("#FN5G-CDKL-HDC"))   # (43.65, -79.38)
 ```
 
 ---
@@ -108,15 +121,18 @@ import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
 
 // Encode
 const code = GPC.encode(43.65, -79.38);
-console.log(code);  // #FN5G-CDKL-HDC
+console.log(code);  // #G3RJM-98NM9
 
 // Decode
-const [lat, lng] = GPC.decode('#FN5G-CDKL-HDC');
-console.log(lat, lng);
+const [lat, lng] = GPC.decode('#G3RJM-98NM9');
+console.log(lat, lng);  // 43.650006 -79.380004
 
-// Validate
-const [valid, message] = GPC.isValid('#FN5G-CDKL-HDC');
-console.log(valid, message);
+// Validate and classify
+console.log(GPC.isValid('#G3RJM-98NM9'));  // true
+console.log(GPC.classify('XG3RJ98NM9'));   // 'RESERVED'
+
+// Version 1 codes still decode
+console.log(GPC.decode('#FN5G-CDKL-HDC'));  // [43.65, -79.38]
 ```
 
 ---
@@ -128,13 +144,17 @@ using Ca.Pranavpatel.Algo.GridPointCode;
 
 // Encode
 string gpc = GPC.Encode(43.65000, -79.38000);  // Toronto
-// Output: #FN5G-CDKL-HDC
+// Output: #G3RJM-98NM9
 
 // Decode
-(double lat, double lng) = GPC.Decode("#FN5G-CDKL-HDC");
+(double lat, double lng) = GPC.Decode("#G3RJM-98NM9");
 
-// Validate
-(bool isValid, string message) = GPC.IsValid("#FN5G-CDKL-HDC");
+// Validate and classify
+bool isValid = GPC.IsValid("#G3RJM-98NM9");
+CodeClass kind = GPC.Classify("XG3RJ98NM9");  // CodeClass.Reserved
+
+// Version 1 codes still decode
+(double v1Lat, double v1Lng) = GPC.Decode("#FN5G-CDKL-HDC");
 ```
 
 ---
@@ -142,23 +162,25 @@ string gpc = GPC.Encode(43.65000, -79.38000);  // Toronto
 ### Java
 
 ```java
-import ca.pranavpatel.algo.gridpointcode.GPC;
+import ca.pranavpatel.algo.gridpointcode.CodeClass;
 import ca.pranavpatel.algo.gridpointcode.Coordinates;
-import ca.pranavpatel.algo.gridpointcode.Validation;
+import ca.pranavpatel.algo.gridpointcode.GPC;
 
 // Encode
 String gpc = GPC.Encode(43.65, -79.38);  // Toronto
-// Output: #FN5G-CDKL-HDC
+// Output: #G3RJM-98NM9
 
 // Decode
-Coordinates coords = GPC.Decode("#FN5G-CDKL-HDC");
-double lat = coords.Latitude;
-double lng = coords.Longitude;
+Coordinates coords = GPC.Decode("#G3RJM-98NM9");
+double lat = coords.Latitude;   // 43.650006
+double lng = coords.Longitude;  // -79.380004
 
-// Validate
-Validation result = GPC.IsValid("#FN5G-CDKL-HDC");
-boolean isValid = result.IsValid;
-String message = result.Message;
+// Validate and classify
+boolean isValid = GPC.IsValid("#G3RJM-98NM9");
+CodeClass kind = GPC.Classify("XG3RJ98NM9");  // CodeClass.RESERVED
+
+// Version 1 codes still decode
+Coordinates old = GPC.Decode("#FN5G-CDKL-HDC");
 ```
 
 ---
@@ -187,13 +209,20 @@ describes what runs in CI and how releases are published.
 ## Specification
 
 [SPEC.md](SPEC.md) is the normative specification for **version 2** of the
-format, which is in development and not yet released. It defines the format
-precisely enough to implement from without reading any source, and it carries
-the measurements behind every claim it makes.
+format. It defines the format precisely enough to implement from without
+reading any source, and it carries the measurements behind every claim it
+makes. [`reference/`](reference/) is its executable companion: it checks every
+exact claim the document makes and reproduces every measured figure in it.
 
-The four published packages implement version 1, which is described in Appendix
-B of that document. Version 1 codes are eleven characters; version 2 codes are
-ten.
+All four ports in this repository implement version 2. **The published packages
+are still 1.1.0**, which is version 1; version 2 ships as 2.0.0 on the same four
+package names.
+
+Version 1 codes are eleven characters and version 2 codes are ten, so `decode`
+tells them apart on length and reads both. There is no version 1 encoder in
+2.0.0 -- the old format is readable, not writable -- and Appendix B of the
+specification describes what a port needs to keep reading it. Anyone who still
+needs to write version 1 codes should pin `1.1.x`, which stays published.
 
 ## Changelog
 

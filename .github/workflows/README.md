@@ -2,7 +2,7 @@
 
 | File | Trigger | What it does |
 | --- | --- | --- |
-| `ci.yml` | every push, every pull request | Builds and tests all four ports, and checks that the shared vectors still regenerate byte for byte |
+| `ci.yml` | every push, every pull request | Builds and tests all four ports, checks that the shared vectors still regenerate byte for byte, and checks every claim the specification makes |
 | `release-python.yml` | a `v*` tag | Builds and publishes the Python package to PyPI |
 | `release-npm.yml` | a `v*` tag | Builds and publishes the TypeScript package to npm |
 
@@ -12,7 +12,7 @@ tag was pushed, and for no other reason.
 ## What CI proves that a single port's tests cannot
 
 Each port's suite reads the vector files in `test_data/` and reproduces the
-digest of the generated sample pinned in `test_data/sample.csv`. Four green
+digest of the generated sample pinned in `test_data/v2_sample.csv`. Four green
 ports therefore mean four byte-identical encoders. Before this existed, nothing
 in the repository checked that four independent implementations of the same
 format agreed, and they did not.
@@ -20,6 +20,12 @@ format agreed, and they did not.
 The `vectors` job closes the other half of that loop by regenerating the corpus
 and failing on any diff, so the committed expectations are always exactly what
 the reference generator produces rather than something edited by hand.
+
+The `reference` job runs `reference/verify.py`, which checks every exact claim
+`SPEC.md` makes and holds the transcription of its Appendix A against the
+working implementation over 200,000 coordinates. Nothing it touches ships. It
+is there because the ports are meant to be implementable from the document
+alone, and this is the job that fails when they stop being so.
 
 ## Actions are pinned to commits
 
