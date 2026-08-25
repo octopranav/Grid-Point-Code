@@ -62,6 +62,27 @@ using Ca.Pranavpatel.Algo.GridPointCode;
 * A code addresses a cell of five decimal places of latitude and longitude, roughly 1.1 m across at the equator. `decode` returns the coordinates of that cell, so a value carrying more than five decimals does not come back unchanged: encoding and then decoding is exact only to the format's fixed precision.
 * Codes are not ordered by geography. Two codes that look alike may be anywhere on Earth, and two neighbouring locations may be given codes with nothing in common. Never read distance or containment out of the characters themselves; decode both codes and compare the coordinates.
 
+## Running the tests
+
+The test project is an xUnit v3 self-hosting executable, so run it with
+`dotnet run` rather than `dotnet test`:
+
+```
+dotnet run --project gpc.tests/gpc.tests.csproj -f net9.0
+dotnet run --project gpc.tests/gpc.tests.csproj -f net10.0
+```
+
+Failures return a non-zero exit code, so this is safe to use in CI.
+
+`dotnet test` does not work with this project on the .NET 10 SDK and reports
+`Zero tests ran`. Both routes it can take are closed: the VSTest route is
+refused outright, because Microsoft.Testing.Platform no longer supports it on
+that SDK, and the Microsoft.Testing.Platform route launches the host over a
+`--server dotnettestcli` pipe, where the host initialises and then exits
+without discovering anything. The same binary finds and runs all tests when
+started directly. Every package involved is already at its latest version, so
+this is an upstream limitation rather than a configuration problem here.
+
 ## Changelog
 
 See [CHANGELOG.md](https://github.com/octopranav/Grid-Point-Code/blob/main/CHANGELOG.md) for what changed in each release.

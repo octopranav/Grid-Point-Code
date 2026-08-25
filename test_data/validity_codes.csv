@@ -1,0 +1,37 @@
+# valid,message,input
+# valid is true or false. message is empty when valid, otherwise the reason code.
+# input is the final field and runs verbatim to end of line, including any
+# '#', spaces or separators. Split on the first two commas only, and do not
+# trim the input field - one case is whitespace only.
+
+# --- Nothing to parse
+false,GPC_NULL,
+false,GPC_NULL,   
+
+# --- Accepted forms of the same code
+true,,#FN5G-CDKL-HDC
+true,,FN5GCDKLHDC
+true,,fn5gcdklhdc
+true,,  FN5GCDKLHDC  
+true,,FN5G CDKL HDC
+true,,#fn5g-cdkl-hdc
+
+# --- Other valid codes
+true,,#HG9K-PCVH-DPV
+true,,DCCCCCCCCCC
+
+# --- Wrong length
+false,GPC_LENGTH,ABC
+false,GPC_LENGTH,FN5GCDKLHD
+false,GPC_LENGTH,FN5GCDKLHDCC
+
+# --- Characters outside the alphabet
+false,GPC_CHAR,AAAAAAAAAAA
+false,GPC_CHAR,FN5GCDKLHDA
+false,GPC_CHAR,FN5GCDKLHD!
+
+# --- Right shape, but the point is outside the grid
+false,GPC_RANGE,CCCCCCCCCCC
+false,GPC_RANGE,CCCCCCCCCCD
+false,GPC_RANGE,9999999999Y
+false,GPC_RANGE,YYYYYYYYYYY

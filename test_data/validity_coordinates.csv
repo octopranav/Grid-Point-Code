@@ -1,0 +1,22 @@
+# latitude,longitude,valid,message
+# The poles and the antimeridian are outside the v1 domain and are rejected.
+# Latitude is checked before longitude when both are out of range.
+
+0.0,0.0,true,
+89.99999,179.99999,true,
+-89.99999,-179.99999,true,
+89.999999999,179.999999999,true,
+90.0,0.0,false,LATITUDE
+-90.0,0.0,false,LATITUDE
+90.00001,0.0,false,LATITUDE
+-90.00001,0.0,false,LATITUDE
+91.0,0.0,false,LATITUDE
+1000.0,0.0,false,LATITUDE
+0.0,180.0,false,LONGITUDE
+0.0,-180.0,false,LONGITUDE
+0.0,180.00001,false,LONGITUDE
+0.0,-180.00001,false,LONGITUDE
+0.0,181.0,false,LONGITUDE
+0.0,1000.0,false,LONGITUDE
+0.0,180.0,false,LONGITUDE
+90.0,180.0,false,LATITUDE
