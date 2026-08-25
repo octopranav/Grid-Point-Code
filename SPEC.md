@@ -505,13 +505,19 @@ After normalisation, a string falls into exactly one of three classes.
 
 | Class | Condition |
 | --- | --- |
-| `INVALID` | Empty, or length is not 10, or any character is outside the alphabet |
-| `RESERVED` | Length 10, all characters in the alphabet, and the first character is `X` |
-| `GEOMETRIC` | Length 10, all characters in the alphabet, first character is not `X` |
+| `INVALID` | Empty, or length is not 10, or any character is outside the alphabet, or a check character is present and does not match |
+| `RESERVED` | Length 10, all characters in the alphabet, first character `X`, and either a matching check character or none |
+| `GEOMETRIC` | Length 10, all characters in the alphabet, first character not `X`, and either a matching check character or none |
 
 Reason codes for `INVALID` are `GPC_NULL` (nothing to parse), `GPC_LENGTH`
-(wrong number of characters) and `GPC_CHAR` (a character outside the alphabet
-after aliasing), tested in that order.
+(wrong number of characters), `GPC_CHAR` (a character outside the alphabet
+after aliasing) and `GPC_CHECK` (a check character that does not match),
+tested in that order.
+
+`GPC_CHECK` comes last because it is the only reason that needs a well-formed
+payload before it can be evaluated, and it can never be reported for an input
+that carried no `*`. [Section 14](#14-the-check-character-optional) states what
+the check character has to satisfy.
 
 `decode` MUST succeed on `GEOMETRIC`, and MUST raise a **typed** error on the
 other two: `GPC_RESERVED` for a reserved code, distinct from the invalid
@@ -526,6 +532,10 @@ currently resolves a reserved code.
 `isValid` returns true for `GEOMETRIC` only. An implementation SHOULD also
 expose the class directly so that a caller can distinguish the cases without
 parsing an error message.
+
+Classification sees exactly what `decode` sees, check character included. A
+caller told that a code is valid MUST be able to decode it, so a wrong check
+character has to fail in both places or in neither.
 
 ---
 
@@ -773,6 +783,14 @@ A `*` followed by one symbol. The `*` is on every telephone keypad, and it
 keeps an eleven-symbol check form mechanically distinct from an eleven-
 character version 1 code.
 
+The check character is normalised along with the payload — case-folded,
+separators removed, aliases applied — and what remains MUST be exactly one
+symbol of the alphabet. Nothing after the `*`, more than one symbol, or a
+character the alias table cannot resolve is `GPC_CHECK`, the same reason a
+mismatch gets. In every one of those cases the input carried a check the
+implementation could not confirm, and [section 9](#9-classification) does not
+let it be discarded.
+
 The check form is **not canonical**. `#G3RJM-98NM9` and `#G3RJM-98NM9*T` denote
 the same location, and an implementation MUST NOT emit the check form unless
 asked for it. Storage and interchange use the ten-character form.
@@ -825,8 +843,9 @@ character weighted by `t¹¹`, and require zero:
 ( Σ t^i · v(aᵢ)  for i = 1 … 10 )  +  t¹¹ · v(c)  =  0
 ```
 
-A mismatch MUST be an error. An implementation MUST NOT accept a code with a
-wrong check character by discarding the check.
+A mismatch is `GPC_CHECK`. An implementation MUST NOT accept a code with a
+wrong check character by discarding the check, in `decode` or in `isValid`:
+a code that fails the check fails everywhere.
 
 The eleven weights, as symbol indices, are fixed:
 

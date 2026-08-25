@@ -126,8 +126,19 @@ def main():
             ("TOOSHORT", g.INVALID, "GPC_LENGTH"),
             ("G3RJM98NMQ", g.INVALID, "GPC_CHAR"),
             ("G3RJM98NMU", g.INVALID, "GPC_CHAR"),
-            ("G3RJM98NMY", g.INVALID, "GPC_CHAR")]:
+            ("G3RJM98NMY", g.INVALID, "GPC_CHAR"),
+            # The check character is verified here too, not only in decode.
+            ("#G3RJM-98NM9*T", g.GEOMETRIC, ""),
+            ("#g3rjm-98nm9*t", g.GEOMETRIC, ""),
+            ("XG3RJ98NM9*6", g.RESERVED, ""),
+            ("#G3RJM-98NM9*5", g.INVALID, "GPC_CHECK"),
+            ("#G3RJM-98NM9*", g.INVALID, "GPC_CHECK"),
+            ("#G3RJM-98NM9*TT", g.INVALID, "GPC_CHECK"),
+            ("#G3RJM-98NM9*Q", g.INVALID, "GPC_CHECK"),
+            ("XG3RJ98NM9*T", g.INVALID, "GPC_CHECK")]:
         check("validate %r" % text, g.validate(text), (kind, reason))
+        check("classify agrees %r" % text, g.classify(text), kind)
+        check("is_valid agrees %r" % text, g.is_valid(text), kind == g.GEOMETRIC)
     check("L is never aliased", "L" in g.ALIASES, False)
     check("aliases cover every letter outside the alphabet",
           sorted(set(g.ALIASES) | set("QUY")),
