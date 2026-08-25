@@ -84,7 +84,19 @@ longitude rather than in `encoding.csv`.
 
 ## Regenerating
 
-Expected values are produced by the Python port and verified byte-identical
-against the C#, Java and TypeScript ports before being committed. Vectors are
-append-only in spirit: changing an existing expected value means the format
-changed, which is a breaking change and needs a major version.
+`generate.py` rebuilds all four files. Run it from anywhere:
+
+```
+python test_data/generate.py
+```
+
+Expected values come from the Python port. That is a starting point, not an
+authority: the vectors are only correct once every port agrees on them, so run
+all four suites before committing a regenerated corpus.
+
+The output is deterministic. Regenerating without editing the corpus
+definitions must leave the files byte for byte identical, which makes an
+unexpected diff meaningful on its own: it says encoding behaviour changed.
+Vectors are append-only in spirit. Changing an existing expected value means
+the format changed, which is a breaking change and needs a major version, not
+a quiet vector update.
