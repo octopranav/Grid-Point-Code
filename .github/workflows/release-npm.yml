@@ -1,0 +1,93 @@
+#  Copyright 2017 Pranavkumar Patel
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Publishes the TypeScript package to npm when a version tag is pushed.
+#
+# There is no publish token anywhere in this file or in the repository secrets.
+# npm is configured to trust this repository and this workflow file, and hands
+# out a short-lived credential for one publish. The same exchange produces the
+# provenance statement attached to the published version, so anyone can check
+# which commit and which workflow built the tarball they installed.
+
+name: Release npm
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@pranavpatel.ca/algo-gridpointcode
+    permissions:
+      contents: read
+      id-token: write  # the OIDC token npm trades for a publish credential
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.x'
+          registry-url: https://registry.npmjs.org
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+
+      # Trusted publishing arrived in npm 11.5.1. The Node release above ships a
+      # newer one, but a release is the wrong moment to find out otherwise.
+      - name: npm must be new enough for trusted publishing
+        run: |
+          required=11.5.1
+          have=$(npm --version)
+          if [ "$(printf '%s\n%s\n' "$required" "$have" | sort -V | head -n 1)" != "$required" ]; then
+            echo "::error::npm ${have} is too old for trusted publishing; 11.5.1 or newer is required"
+            exit 1
+          fi
+
+      # A tag that disagrees with the manifest publishes a version nobody asked
+      # for, under a name that already means something else.
+      - name: The tag must match the version in package.json
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version=$(node -p "require('./package.json').version")
+          if [ "$tag" != "$version" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match package.json version ${version}"
+            exit 1
+          fi
+
+      - name: Install exactly what the lockfile says
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Run the suite
+        run: npm test
+
+      - name: Publish
+        run: npm publish --provenance --access public
