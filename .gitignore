@@ -291,3 +291,40 @@ __pycache__/
 *.btm.cs
 *.odx.cs
 *.xsd.cs
+
+###############################################################################
+# Repository-wide additions
+#
+# The rules above are the Visual Studio template and only cover the C# tree.
+# Each port also carries its own ignore file; these are the cross-cutting ones
+# that apply anywhere in the repository.
+###############################################################################
+
+# Operating system and editor droppings
+.DS_Store
+Thumbs.db
+[Dd]esktop.ini
+*.swp
+
+# Keep the shared editor configuration, drop everything else under .vscode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Python
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Java
+*.class
+
+# Build output, wherever a port puts it
+dist/
+target/
+
+# Local scratch space, never committed
+scratch/
