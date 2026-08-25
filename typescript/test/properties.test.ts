@@ -75,9 +75,9 @@ function samplePoints(count: number, seed: number): [number, number][] {
     let state = seed;
     for (let i = 0; i < count; i++) {
         state = (MULTIPLIER * state + INCREMENT) % MODULUS;
-        const latitude = (state % LAT_SPAN - (LAT_SPAN - 1) / 2) / 100000;
+        const latitude = ((state % LAT_SPAN) - (LAT_SPAN - 1) / 2) / 100000;
         state = (MULTIPLIER * state + INCREMENT) % MODULUS;
-        const longitude = (state % LONG_SPAN - (LONG_SPAN - 1) / 2) / 100000;
+        const longitude = ((state % LONG_SPAN) - (LONG_SPAN - 1) / 2) / 100000;
         points[i] = [latitude, longitude];
     }
     return points;
@@ -140,8 +140,10 @@ describe('Properties over the wide sample', function () {
             const [latitude, longitude] = points[i];
             const [decodedLat, decodedLong] = GPC.decode(codes[i]);
             if (Math.abs(latitude - decodedLat) >= CELL || Math.abs(longitude - decodedLong) >= CELL) {
-                throw new Error(`${codes[i]} decoded to (${decodedLat}, ${decodedLong}), `
-                    + `more than one cell from (${latitude}, ${longitude})`);
+                throw new Error(
+                    `${codes[i]} decoded to (${decodedLat}, ${decodedLong}), ` +
+                        `more than one cell from (${latitude}, ${longitude})`,
+                );
             }
         }
     });
@@ -162,8 +164,7 @@ describe('Properties over the wide sample', function () {
             const formatted = GPC.encode(latitude, longitude, true);
             const code = codes[i];
             expect(formatted.length).to.equal(FORMATTED_LENGTH);
-            expect(formatted).to.equal(
-                `#${code.slice(0, 4)}-${code.slice(4, 8)}-${code.slice(8, 11)}`);
+            expect(formatted).to.equal(`#${code.slice(0, 4)}-${code.slice(4, 8)}-${code.slice(8, 11)}`);
         }
     });
 });
