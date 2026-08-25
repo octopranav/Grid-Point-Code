@@ -31,9 +31,14 @@ division. Character positions are numbered from 1, so position 1 is the first
 character of the code.
 
 Where this document reports a measurement, it names the sample size and the
-method, so that the figure can be reproduced from the algorithms defined here.
-No number below is carried over from an earlier draft; each was measured
-against the format as specified.
+method. No number below is carried over from an earlier draft; each was
+measured against the format as specified.
+
+The executable companion to this document is [`reference/`](reference/).
+`reference/verify.py` checks every exact claim made here, and
+`reference/measure.py` reproduces every table of measured figures. A figure in
+this document that the harness no longer produces means one of the two is
+wrong, which is the point of keeping both.
 
 ---
 
@@ -838,8 +843,8 @@ divisors:
   itself, is detected.
 * **Every transposition of two adjacent symbols** is detected.
 
-Verified exhaustively over 4,000 random codes: 1,056,000 single-symbol errors
-and 38,378 adjacent transpositions, none undetected.
+Verified exhaustively over 4,000 random codes: every one of the 1,056,000
+single-symbol errors and 38,389 adjacent transpositions was detected.
 
 ### 14.5 Worked example
 
@@ -863,24 +868,29 @@ A hierarchical code bounds the damage a typo can do, and the same property
 makes the damage hard to see. This is true of every prefix-local code; what
 follows is the measurement for this one.
 
-Measured over 7,678 random single-character substitutions and 7,675 random
+Measured over 191,910 random single-character substitutions and 192,021 random
 adjacent transpositions, applied to codes drawn uniformly over the sphere:
 
 | | |
 | --- | ---: |
-| Caught before decoding (an `X` reaching position 1) | 0.47 % |
-| Silent, landing between 0.5 and 50 km away | 27.9 % |
-| Adjacent transpositions caught | 0.61 % |
+| Caught before decoding (an `X` reaching position 1) | 0.42 % |
+| Silent, landing between 0.5 and 50 km away | 29.1 % |
+| Adjacent transpositions caught | 0.43 % |
+
+The first figure is not really a measurement. A substitution is caught exactly
+when it lands on position 1 and picks `X`, which for a uniformly chosen
+position and replacement is `1/10 × 1/24`, or **one in 240**. The sample
+returned 0.403 %, within one standard error of it.
 
 Displacement depends almost entirely on which character was hit:
 
 | Position | Median displacement | Maximum | Character of the error |
 | --- | ---: | ---: | --- |
-| 1–3 | 2,663 km | 19,859 km | Obviously wrong on any map |
-| 4–6 | 22.0 km | 267 km | Plausible and silent — the dangerous middle |
-| 7–10 | 64 m | 2.1 km | Usually harmless |
+| 1–3 | 2,472 km | 20,009 km | Obviously wrong on any map |
+| 4–6 | 20.8 km | 283 km | Plausible and silent — the dangerous middle |
+| 7–10 | 65 m | 2.3 km | Usually harmless |
 
-The 0.47 % is not error detection in any useful sense; it is the structural
+One code in 240 is not error detection in any useful sense; it is the structural
 fact that `X` cannot begin a geometric code
 ([Appendix C](#appendix-c--the-reserved-namespace)). **An implementation MUST
 NOT be documented as detecting typos.** The optional check character of
@@ -893,7 +903,7 @@ detects, and it is not present unless someone asks for it.
 > otherwise confirm it against something the user recognises, before acting on
 > it.
 
-Nearly 28 % of single-character typos produce a location in the right region
+Nearly 29 % of single-character typos produce a location in the right region
 and the wrong place. No amount of format design removes that; confirmation
 does.
 
@@ -1159,10 +1169,16 @@ function round6(v):                        # exact; ties are unreachable
 ```
 
 This page was transcribed into a working implementation without reference to
-any other source and checked against the reference implementation over 200,000
-random coordinates plus every edge case of [section 2](#2-the-coordinate-domain):
-identical codes and identical decoded coordinates throughout, and
-`encode(decode(code))` returned the original code every time.
+any other source, and that transcription is kept in the repository as
+[`reference/from_spec.py`](reference/from_spec.py) precisely so it can go on
+disagreeing. `reference/verify.py` holds the two against each other over
+200,000 random coordinates plus every edge case of
+[section 2](#2-the-coordinate-domain): identical codes and identical decoded
+coordinates throughout, and `encode(decode(code))` returns the original code
+every time.
+
+If the transcription and the reference implementation ever disagree, it is this
+document that needs correcting, not the transcription.
 
 ---
 
