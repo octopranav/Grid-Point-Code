@@ -184,6 +184,17 @@ describes what runs in CI and how releases are published.
 
 ---
 
+## Specification
+
+[SPEC.md](SPEC.md) is the normative specification for **version 2** of the
+format, which is in development and not yet released. It defines the format
+precisely enough to implement from without reading any source, and it carries
+the measurements behind every claim it makes.
+
+The four published packages implement version 1, which is described in Appendix
+B of that document. Version 1 codes are eleven characters; version 2 codes are
+ten.
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
