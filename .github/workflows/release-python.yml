@@ -1,0 +1,102 @@
+#  Copyright 2017 Pranavkumar Patel
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Publishes the Python package to PyPI when a version tag is pushed.
+#
+# There is no API token anywhere in this file or in the repository secrets.
+# PyPI is configured to trust this repository, this workflow file and the pypi
+# environment, and hands out a short-lived credential for one upload. A leaked
+# secret is not a risk that has to be managed if there is no secret.
+#
+# Building and publishing are separate jobs so that the elevated permissions
+# live only where the upload happens. The build job can read the repository and
+# nothing else.
+
+name: Release Python
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+
+  build:
+    name: Build and check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+
+      # A tag that disagrees with the manifest publishes a version nobody asked
+      # for, under a name that already means something else.
+      - name: The tag must match the version in pyproject.toml
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version=$(python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('python/pyproject.toml').read_text())['project']['version'])")
+          if [ "$tag" != "$version" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match pyproject.toml version ${version}"
+            exit 1
+          fi
+
+      - name: Run the suite
+        working-directory: python
+        run: python -m unittest discover --start-directory tests --top-level-directory . --verbose
+
+      - name: Build the sdist and wheel
+        working-directory: python
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-dist
+          path: python/dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: build
+    # A deployment environment, so the upload can be given its own protection
+    # rules and shows up in the repository's deployment history. The same name
+    # must be set on the trusted publisher at PyPI.
+    environment:
+      name: pypi
+      url: https://pypi.org/project/gridpointcode_algo_pranavpatel_ca/
+    permissions:
+      contents: read
+      id-token: write      # the OIDC token PyPI trades for an upload credential
+      attestations: write  # build provenance, recorded against this repository
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: python-dist
+          path: dist
+
+      - name: Attest that these files came out of this workflow
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
+
+      - name: Upload
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2

@@ -23,7 +23,7 @@ npm install @pranavpatel.ca/algo-gridpointcode
 
 ## Requirements
 
-Node.js 18 or later. Compiled to ES2022 CommonJS, with type declarations
+Node.js 22 or later. Compiled to ES2022 CommonJS, with type declarations
 included. No runtime dependencies.
 
 ## Usage

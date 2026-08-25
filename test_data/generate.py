@@ -29,6 +29,7 @@ encoding behaviour changed. That is a breaking change and needs a major
 version, never a quiet vector update.
 """
 
+import hashlib
 import random
 import sys
 from decimal import Decimal
@@ -230,3 +231,59 @@ for latitude, longitude, expected in coordinate_cases:
 lines.append("")
 write("validity_coordinates.csv", lines)
 print(f"validity_coordinates.csv  {len(coordinate_cases):5} vectors")
+
+# --------------------------------------------------------------- wide sample --
+
+# A hundred thousand coordinates are too many to commit, but their codes still
+# have to agree across the ports. The sample is therefore defined by arithmetic
+# rather than stored: every port walks the same generator and hashes the codes
+# it produces, and only the digest is committed. The generator is a plain
+# linear congruential sequence whose products stay below 2^53, so it is exact
+# in every language including the ones with no integer type wider than a
+# double.
+
+SAMPLE_COUNT = 100_000
+SAMPLE_SEED = 20260824
+SAMPLE_MULTIPLIER = 1_664_525
+SAMPLE_INCREMENT = 1_013_904_223
+SAMPLE_MODULUS = 4_294_967_296  # 2^32
+SAMPLE_LAT_SPAN = 17_999_999    # -89.99999 .. 89.99999 in units of 1e-5
+SAMPLE_LONG_SPAN = 35_999_999   # -179.99999 .. 179.99999 in units of 1e-5
+
+
+def sample_points(count=SAMPLE_COUNT, seed=SAMPLE_SEED):
+    """Yield the shared wide sample, one (latitude, longitude) pair at a time."""
+    state = seed
+    for _ in range(count):
+        state = (SAMPLE_MULTIPLIER * state + SAMPLE_INCREMENT) % SAMPLE_MODULUS
+        latitude = (state % SAMPLE_LAT_SPAN - (SAMPLE_LAT_SPAN - 1) // 2) / 100000
+        state = (SAMPLE_MULTIPLIER * state + SAMPLE_INCREMENT) % SAMPLE_MODULUS
+        longitude = (state % SAMPLE_LONG_SPAN - (SAMPLE_LONG_SPAN - 1) // 2) / 100000
+        yield latitude, longitude
+
+
+sample_codes = [GPC.encode(latitude, longitude, False)
+                for latitude, longitude in sample_points()]
+sample_digest = hashlib.sha256("\n".join(sample_codes).encode("utf-8")).hexdigest()
+
+lines = ["# count,seed,digest",
+         "# The wide sample is generated, not stored. Walk the linear congruential",
+         "# sequence described in README.md, encode every point, join the unformatted",
+         "# codes with a single LF and take the SHA-256 of those UTF-8 bytes. A port",
+         "# that reproduces this digest agrees with the other three byte for byte.",
+         "",
+         f"{SAMPLE_COUNT},{SAMPLE_SEED},{sample_digest}",
+         ""]
+write("sample.csv", lines)
+print(f"sample.csv                {SAMPLE_COUNT:5} points, digest {sample_digest[:16]}...")
+
+# Nothing above writes the sample itself. When a port disagrees about the
+# digest, `python test_data/generate.py --dump codes.csv` writes every point and
+# its expected code so the first differing line can be found directly.
+if "--dump" in sys.argv:
+    target = Path(sys.argv[sys.argv.index("--dump") + 1])
+    with open(target, "w", newline="\n") as handle:
+        handle.write("latitude,longitude,code\n")
+        for (latitude, longitude), code in zip(sample_points(), sample_codes):
+            handle.write(f"{fmt(latitude)},{fmt(longitude)},{code}\n")
+    print(f"dumped {SAMPLE_COUNT} points to {target}")

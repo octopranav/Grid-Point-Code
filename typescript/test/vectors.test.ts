@@ -59,8 +59,7 @@ describe('Shared conformance vectors', () => {
         const data = rows('encoding.csv', 3);
         expect(data.length).to.be.greaterThan(100);
         for (const [lat, lng, expected] of data) {
-            expect(GPC.encode(Number(lat), Number(lng), false),
-                `encode(${lat}, ${lng})`).to.equal(expected);
+            expect(GPC.encode(Number(lat), Number(lng), false), `encode(${lat}, ${lng})`).to.equal(expected);
         }
     });
 
@@ -119,8 +118,7 @@ describe('Shared conformance vectors', () => {
     it('throws when encoding an out-of-range coordinate', () => {
         for (const [lat, lng, expectedValid] of rows('validity_coordinates.csv', 4)) {
             if (expectedValid === 'true') continue;
-            expect(() => GPC.encode(Number(lat), Number(lng)),
-                `encode(${lat}, ${lng})`).to.throw();
+            expect(() => GPC.encode(Number(lat), Number(lng)), `encode(${lat}, ${lng})`).to.throw();
         }
     });
 });
