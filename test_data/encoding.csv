@@ -1,6 +1,9 @@
 # latitude,longitude,code
 # Lines starting with # are comments. Blank lines are ignored.
-# code is the unformatted 11-character form: encode(lat, lng, formatted = false)
+# Version 1. code is the unformatted 11-character form. No published
+# package encodes version 1 any more, so a port asserts these rows by
+# decoding: decodeV1(code) must land inside the cell the coordinate is in,
+# which is one hundred-thousandth of a degree on each axis.
 
 # --- Origin, and the four signed zeroes that name the same point
 0.0,0.0,DCCCCCCCCCC

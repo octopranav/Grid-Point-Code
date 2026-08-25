@@ -1,5 +1,8 @@
 # latitude,longitude,valid,message
-# The poles and the antimeridian are outside the v1 domain and are rejected.
+# Version 1 only, and a record rather than a port assertion: this is the
+# domain of an encoder no package carries any more. The poles and the
+# antimeridian were outside it. Version 2 accepts all of them, and
+# v2_encoding.csv holds the same coordinates with codes beside them.
 # Latitude is checked before longitude when both are out of range.
 
 0.0,0.0,true,

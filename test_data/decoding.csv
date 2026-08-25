@@ -1,5 +1,6 @@
 # code,latitude,longitude
-# Every code names one cell and decodes to that cell's corner.
+# Version 1. Every code names one cell and decodes to that cell's corner,
+# which is where version 1 differs from version 2 by design.
 # The formatted and unformatted forms of a code MUST decode identically.
 
 DCCCCCCCCCC,0.0,0.0

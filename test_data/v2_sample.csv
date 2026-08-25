@@ -1,0 +1,8 @@
+# count,seed,digest
+# Version 2. The wide sample is generated, not stored. Walk the linear
+# congruential sequence described in README.md, encode every point, join
+# the unformatted codes with a single LF and take the SHA-256 of those
+# UTF-8 bytes. A port that reproduces this digest agrees with the other
+# three byte for byte.
+
+100000,20260824,75286b7fe02f362acd78d4afdaf624e3be3114e0ae14debb3b626a3b4cb891d9

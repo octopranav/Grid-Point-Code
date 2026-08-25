@@ -1,5 +1,6 @@
 # valid,message,input
-# valid is true or false. message is empty when valid, otherwise the reason code.
+# Version 1. valid is true or false; message is empty when valid,
+# otherwise the reason code. A port asserts these with isValidV1.
 # input is the final field and runs verbatim to end of line, including any
 # '#', spaces or separators. Split on the first two commas only, and do not
 # trim the input field - one case is whitespace only.
