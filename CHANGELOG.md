@@ -1,5 +1,74 @@
 # Changelog
 
+## Unreleased
+
+Version 2 of the format, which will be released as 2.0.0 on the four existing
+package names. Nothing is published yet; the registries still carry 1.1.0.
+
+A code is now ten characters rather than eleven, and every character is a
+refinement of the ones before it, so two codes that begin with the same k
+characters name points in the same level-k cell. That is containment, not
+correlation: it holds for every pair of points without exception. Version 1
+had no such property, and could give two points nineteen thousand kilometres
+apart four characters in common.
+
+The format is specified in [SPEC.md](SPEC.md), precisely enough to implement
+from without reading any source.
+
+### Added
+
+* **Version 2 encoding and decoding**, in all four ports. `encode` emits
+  version 2 only. `decode` returns the centre of the cell a code names, to six
+  decimal places, and `decodeToArea` returns the cell's boundaries.
+* **The poles and the antimeridian encode.** Version 1 rejected latitude ±90
+  and longitude ±180. Version 2 accepts the whole closed domain, and both ends
+  of the antimeridian give the one code.
+* **`classify`**, returning `GEOMETRIC`, `RESERVED` or `INVALID`. No encoded
+  code can begin with `X`, so that space is reserved rather than wasted. A
+  reserved code is well formed and names no cell; it is not a typing error, and
+  decoding one raises a `GPC_RESERVED` reason distinct from every invalid one.
+* **An optional check character** for voice, radio and paper, written after a
+  star: `#G3RJM-98NM9*T`. A linear check over GF(25) that detects every
+  single-character error and every adjacent transposition. It is not canonical
+  and is never emitted unless asked for.
+* **An alias table** for confusable input: `O` reads as `0`, `I` as `1`, `S` as
+  `5`, `Z` as `2`, `B` as `8`, `A` as `4`, `E` as `3` and `V` as `W`. `L` is a
+  real symbol and is never read as `1`. `U`, `Q` and `Y` are rejected.
+* **A typed error carrying a reason code** in every port, alongside the
+  existing exception types, so a caller can branch on the reason rather than on
+  message text.
+
+### Changed
+
+* **Codes are ten characters**, written `#XXXXX-XXXXX`, over a 25-symbol
+  alphabet with the digits first: `0123456789CDFGHJKLMNPRTWX`. Because that
+  alphabet is ASCII-ascending, sorting codes as plain strings sorts them
+  geographically.
+* **`decode` returns the centre of a cell**, where version 1 returned the
+  corner. The cell is 2.56 m north to south by 3.42 m east to west at the
+  equator, against version 1's 1.1 m square, and encoding what you decoded
+  always returns the same code.
+* **`isValid` answers about version 2** and returns a plain boolean. The reason
+  is available from `validate`, which returns the class alongside it.
+
+### Removed
+
+* **The version 1 encoder.** The old format retires: it is readable, not
+  writable, and nobody can mint a version 1 code by accident. Anyone who needs
+  to write them should pin `1.1.x`, which stays published.
+
+### Upgrading
+
+Stored version 1 codes still decode. `decode` dispatches on length once
+separators are stripped — ten characters is version 2, eleven is version 1 —
+and every port also exposes an explicit `decodeV1`. Note that the dispatch is
+on length alone, so an eleven-character string that happens to be a valid
+version 1 code decodes as one.
+
+Coordinates that encoded under version 1 encode under version 2 to a different,
+shorter code. There is no migration for a stored code: version 1 codes stay
+valid and stay readable, and new codes are version 2.
+
 ## 1.1.0
 
 A repair release. Codes are unchanged for ordinary coordinates, and every code

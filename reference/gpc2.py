@@ -52,7 +52,9 @@ class GpcError(ValueError):
 
 def normalise(text):
     """Case-fold, strip separators, apply the alias table. Returns the payload
-    and the check character, which is None when no '*' was present."""
+    and the check text, which is None when no '*' was present. The check is
+    returned as it normalised, however long: section 14.1 makes anything other
+    than a single alphabet symbol a GPC_CHECK, and that is validate's call."""
     if text is None:
         raise GpcError("GPC_NULL")
     if not text.strip():
@@ -75,35 +77,35 @@ def normalise(text):
     payload = clean(text)
     if check is not None:
         check = clean(check)
-        check = check[0] if check else None
     return payload, check
 
 
 # ---------------------------------------------------------------- section 9
 
 def classify(text):
-    try:
-        code, _ = normalise(text)
-    except GpcError:
-        return INVALID
-    if len(code) != 10:
-        return INVALID
-    if any(ch not in ALPHABET for ch in code):
-        return INVALID
-    return RESERVED if code[0] == "X" else GEOMETRIC
+    return validate(text)[0]
 
 
 def validate(text):
-    """Returns (class, reason). reason is '' for anything that is not INVALID."""
+    """Returns (class, reason). reason is '' for anything that is not INVALID.
+
+    The check character is verified here and not only in decode. A caller told
+    that a code is valid has to be able to decode it."""
     try:
-        code, _ = normalise(text)
+        code, check = normalise(text)
     except GpcError as exc:
         return INVALID, exc.reason
     if len(code) != 10:
         return INVALID, "GPC_LENGTH"
     if any(ch not in ALPHABET for ch in code):
         return INVALID, "GPC_CHAR"
+    if check is not None and check != check_character(code):
+        return INVALID, "GPC_CHECK"
     return (RESERVED if code[0] == "X" else GEOMETRIC), ""
+
+
+def is_valid(text):
+    return validate(text)[0] == GEOMETRIC
 
 
 # --------------------------------------------------------------- section 5.1
@@ -193,26 +195,24 @@ def _round6(v):
     return (-q if v < 0 else q) / 1_000_000
 
 
-def decode(text):
+def _geometric(text):
+    """The payload of a code that decode and decode_to_area may both act on."""
     kind, reason = validate(text)
     if kind == INVALID:
         raise GpcError(reason)
     if kind == RESERVED:
         raise GpcError("GPC_RESERVED")
-    code, check = normalise(text)
-    if check is not None and check != check_character(code):
-        raise GpcError("GPC_CHECK")
-    row, col = code_to_grid(code)
+    return normalise(text)[0]
+
+
+def decode(text):
+    row, col = code_to_grid(_geometric(text))
     return _round6(lat_e8(row)), _round6(lng_e8(col))
 
 
 def decode_to_area(text):
     """South, west, north, east. See section 6.3."""
-    kind, reason = validate(text)
-    if kind != GEOMETRIC:
-        raise GpcError(reason or "GPC_RESERVED")
-    code, _ = normalise(text)
-    row, col = code_to_grid(code)
+    row, col = code_to_grid(_geometric(text))
     return (row * 180.0 / 7812500.0 - 90.0,
             col * 360.0 / 11718750.0 - 180.0,
             (row + 1) * 180.0 / 7812500.0 - 90.0,

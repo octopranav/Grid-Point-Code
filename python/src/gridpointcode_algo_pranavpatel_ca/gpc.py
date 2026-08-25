@@ -12,345 +12,478 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import re
-from decimal import Decimal
+"""Version 2 of the Grid Point Code format.
 
-from .table import Table
+A code names one cell of a fixed grid laid over the Earth. Ten characters,
+always. The first divides the world into 24 cells of 45 by 60 degrees; each of
+the nine after it divides the cell named so far into 25 parts, five by five.
+Two codes that begin with the same k characters therefore name points in the
+same level-k cell -- containment, not correlation, so it holds for every pair
+of points without exception.
 
-# Constants
-MIN_LAT = -90
-MAX_LAT = 90
-MIN_LONG = -180
-MAX_LONG = 180
-MIN_POINT = 10_000_000_000
-MAX_POINT = 648_009_999_999_999
-ELEVEN = 205_881_132_094_649
-CHARACTERS = "CDFGHJKLMNPRTVWXY0123456789"  # base27
-GPC_LENGTH = 11
-MAX_WHOLE_LAT = 89
-MAX_WHOLE_LONG = 179
+The whole format is arithmetic. There are no ordering tables and no generated
+constants: a serpentine at level 1, a Peano digit reflection below it, and one
+parity reset entering level 6. Section numbers in the comments refer to
+SPEC.md, which is the normative description and the thing to implement from.
 
-LatLongTable = Table(180, 360, True)
+Version 1 codes still decode, because codes end up on signs and in records and
+removing that would orphan every one of them. `decode` dispatches on length --
+ten characters is version 2, eleven is version 1 -- and `encode` emits version
+2 only, so the old format cannot be minted again.
+"""
+
+import math
+from typing import Tuple
+
+from . import v1
+from .errors import GPCError
+
+# Section 4. Twenty-five symbols, digits first so that the alphabet is
+# ASCII-ascending and a plain string sort is a spatial sort. No vowel appears,
+# so no English word can be spelled by a code.
+ALPHABET = "0123456789CDFGHJKLMNPRTWX"
+
+# Section 3.
+CODE_LENGTH = 10
+LEVELS = 10
+RESET_LEVEL = 6  # section 5.3: both parity accumulators reset entering this level
+P9 = 1_953_125   # 5 ** 9
+ROWS = 4 * P9    # 7_812_500
+COLS = 6 * P9    # 11_718_750
+
+# Section 2.
+MIN_LAT = -90.0
+MAX_LAT = 90.0
+MIN_LONG = -180.0
+MAX_LONG = 180.0
+
+# Section 9.
+GEOMETRIC = "GEOMETRIC"
+RESERVED = "RESERVED"
+INVALID = "INVALID"
+
+# Section 8. Exactly the letters that are not in the alphabet, less U, Q and Y,
+# which are rejected rather than aliased. L is a real symbol and is never
+# aliased to 1: it names a different cell, and aliasing it would make two
+# different codes collide.
+ALIASES = {"O": "0", "I": "1", "S": "5", "Z": "2",
+           "B": "8", "A": "4", "E": "3", "V": "W"}
+
+PREFIX = "#"
+SEPARATOR = "-"
+CHECK_MARK = "*"
+# ASCII whitespace only. A routine that also stripped the Unicode spaces would
+# accept in one port what another rejects, which is the whole thing the shared
+# vectors exist to prevent.
+WHITESPACE = " \t\n\v\f\r"
+
+_T = 5  # the field element t, whose symbol index is 1 * 5 + 0. Section 14.2.
+
+
+def _gf_add(x: int, y: int) -> int:
+    """(a + b·t) + (c + d·t), elements indexed b·5 + a."""
+    return ((x // 5 + y // 5) % 5) * 5 + ((x % 5 + y % 5) % 5)
+
+
+def _gf_mul(x: int, y: int) -> int:
+    """(a + b·t)(c + d·t) with t² = 4t + 3."""
+    a, b = x % 5, x // 5
+    c, d = y % 5, y // 5
+    return ((a * d + b * c + 4 * b * d) % 5) * 5 + ((a * c + 3 * b * d) % 5)
+
+
+def _powers_of_t() -> Tuple[int, ...]:
+    """t¹ to t¹¹, the eleven check weights. Computed rather than transcribed."""
+    weights = []
+    x = 1
+    for _ in range(11):
+        x = _gf_mul(x, _T)
+        weights.append(x)
+    return tuple(weights)
+
+
+WEIGHTS = _powers_of_t()
+
 
 class GPC:
-    """
-    Provides methods to encode geographic coordinates into a custom Grid Point Code (GPC)
-    and decode GPCs back into latitude and longitude values.
+    """Encode coordinates to a Grid Point Code, and decode one back.
 
-    The GPC format is a compact, base-27 encoded representation of geospatial locations,
-    intended for simplified location referencing and validation.
+    Every method is static. Nothing here holds state.
     """
+
+    #  PART 1 : ENCODE
 
     @staticmethod
     def encode(latitude: float, longitude: float, formatted: bool = True) -> str:
-        """
-        Encodes the given latitude and longitude into a Grid Point Code (GPC).
+        """Encode coordinates as a version 2 Grid Point Code.
 
         Args:
-            latitude (float): Latitude in degrees.
-            longitude (float): Longitude in degrees.
-            formatted (bool): If True, returns formatted GPC (e.g., #XXXX-XXXX-XXX).
+            latitude (float): Latitude in decimal degrees, -90 to 90 inclusive.
+            longitude (float): Longitude in decimal degrees, -180 to 180 inclusive.
+            formatted (bool): True for `#XXXXX-XXXXX`, False for the bare ten
+                characters. Both denote the same code.
 
         Returns:
-            str: Encoded GPC string.
+            str: The code.
 
         Raises:
-            ValueError: If input coordinates are outside the valid range.
+            GPCError: If either coordinate is outside the domain, NaN or infinite.
         """
         valid, message = GPC.is_valid_coordinates(latitude, longitude)
         if not valid:
-            raise ValueError(f"{message}: value out of valid range.")
-        
-        point = GPC.get_point(latitude, longitude)
-        grid_point_code = GPC.encode_point(point + ELEVEN)
-        
-        if formatted:
-            grid_point_code = GPC.format_gpc(grid_point_code)
-        return grid_point_code
+            raise GPCError(message, message + ": value out of valid range.")
+
+        row, col = GPC.to_grid(latitude, longitude)
+        code = GPC.grid_to_code(row, col)
+        return GPC.format_gpc(code) if formatted else code
 
     @staticmethod
-    def is_valid_coordinates(latitude: float, longitude: float) -> tuple[bool, str]:
-        """
-        Validates whether the latitude and longitude values fall within the acceptable range.
+    def is_valid_coordinates(latitude: float, longitude: float) -> Tuple[bool, str]:
+        """Whether a coordinate pair is inside the domain, and which axis is not.
 
-        Args:
-            latitude (float): Latitude in degrees.
-            longitude (float): Longitude in degrees.
+        The poles and both ends of the antimeridian are inside it; version 1
+        rejected all of them. NaN and the infinities fail the comparisons and
+        so are rejected here as well, in every language, without a separate
+        test.
 
         Returns:
-            tuple[bool, str]: Tuple containing validation result and invalid field name (if any).
+            tuple[bool, str]: Validity, and "LATITUDE", "LONGITUDE" or "".
         """
-        if not (MIN_LAT < latitude < MAX_LAT):
+        if not MIN_LAT <= latitude <= MAX_LAT:
             return False, "LATITUDE"
-        if not (MIN_LONG < longitude < MAX_LONG):
+        if not MIN_LONG <= longitude <= MAX_LONG:
             return False, "LONGITUDE"
         return True, ""
 
     @staticmethod
-    def get_point(latitude: float, longitude: float) -> int:
-        """
-        Converts latitude and longitude into a unique integer point for GPC encoding.
+    def to_grid(latitude: float, longitude: float) -> Tuple[int, int]:
+        """Coordinates to a row and column of the full grid. Section 5.1.
 
-        Args:
-            latitude (float): Latitude in degrees.
-            longitude (float): Longitude in degrees.
-
-        Returns:
-            int: Encoded point value.
+        Three floating-point operations per axis, associating left to right.
+        They are the only floating-point arithmetic in the format, and section
+        7 pins how they are evaluated: no reassociation, no fused multiply-add,
+        no wider intermediate. Everything after this is integers.
         """
-        lat7 = GPC.split_to_7(latitude, MAX_WHOLE_LAT)
-        long7 = GPC.split_to_7(longitude, MAX_WHOLE_LONG)
-        
-        point = int(10 ** 10 * (
-            LatLongTable.GetIndexOfElements(
-                (lat7[1] * 2) + (1 if lat7[0] == -1 else 0),
-                (long7[1] * 2) + (1 if long7[0] == -1 else 0)
-            ) + 1
-        ))
-        
-        power = 9
-        for i in range(2, 7):
-            point += int(10 ** power * lat7[i])
-            power -= 1
-            point += int(10 ** power * long7[i])
-            power -= 1
-        return point
+        if longitude == MAX_LONG:
+            # The one case where two distinct inputs must give one code, so it
+            # happens before any arithmetic that could no longer tell them apart.
+            longitude = MIN_LONG
+
+        row = math.floor((latitude + 90.0) * 7812500.0 / 180.0)
+        col = math.floor((longitude + 180.0) * 11718750.0 / 360.0)
+
+        # Catches latitude +90, and nothing else. It is what makes the poles
+        # encode instead of indexing past the end of the grid.
+        row = 0 if row < 0 else (ROWS - 1 if row > ROWS - 1 else row)
+        col = 0 if col < 0 else (COLS - 1 if col > COLS - 1 else col)
+        return row, col
 
     @staticmethod
-    def split_to_7(coordinate: float, max_whole: int) -> list[int]:
+    def grid_to_code(row: int, col: int) -> str:
+        """A row and column to ten characters. Section 5.2.
+
+        Level 1 is a serpentine over the 24 blocks, west to east, snaking
+        northward. Levels 2 to 10 are a Peano digit reflection: each axis is
+        mirrored according to the parity of the digits accumulated in the
+        other, which is what puts consecutive codes in adjacent cells.
         """
-        Splits a coordinate into a 7-element list for encoding.
+        r1 = row // P9
+        c1 = col // P9
+        out = [ALPHABET[r1 * 6 + (c1 if r1 % 2 == 0 else 5 - c1)]]
 
-        The 7 elements include sign, integer part, and 5 digits of fractional precision.
+        sr = r1
+        sc = c1
+        p = P9
+        for level in range(2, LEVELS + 1):
+            if level == RESET_LEVEL:
+                # Section 5.3. Without this the last five characters would mean
+                # something different in every level-5 cell, and the short form
+                # would name nothing on its own.
+                sr = 0
+                sc = 0
+            p //= 5
+            r = (row // p) % 5
+            c = (col // p) % 5
+            # The order of these four statements is normative. R is decided
+            # from sc before this level's c is added to it, and C from sr after
+            # this level's r has been added. Reversing either is a different
+            # format.
+            big_r = r if sc % 2 == 0 else 4 - r
+            sr += r
+            big_c = c if sr % 2 == 0 else 4 - c
+            sc += c
+            out.append(ALPHABET[big_r * 5 + big_c])
 
-        Args:
-            coordinate (float): Latitude or longitude in decimal degrees.
-            max_whole (int): Highest whole-degree part the grid holds, 89 for
-                latitude and 179 for longitude.
-
-        Returns:
-            list[int]: 7-element list representing the coordinate.
-        """
-        value = float(coordinate)
-        # Negative zero and positive zero are the same point, so give them the
-        # same sign and therefore the same code.
-        if value == 0:
-            value = 0.0
-        coord = [0] * 7
-        coord[0] = -1 if value < 0 else 1
-        # The shortest decimal string that reads back as this double is the
-        # number the caller wrote. Every port truncates that one string, so no
-        # two ports can disagree about the digits.
-        coordinate = format(Decimal(repr(abs(value))), 'f')
-        fractional = ""
-        
-        if "." in coordinate:
-            integer_part, fractional_part = coordinate.split(".")
-            coord[1] = int(integer_part)
-            fractional = fractional_part
-        else:
-            coord[1] = int(coordinate)
-        
-        fractional = (fractional + "00000")[:5]
-        
-        coord[2:7] = [int(fractional[i]) for i in range(5)]
-        
-        # A coordinate just short of the limit can round up to the limit itself
-        # while being formatted. Hold it in the last cell of the grid instead of
-        # letting an out-of-domain whole part reach the table.
-        if coord[1] > max_whole:
-            coord[1] = max_whole
-            coord[2:7] = [9] * 5
-        
-        return coord
+        return "".join(out)
 
     @staticmethod
-    def encode_point(point: int) -> str:
-        """
-        Encodes an integer point into a base-27 string using custom GPC characters.
+    def format_gpc(code: str) -> str:
+        """The presentation form, `#XXXXX-XXXXX`. Section 5.4.
 
-        Args:
-            point (int): The point to encode.
-
-        Returns:
-            str: Base-27 encoded GPC string.
+        The grouping is not arbitrary: the second group is exactly the short
+        form, so a printed code shows its own local form.
         """
-        gpc = ""
-        while point > 0:
-            gpc = CHARACTERS[point % 27] + gpc
-            point //= 27
-        return gpc
+        return PREFIX + code[:5] + SEPARATOR + code[5:]
+
+    #  PART 2 : DECODE
 
     @staticmethod
-    def format_gpc(gpc: str) -> str:
-        """
-        Formats a base-27 GPC string into the standard representation (#XXXX-XXXX-XXX).
+    def decode(grid_point_code: str) -> Tuple[float, float]:
+        """Decode a code to the centre of the cell it names.
+
+        Dispatches on length once the separators are stripped: ten characters
+        is version 2, eleven is version 1. A code carrying a check character is
+        always version 2, since version 1 has none.
 
         Args:
-            gpc (str): Unformatted GPC string.
+            grid_point_code (str): Formatted or unformatted, with or without a
+                `*` check character.
 
         Returns:
-            str: Formatted GPC string.
-        """
-        return f"#{gpc[:4]}-{gpc[4:8]}-{gpc[8:11]}"
-
-    @staticmethod
-    def decode(grid_point_code: str) -> tuple[float, float]:
-        """
-        Decodes a Grid Point Code (GPC) back into latitude and longitude.
-
-        Args:
-            grid_point_code (str): Formatted or unformatted GPC string.
-
-        Returns:
-            tuple[float, float]: Tuple of latitude and longitude.
+            tuple[float, float]: Latitude and longitude, six decimal places.
 
         Raises:
-            ValueError: If GPC is invalid or outside representable range.
+            GPCError: With reason GPC_RESERVED for a well-formed code beginning
+                with X, or one of the invalid reasons otherwise.
         """
-        if not grid_point_code or grid_point_code.isspace():
-            raise ValueError("GPC_NULL: Invalid GPC.")
-        
-        clean = re.sub(r"[#\-\s]", "", grid_point_code.upper())
-        
-        valid, message = GPC.validate_gpc(clean)
-        if not valid:
-            raise ValueError(f"{message}: Invalid GPC.")
-        
-        point = GPC.decode_to_point(clean) - ELEVEN
+        payload, check = GPC._split(grid_point_code)
+        if check is None and len(payload) == v1.CODE_LENGTH:
+            return v1.decode(payload)
 
-        valid, message = GPC.validate_point(point)
-        if not valid:
-            raise ValueError(f"{message}: Invalid GPC.")
-        
-        return GPC.get_coordinates(point)
+        row, col = GPC.code_to_grid(GPC._geometric(grid_point_code))
+        return (GPC._round6((2 * row + 1) * 1152 - 9_000_000_000),
+                GPC._round6((2 * col + 1) * 1536 - 18_000_000_000))
 
     @staticmethod
-    def is_valid_gpc(grid_point_code: str) -> tuple[bool, str]:
-        """
-        Validates a GPC string by checking length, character set, and decoded range.
-
-        Args:
-            grid_point_code (str): GPC string to validate.
+    def decode_to_area(grid_point_code: str) -> Tuple[float, float, float, float]:
+        """The boundaries of the cell a version 2 code names. Section 6.3.
 
         Returns:
-            tuple[bool, str]: Validation result and message.
+            tuple[float, float, float, float]: South, west, north and east.
+
+        Raises:
+            GPCError: As `decode`. Version 1 codes have no area; they resolve
+                to a corner and are not part of this grid.
         """
-        clean = re.sub(r"[#\-\s]", "", grid_point_code.upper())
-        if not clean:
-            return False, "GPC_NULL"
-        valid, msg = GPC.validate_gpc(clean)
-        if not valid:
-            return False, msg
-        return GPC.validate_point(GPC.decode_to_point(clean) - ELEVEN)
+        row, col = GPC.code_to_grid(GPC._geometric(grid_point_code))
+        return (row * 180.0 / 7812500.0 - 90.0,
+                col * 360.0 / 11718750.0 - 180.0,
+                (row + 1) * 180.0 / 7812500.0 - 90.0,
+                (col + 1) * 360.0 / 11718750.0 - 180.0)
 
     @staticmethod
-    def validate_gpc(code: str) -> tuple[bool, str]:
-        """
-        Validates the structural correctness of a GPC string.
+    def decode_v1(grid_point_code: str) -> Tuple[float, float]:
+        """Decode an eleven-character version 1 code. Appendix B.
 
-        Args:
-            code (str): GPC code without formatting.
+        `decode` reaches this on its own for anything eleven characters long.
+        The explicit entry point is here for a caller that knows which format
+        it holds and wants to say so.
 
-        Returns:
-            tuple[bool, str]: Validation result and error type (if any).
+        Version 1 returns the corner of its cell rather than the centre, which
+        is what every version 1 release has returned.
         """
-        if len(code) != GPC_LENGTH:
-            return False, "GPC_LENGTH"
-        if any(c not in CHARACTERS for c in code):
-            return False, "GPC_CHAR"
-        return True, ""
+        return v1.decode(grid_point_code)
 
     @staticmethod
-    def validate_point(point: int) -> tuple[bool, str]:
-        """
-        Validates if the decoded point lies within the allowed range.
+    def code_to_grid(code: str) -> Tuple[int, int]:
+        """Ten characters back to a row and column. Section 6.1.
 
-        Args:
-            point (int): Integer point to validate.
-
-        Returns:
-            tuple[bool, str]: Validation result and message.
+        The inverse of `grid_to_code`, character by character. Expects a
+        normalised, geometric code.
         """
-        if point < MIN_POINT or point > MAX_POINT:
-            return False, "GPC_RANGE"
-        return True, ""
+        i = ALPHABET.index(code[0])
+        r1 = i // 6
+        k = i % 6
+        c1 = k if r1 % 2 == 0 else 5 - k
+
+        row = r1
+        col = c1
+        sr = r1
+        sc = c1
+        for level in range(2, LEVELS + 1):
+            if level == RESET_LEVEL:
+                sr = 0
+                sc = 0
+            j = ALPHABET.index(code[level - 1])
+            big_r = j // 5
+            big_c = j % 5
+            r = big_r if sc % 2 == 0 else 4 - big_r
+            sr += r
+            c = big_c if sr % 2 == 0 else 4 - big_c
+            sc += c
+            row = row * 5 + r
+            col = col * 5 + c
+
+        return row, col
+
+    #  PART 3 : PARSE, CLASSIFY, CHECK
 
     @staticmethod
-    def decode_to_point(code: str) -> int:
-        """
-        Converts a GPC string into its corresponding integer point.
-
-        Args:
-            code (str): Base-27 encoded GPC string.
+    def normalise(grid_point_code: str) -> Tuple[str, str]:
+        """Case-fold, strip separators, apply the alias table. Section 8.
 
         Returns:
-            int: Decoded point.
+            tuple[str, str]: The payload, and the check character, which is
+                None when the input carried no `*`. The check is returned
+                however long it normalised: deciding whether it is acceptable
+                belongs to `validate`.
+
+        Raises:
+            GPCError: GPC_NULL if there is nothing at all to parse.
         """
-        point = 0
-        for i in range(GPC_LENGTH):
-            point *= 27
-            character = code[i]
-            point += CHARACTERS.index(character)
-        return point
+        payload, check = GPC._split(grid_point_code)
+        return (GPC._alias(payload),
+                None if check is None else GPC._alias(check))
 
     @staticmethod
-    def get_coordinates(point: int) -> tuple[float, float]:
-        """
-        Converts an integer point back into its latitude and longitude representation.
-
-        Args:
-            point (int): Integer point value.
+    def validate(grid_point_code: str) -> Tuple[str, str]:
+        """Classify a string and say why, if the answer is INVALID. Section 9.
 
         Returns:
-            tuple[float, float]: Latitude and longitude.
+            tuple[str, str]: One of GEOMETRIC, RESERVED or INVALID, and the
+                reason code, which is empty for anything that is not INVALID.
+                Reasons are tested in the order GPC_NULL, GPC_LENGTH, GPC_CHAR,
+                GPC_CHECK.
         """
-        latlong_index = int(point // 10**10)
-        fractional = int(point - latlong_index * 10**10)
-
-        lat7, long7 = GPC.split_to_7_from_point(latlong_index, fractional)
-
-        power = 0
-        temp_lat = 0
-        temp_long = 0
-
-        for i in range(6, 0, -1):
-            temp_lat += lat7[i] * (10 ** power)
-            temp_long += long7[i] * (10 ** power)
-            power += 1
-
-        lat = temp_lat / 10**5 * lat7[0]
-        long = temp_long / 10**5 * long7[0]
-        return (lat, long)
+        try:
+            code, check = GPC.normalise(grid_point_code)
+        except GPCError as error:
+            return INVALID, error.reason
+        if len(code) != CODE_LENGTH:
+            return INVALID, "GPC_LENGTH"
+        if any(character not in ALPHABET for character in code):
+            return INVALID, "GPC_CHAR"
+        # A check that does not hold is not something to discard. A caller told
+        # a code is valid has to be able to decode it.
+        if check is not None and check != GPC._check_symbol(code):
+            return INVALID, "GPC_CHECK"
+        return (RESERVED if code[0] == "X" else GEOMETRIC), ""
 
     @staticmethod
-    def split_to_7_from_point(index: int, fractional: int) -> tuple[list[int], list[int]]:
-        """
-        Reconstructs 7-element lat/long lists from encoded point components.
+    def classify(grid_point_code: str) -> str:
+        """GEOMETRIC, RESERVED or INVALID. Section 9.
 
-        Args:
-            index (int): Index representing quadrant-based location.
-            fractional (int): Encoded fractional component of coordinates.
+        A reserved code is well formed, begins with X, and names no cell. No
+        encoded code can begin with X, so that space is reserved rather than
+        wasted, and it is kept distinct from a typing error from the first
+        release because it cannot be separated out later without breaking
+        callers.
+        """
+        return GPC.validate(grid_point_code)[0]
+
+    @staticmethod
+    def is_valid(grid_point_code: str) -> bool:
+        """Whether a string is a version 2 code that decodes.
+
+        True for GEOMETRIC only. A reserved code is false, because it names no
+        cell, and so is a version 1 code: `classify` describes this grid, and
+        eleven characters are not part of it. `decode` still reads version 1,
+        and `is_valid_v1` answers for it.
+        """
+        return GPC.validate(grid_point_code)[0] == GEOMETRIC
+
+    @staticmethod
+    def is_valid_v1(grid_point_code: str) -> Tuple[bool, str]:
+        """Whether a string is a version 1 code, and why not when it is not.
 
         Returns:
-            tuple[list[int], list[int]]: 7-element lists for latitude and longitude.
+            tuple[bool, str]: Validity, and GPC_NULL, GPC_LENGTH, GPC_CHAR,
+                GPC_RANGE or "".
         """
-        long7 = [0] * 7
-        lat7 = [0] * 7
+        return v1.is_valid(grid_point_code)
 
-        t_lat, t_long = LatLongTable.GetElementsAtIndex(index - 1)
-        
-        lat7[0] = -1 if t_lat % 2 else 1
-        lat7[1] = (t_lat - 1) // 2 if lat7[0] == -1 else t_lat // 2
+    @staticmethod
+    def check_character(grid_point_code: str) -> str:
+        """The optional GF(25) check character for a code. Section 14.
 
-        long7[0] = -1 if t_long % 2 else 1
-        long7[1] = (t_long - 1) // 2 if long7[0] == -1 else t_long // 2
+        For voice, radio and paper. Written after a star, `#G3RJM-98NM9*T`.
+        It detects every single-symbol error and every adjacent transposition,
+        and it is not canonical: the ten-character form is what gets stored and
+        interchanged, and this is never emitted unless asked for.
 
-        power = 9
-        for i in range(2, 7):
-            lat7[i] = (fractional // (10 ** power)) % 10
-            power -= 1
-            long7[i] = (fractional // (10 ** power)) % 10
-            power -= 1
+        Raises:
+            GPCError: If the input is not ten symbols of the alphabet. A
+                reserved code has a check character like any other.
+        """
+        code, _ = GPC.normalise(grid_point_code)
+        if len(code) != CODE_LENGTH:
+            raise GPCError("GPC_LENGTH")
+        if any(character not in ALPHABET for character in code):
+            raise GPCError("GPC_CHAR")
+        return GPC._check_symbol(code)
 
-        return lat7, long7
+    #  PART 4 : INTERNALS
+
+    @staticmethod
+    def _split(grid_point_code: str) -> Tuple[str, str]:
+        """Payload and check character, cleaned but not yet aliased.
+
+        The dispatch in `decode` needs to see the characters as typed, because
+        version 1 has its own alphabet and the version 2 alias table would
+        corrupt it.
+        """
+        if grid_point_code is None:
+            raise GPCError("GPC_NULL")
+        if not grid_point_code.strip(WHITESPACE):
+            raise GPCError("GPC_NULL")
+
+        check = None
+        text = grid_point_code
+        if CHECK_MARK in text:
+            text, _, check = text.partition(CHECK_MARK)
+            check = GPC._clean(check)
+        return GPC._clean(text), check
+
+    @staticmethod
+    def _clean(text: str) -> str:
+        """Upper-case by ASCII rules, then drop `#`, `-` and whitespace.
+
+        A locale-sensitive upper-casing routine would map `i` to a dotted
+        capital in a Turkish locale, and the same code would be valid in one
+        locale and invalid in another.
+        """
+        out = []
+        for character in text:
+            if "a" <= character <= "z":
+                character = chr(ord(character) - 32)
+            if character == PREFIX or character == SEPARATOR or character in WHITESPACE:
+                continue
+            out.append(character)
+        return "".join(out)
+
+    @staticmethod
+    def _alias(text: str) -> str:
+        """Read the confusable letters as the symbols they were meant to be."""
+        return "".join(ALIASES.get(character, character) for character in text)
+
+    @staticmethod
+    def _geometric(grid_point_code: str) -> str:
+        """The ten characters, or the typed error that stops decoding."""
+        kind, reason = GPC.validate(grid_point_code)
+        if kind == INVALID:
+            raise GPCError(reason)
+        if kind == RESERVED:
+            raise GPCError("GPC_RESERVED")
+        return GPC.normalise(grid_point_code)[0]
+
+    @staticmethod
+    def _check_symbol(code: str) -> str:
+        """c = t · S, where S is the syndrome over the ten payload symbols."""
+        syndrome = 0
+        for i, character in enumerate(code):
+            syndrome = _gf_add(syndrome,
+                               _gf_mul(WEIGHTS[i], ALPHABET.index(character)))
+        return ALPHABET[_gf_mul(_T, syndrome)]
+
+    @staticmethod
+    def _round6(value: int) -> float:
+        """Round a count of 1e-8 degrees to six decimal places. Section 6.2.
+
+        Ties are unreachable -- every reachable value is congruent to a
+        multiple of 4 modulo 100 -- so no choice of rounding mode can change
+        any result, and no implementation has to make the choice.
+        """
+        quotient, remainder = divmod(abs(value), 100)
+        if remainder >= 50:
+            quotient += 1
+        return (-quotient if value < 0 else quotient) / 1_000_000

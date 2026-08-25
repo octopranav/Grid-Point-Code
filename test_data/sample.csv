@@ -1,7 +1,6 @@
 # count,seed,digest
-# The wide sample is generated, not stored. Walk the linear congruential
-# sequence described in README.md, encode every point, join the unformatted
-# codes with a single LF and take the SHA-256 of those UTF-8 bytes. A port
-# that reproduces this digest agrees with the other three byte for byte.
+# Version 1, and a record rather than a port assertion: reproducing it
+# needs the version 1 encoder, which no package carries any more. The
+# live cross-port check is v2_sample.csv, built the same way.
 
 100000,20260824,c23ca6bafe77372cf6ffb1ef739acf0c6345240f8564cdf286e21b2a964573cc

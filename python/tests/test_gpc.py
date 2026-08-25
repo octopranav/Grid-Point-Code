@@ -12,136 +12,279 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""Version 2, case by case.
+
+The worked examples come from SPEC.md rather than from running the code, so a
+change in behaviour shows up as a failure here instead of quietly becoming the
+new expected value.
+"""
+
 import unittest
-from src.gridpointcode_algo_pranavpatel_ca import GPC
 
-# Unit tests for the GPC (Grid Point Code) encoding and decoding functions
-class TestGPC(unittest.TestCase):
+from src.gridpointcode_algo_pranavpatel_ca import GEOMETRIC, GPC, GPCError, INVALID, RESERVED
 
-    # Test encoding and decoding of origin (0,0)
-    def test_min_zero(self):
-        self.assertEqual("#DCCC-CCCC-CCC", GPC.encode(0, 0))
-        self.assertEqual((0, 0), GPC.decode("#DCCC-CCCC-CCC"))
-    
-    # Test minimum positive coordinates (smallest possible value)
-    def test_min1(self):
-        self.assertEqual("#DCCC-CCCC-CCR", GPC.encode(0.00001, 0.00001))
-        self.assertEqual((0.00001, 0.00001), GPC.decode("#DCCC-CCCC-CCR"))
-    
-    # Test encoding/decoding for negative latitude and positive longitude
-    def test_min2(self):
-        self.assertEqual("#DCCD-7Y5W-LLH", GPC.encode(-0.00001, 0.00001))
-        self.assertEqual((-0.00001, 0.00001), GPC.decode("#DCCD-7Y5W-LLH"))
 
-    # Test encoding/decoding for positive latitude and negative longitude
-    def test_min3(self):
-        self.assertEqual("#DCCC-8473-0G4", GPC.encode(0.00001, -0.00001))
-        self.assertEqual((0.00001, -0.00001), GPC.decode("#DCCC-8473-0G4"))
+class TestEncode(unittest.TestCase):
+    """Section 5, and the worked examples of 5.5."""
 
-    # Test encoding/decoding for both negative latitude and longitude
-    def test_min4(self):
-        self.assertEqual("#DCCG-5K1D-WV7", GPC.encode(-0.00001, -0.00001))
-        self.assertEqual((-0.00001, -0.00001), GPC.decode("#DCCG-5K1D-WV7"))
+    def test_the_worked_examples(self):
+        for latitude, longitude, expected in [
+                (43.65000, -79.38000, "#G3RJM-98NM9"),
+                (43.64260, -79.38710, "#G3RJM-0M6DX"),
+                (23.02250, 72.57140, "#KDC8X-JM49X"),
+                (-33.85680, 151.21530, "#6LK4X-NRP0R"),
+                (-13.16310, -72.54500, "#C8HKC-13C80"),
+                (64.14660, -21.94260, "#RDX9R-TN19T")]:
+            with self.subTest(latitude=latitude, longitude=longitude):
+                self.assertEqual(expected, GPC.encode(latitude, longitude))
 
-    # Test maximum valid positive coordinates
-    def test_max1(self):
-        self.assertEqual("#HG9K-PCVH-DPV", GPC.encode(89.99999, 179.99999))
-        self.assertEqual((89.99999, 179.99999), GPC.decode("#HG9K-PCVH-DPV"))
+    def test_the_poles_encode(self):
+        self.assertEqual("#P4444-PPPPP", GPC.encode(90.0, 0.0))
+        self.assertEqual("#3PPPP-00000", GPC.encode(-90.0, 0.0))
 
-    # Test maximum valid negative latitude and positive longitude
-    def test_max2(self):
-        self.assertEqual("#HG9N-KTKR-83Y", GPC.encode(-89.99999, 179.99999))
-        self.assertEqual((-89.99999, 179.99999), GPC.decode("#HG9N-KTKR-83Y"))
+    def test_the_antimeridian_is_one_place_with_one_code(self):
+        self.assertEqual("#F0000-00000", GPC.encode(0.0, -180.0))
+        self.assertEqual("#F0000-00000", GPC.encode(0.0, 180.0))
+        # 179.99999999999999 is exactly 180.0 once stored as a double.
+        self.assertEqual("#F0000-00000", GPC.encode(0.0, 179.99999999999999))
 
-    # Test maximum valid positive latitude and negative longitude
-    def test_max3(self):
-        self.assertEqual("#HG9M-L0M1-M0K", GPC.encode(89.99999, -179.99999))
-        self.assertEqual((89.99999, -179.99999), GPC.decode("#HG9M-L0M1-M0K"))
+    def test_negative_zero_is_the_same_point(self):
+        self.assertEqual("#JPPPP-00000", GPC.encode(0.0, 0.0))
+        self.assertEqual("#JPPPP-00000", GPC.encode(-0.0, -0.0))
+        self.assertEqual("#JPPPP-00000", GPC.encode(0.0, -0.0))
+        self.assertEqual("#JPPPP-00000", GPC.encode(-0.0, 0.0))
 
-    # Test maximum valid negative coordinates
-    def test_max4(self):
-        self.assertEqual("#HG9P-JLHJ-X69", GPC.encode(-89.99999, -179.99999))
-        self.assertEqual((-89.99999, -179.99999), GPC.decode("#HG9P-JLHJ-X69"))
+    def test_the_formatted_form_is_the_unformatted_one_with_separators(self):
+        self.assertEqual("G3RJM98NM9", GPC.encode(43.65, -79.38, False))
+        self.assertEqual("#G3RJM-98NM9", GPC.encode(43.65, -79.38, True))
+        self.assertEqual("#G3RJM-98NM9", GPC.format_gpc("G3RJM98NM9"))
 
-    # Test rounding behavior when encoding with more than 5 decimal places
-    def test_truncate(self):
-        self.assertEqual("#FYGC-MF89-XH2", GPC.encode(-12.1234567, -123.1234567))
-        self.assertEqual((-12.12345, -123.12345), GPC.decode("#FYGC-MF89-XH2"))
+    def test_every_code_is_ten_characters(self):
+        for latitude, longitude in [(0, 0), (90, 180), (-90, -180),
+                                    (43.65, -79.38), (-13.1631, -72.545)]:
+            self.assertEqual(10, len(GPC.encode(latitude, longitude, False)))
 
-    # Test latitude values outside valid range raise ValueError
-    def test_latitude_out_of_range(self):
-        for lat, lon in [(-90, -123), (90, 123)]:
-            with self.assertRaises(ValueError) as cm:
-                GPC.encode(lat, lon)
-            self.assertEqual(str(cm.exception), "LATITUDE: value out of valid range.")
+    def test_no_encoded_code_begins_with_x(self):
+        """Level 1 produces the indices 0 to 23 only, so X is unreachable."""
+        for latitude in range(-90, 91, 5):
+            for longitude in range(-180, 181, 5):
+                code = GPC.encode(float(latitude), float(longitude), False)
+                self.assertNotEqual("X", code[0])
 
-    # Test longitude values outside valid range raise ValueError
-    def test_longitude_out_of_range(self):
-        for lat, lon in [(-12, -180), (12, 180)]:
-            with self.assertRaises(ValueError) as cm:
-                GPC.encode(lat, lon)
-            self.assertEqual(str(cm.exception), "LONGITUDE: value out of valid range.")
+    def test_coordinates_outside_the_domain_are_rejected(self):
+        for latitude, longitude, reason in [
+                (90.00001, 0.0, "LATITUDE"), (-90.00001, 0.0, "LATITUDE"),
+                (1000.0, 0.0, "LATITUDE"), (0.0, 180.00001, "LONGITUDE"),
+                (0.0, -180.00001, "LONGITUDE"), (0.0, 1000.0, "LONGITUDE"),
+                (float("nan"), 0.0, "LATITUDE"), (float("inf"), 0.0, "LATITUDE"),
+                (0.0, float("nan"), "LONGITUDE"), (0.0, float("-inf"), "LONGITUDE")]:
+            with self.subTest(latitude=latitude, longitude=longitude):
+                with self.assertRaises(GPCError) as caught:
+                    GPC.encode(latitude, longitude)
+                self.assertEqual(reason, caught.exception.reason)
+                self.assertEqual(reason + ": value out of valid range.",
+                                 str(caught.exception))
 
-    # Test encoding/decoding with formatted GPC string (with hyphens and prefix)
-    def test_gpc_formatted(self):
-        self.assertEqual("#HG9P-JLHJ-X69", GPC.encode(-89.99999, -179.99999, True))
-        self.assertEqual((-89.99999, -179.99999), GPC.decode("#HG9P-JLHJ-X69"))
+    def test_the_domain_includes_its_own_edges(self):
+        for latitude, longitude in [(90.0, 0.0), (-90.0, 0.0),
+                                    (0.0, 180.0), (0.0, -180.0),
+                                    (90.0, 180.0), (-90.0, -180.0)]:
+            self.assertEqual((True, ""), GPC.is_valid_coordinates(latitude, longitude))
 
-    # Test encoding/decoding with unformatted GPC string (no hyphens or prefix)
-    def test_gpc_unformatted(self):
-        self.assertEqual("HG9PJLHJX69", GPC.encode(-89.99999, -179.99999, False))
-        self.assertEqual((-89.99999, -179.99999), GPC.decode("HG9PJLHJX69"))
 
-    # Test decoding of null, empty, or whitespace GPC strings raises ValueError
-    def test_gpc_null(self):
-        for code in [None, "", "    "]:
-            with self.assertRaises(ValueError) as cm:
-                GPC.decode(code)
-            self.assertEqual(str(cm.exception), "GPC_NULL: Invalid GPC.")
+class TestDecode(unittest.TestCase):
+    """Section 6, and the worked examples of 6.4."""
 
-    # Test decoding of GPC strings with invalid length raises ValueError
-    def test_gpc_length(self):
-        for code in ["#HG9P-JLHJ-X696", "#HG9P-JLHJ-X6"]:
-            with self.assertRaises(ValueError) as cm:
-                GPC.decode(code)
-            self.assertEqual(str(cm.exception), "GPC_LENGTH: Invalid GPC.")
+    def test_the_worked_examples(self):
+        for code, expected in [("#G3RJM-98NM9", (43.650006, -79.380004)),
+                               ("#KDC8X-JM49X", (23.022501, 72.571407)),
+                               ("#6LK4X-NRP0R", (-33.856808, 151.215314)),
+                               ("#P4444-PPPPP", (89.999988, 0.000015)),
+                               ("#JPPPP-00000", (0.000012, 0.000015))]:
+            with self.subTest(code=code):
+                self.assertEqual(expected, GPC.decode(code))
 
-    # Test decoding of GPC strings with invalid characters raises ValueError
-    def test_gpc_char(self):
-        for code in ["#HG9P-JLHJ-A69", "#HG9P-JLHJ-E69"]:
-            with self.assertRaises(ValueError) as cm:
-                GPC.decode(code)
-            self.assertEqual(str(cm.exception), "GPC_CHAR: Invalid GPC.")
+    def test_a_code_decodes_to_the_centre_of_its_cell(self):
+        south, west, north, east = GPC.decode_to_area("#G3RJM-98NM9")
+        latitude, longitude = GPC.decode("#G3RJM-98NM9")
+        self.assertLess(south, latitude)
+        self.assertLess(latitude, north)
+        self.assertLess(west, longitude)
+        self.assertLess(longitude, east)
 
-    # Test decoding of GPC strings with characters outside valid range raises ValueError
-    def test_gpc_range(self):
-        for code in ["#HG9P-JLHJ-X7C", "#JG9P-JLHJ-X7C"]:
-            with self.assertRaises(ValueError) as cm:
-                GPC.decode(code)
-            self.assertEqual(str(cm.exception), "GPC_RANGE: Invalid GPC.")
+    def test_the_area_of_the_corner_cells_reaches_the_edge_of_the_world(self):
+        """A box is a closed region, so it may name +90 and +180."""
+        self.assertEqual(90.0, GPC.decode_to_area("P4444PPPPP")[2])
+        self.assertEqual(-90.0, GPC.decode_to_area("3PPPP00000")[0])
+        self.assertEqual(-180.0, GPC.decode_to_area("F000000000")[1])
 
-    # Test coordinates that round up to the grid limit stay in the last cell
-    def test_near_limit_clamped(self):
-        self.assertEqual("#D4GP-770H-J19", GPC.encode(89.9999999999999, 0))
-        self.assertEqual((89.99999, 0), GPC.decode("#D4GP-770H-J19"))
-        self.assertEqual("#GNPK-GGM8-DK1", GPC.encode(0, 179.9999999999999))
-        self.assertEqual((0, 179.99999), GPC.decode("#GNPK-GGM8-DK1"))
-        self.assertEqual("#HG9P-JLHJ-X69", GPC.encode(-89.9999999999999, -179.9999999999999))
+    def test_separators_and_case_do_not_matter(self):
+        expected = GPC.decode("G3RJM98NM9")
+        for form in ["#G3RJM-98NM9", "g3rjm98nm9", "  G3RJM 98NM9  ",
+                     "#g3rjm-98nm9", "--G3RJM98NM9##"]:
+            with self.subTest(form=form):
+                self.assertEqual(expected, GPC.decode(form))
 
-    # Test negative zero and positive zero give one code for the one point
-    def test_negative_zero(self):
-        self.assertEqual(GPC.encode(0.0, 0.0), GPC.encode(-0.0, -0.0))
-        self.assertEqual("#DCCC-CCCC-CCC", GPC.encode(-0.0, -0.0))
+    def test_round_trip_is_stable(self):
+        for latitude, longitude in [(43.65, -79.38), (90.0, 0.0), (-90.0, 0.0),
+                                    (0.0, -180.0), (0.0, 0.0), (-33.8568, 151.2153)]:
+            code = GPC.encode(latitude, longitude, False)
+            self.assertEqual(code, GPC.encode(*GPC.decode(code), formatted=False))
 
-    # Test codes below the lowest valid point are rejected, not decoded
-    def test_gpc_below_range(self):
-        self.assertEqual((False, "GPC_RANGE"), GPC.is_valid_gpc("CCCC-CCCC-CCC"))
-        with self.assertRaises(ValueError) as cm:
-            GPC.decode("CCCC-CCCC-CCC")
-        self.assertEqual(str(cm.exception), "GPC_RANGE: Invalid GPC.")
+    def test_typed_errors(self):
+        for code, reason in [("XG3RJ98NM9", "GPC_RESERVED"),
+                             ("", "GPC_NULL"), ("   ", "GPC_NULL"), (None, "GPC_NULL"),
+                             ("G3RJM98NM", "GPC_LENGTH"), ("G3RJM98NM999", "GPC_LENGTH"),
+                             ("G3RJM98NMQ", "GPC_CHAR"), ("G3RJM98NMU", "GPC_CHAR"),
+                             ("G3RJM98NMY", "GPC_CHAR"), ("#G3RJM-98NM9*5", "GPC_CHECK")]:
+            with self.subTest(code=repr(code)):
+                with self.assertRaises(GPCError) as caught:
+                    GPC.decode(code)
+                self.assertEqual(reason, caught.exception.reason)
 
-    # Test the digits come from the shortest decimal that reads back as the input
-    def test_shortest_decimal_pinned(self):
-        self.assertEqual("#DCCT-RW78-KY4", GPC.encode(1.999999999999999, 1.999999999999999))
-        self.assertEqual("#GH1J-5VH9-1WL", GPC.encode(6.999999999999987, 163.39847676453326))
+    def test_eleven_characters_are_read_as_version_1(self):
+        """The dispatch is on length alone, so an eleven-character string that
+        happens to be a valid version 1 code decodes as one -- even when what
+        the caller meant was a version 2 code with a character too many. This
+        is the price of carrying both formats in one install, and it is why
+        section 15.2 says to show the decoded point on a map before acting on
+        it."""
+        self.assertEqual(("INVALID", "GPC_LENGTH"), GPC.validate("G3RJM98NM99"))
+        self.assertEqual((True, ""), GPC.is_valid_v1("G3RJM98NM99"))
+        self.assertEqual(GPC.decode_v1("G3RJM98NM99"), GPC.decode("G3RJM98NM99"))
 
+    def test_a_reserved_code_has_no_area_either(self):
+        with self.assertRaises(GPCError) as caught:
+            GPC.decode_to_area("XG3RJ98NM9")
+        self.assertEqual("GPC_RESERVED", caught.exception.reason)
+
+    def test_the_error_is_a_value_error(self):
+        """Version 1 raised ValueError. Existing handlers keep working."""
+        with self.assertRaises(ValueError):
+            GPC.decode("nonsense")
+
+
+class TestParsing(unittest.TestCase):
+    """Section 8."""
+
+    def test_the_alias_table(self):
+        for typed, meant in [("O", "0"), ("I", "1"), ("S", "5"), ("Z", "2"),
+                             ("B", "8"), ("A", "4"), ("E", "3"), ("V", "W")]:
+            with self.subTest(typed=typed):
+                self.assertEqual(GPC.decode("G3RJM98NM" + meant),
+                                 GPC.decode("G3RJM98NM" + typed))
+
+    def test_l_is_a_symbol_and_is_never_read_as_one(self):
+        self.assertTrue(GPC.is_valid("G3RJM98NML"))
+        self.assertNotEqual(GPC.decode("G3RJM98NML"), GPC.decode("G3RJM98NM1"))
+
+    def test_u_q_and_y_are_rejected_rather_than_aliased(self):
+        for character in "UQY":
+            with self.subTest(character=character):
+                self.assertEqual((INVALID, "GPC_CHAR"),
+                                 GPC.validate("G3RJM98NM" + character))
+
+    def test_case_folding_is_ascii_only(self):
+        self.assertEqual(GPC.decode("G3RJM98NM9"), GPC.decode("g3rjm98nm9"))
+
+    def test_the_whitespace_set_is_ascii_and_is_the_same_everywhere(self):
+        """Space, tab, line feed, vertical tab, form feed and carriage return,
+        and nothing wider. A port that also stripped the Unicode spaces would
+        accept what another port rejects, which is the whole thing the shared
+        vectors exist to prevent."""
+        expected = GPC.decode("G3RJM98NM9")
+        for space in [" ", "\t", "\n", "\v", "\f", "\r"]:
+            with self.subTest(space=repr(space)):
+                self.assertEqual(
+                    expected, GPC.decode(space + "G3RJM" + space + "98NM9" + space))
+                self.assertEqual((INVALID, "GPC_NULL"), GPC.validate(space * 3))
+        # U+00A0 is a space to Unicode and a symbol outside this alphabet.
+        self.assertEqual((INVALID, "GPC_CHAR"), GPC.validate("\u00a03RJM98NM9"))
+
+    def test_normalisation_is_idempotent(self):
+        once, _ = GPC.normalise("#g3rjm-98nm9")
+        twice, _ = GPC.normalise(once)
+        self.assertEqual("G3RJM98NM9", once)
+        self.assertEqual(once, twice)
+
+
+class TestClassify(unittest.TestCase):
+    """Section 9 and Appendix C."""
+
+    def test_the_three_classes(self):
+        self.assertEqual(GEOMETRIC, GPC.classify("#G3RJM-98NM9"))
+        self.assertEqual(RESERVED, GPC.classify("XG3RJ98NM9"))
+        self.assertEqual(INVALID, GPC.classify("nope"))
+
+    def test_reserved_is_not_valid_and_is_not_a_typing_error(self):
+        self.assertFalse(GPC.is_valid("XXXXXXXXXX"))
+        self.assertEqual((RESERVED, ""), GPC.validate("XXXXXXXXXX"))
+
+    def test_reasons_are_tested_in_order(self):
+        for text, expected in [("", (INVALID, "GPC_NULL")),
+                               ("Q", (INVALID, "GPC_LENGTH")),
+                               ("QQQQQQQQQQ", (INVALID, "GPC_CHAR"))]:
+            with self.subTest(text=repr(text)):
+                self.assertEqual(expected, GPC.validate(text))
+
+    def test_a_version_1_code_is_not_a_version_2_code(self):
+        """classify describes this grid, and eleven characters are not in it."""
+        self.assertEqual((INVALID, "GPC_LENGTH"), GPC.validate("#FN5G-CDKL-HDC"))
+        self.assertFalse(GPC.is_valid("#FN5G-CDKL-HDC"))
+        self.assertEqual((True, ""), GPC.is_valid_v1("#FN5G-CDKL-HDC"))
+
+
+class TestCheckCharacter(unittest.TestCase):
+    """Section 14."""
+
+    def test_the_worked_examples(self):
+        for code, check in [("#G3RJM-98NM9", "T"), ("#KDC8X-JM49X", "D"),
+                            ("#P4444-PPPPP", "2"), ("#JPPPP-00000", "M")]:
+            with self.subTest(code=code):
+                self.assertEqual(check, GPC.check_character(code))
+
+    def test_a_correct_check_character_is_accepted_and_stripped(self):
+        self.assertEqual(GPC.decode("#G3RJM-98NM9"), GPC.decode("#G3RJM-98NM9*T"))
+        self.assertTrue(GPC.is_valid("#G3RJM-98NM9*T"))
+        self.assertEqual(GEOMETRIC, GPC.classify("#g3rjm-98nm9*t"))
+
+    def test_a_wrong_check_character_fails_everywhere(self):
+        """Never a silent ignore, and never valid-but-undecodable."""
+        for text in ["#G3RJM-98NM9*5", "#G3RJM-98NM9*", "#G3RJM-98NM9*TT",
+                     "#G3RJM-98NM9*Q"]:
+            with self.subTest(text=text):
+                self.assertEqual((INVALID, "GPC_CHECK"), GPC.validate(text))
+                self.assertFalse(GPC.is_valid(text))
+                with self.assertRaises(GPCError):
+                    GPC.decode(text)
+
+    def test_every_single_symbol_error_is_detected(self):
+        alphabet = "0123456789CDFGHJKLMNPRTWX"
+        code = "G3RJM98NM9"
+        check = GPC.check_character(code)
+        for position in range(10):
+            for symbol in alphabet:
+                if symbol == code[position]:
+                    continue
+                wrong = code[:position] + symbol + code[position + 1:]
+                self.assertEqual((INVALID, "GPC_CHECK"),
+                                 GPC.validate(wrong + "*" + check))
+
+    def test_every_adjacent_transposition_is_detected(self):
+        code = "G3RJM98NM9"
+        check = GPC.check_character(code)
+        for position in range(9):
+            if code[position] == code[position + 1]:
+                continue
+            swapped = (code[:position] + code[position + 1] + code[position]
+                       + code[position + 2:])
+            self.assertEqual((INVALID, "GPC_CHECK"),
+                             GPC.validate(swapped + "*" + check))
+
+    def test_a_reserved_code_has_a_check_character_like_any_other(self):
+        self.assertEqual(RESERVED, GPC.classify("XG3RJ98NM9*"
+                                                + GPC.check_character("XG3RJ98NM9")))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,61 @@
+# class,message,input
+# Version 2. class is GEOMETRIC, RESERVED or INVALID. message is the
+# reason code, empty unless the class is INVALID.
+# input is the final field and runs verbatim to end of line, including any
+# '#', '*', spaces or separators. Split on the first two commas only, and
+# do not trim the input field - two cases are whitespace only.
+
+# --- Nothing to parse
+INVALID,GPC_NULL,
+INVALID,GPC_NULL,   
+INVALID,GPC_NULL,	
+
+# --- Accepted forms of the same geometric code
+GEOMETRIC,,#G3RJM-98NM9
+GEOMETRIC,,G3RJM98NM9
+GEOMETRIC,,g3rjm98nm9
+GEOMETRIC,,  G3RJM98NM9  
+GEOMETRIC,,G3RJM 98NM9
+GEOMETRIC,,#g3rjm-98nm9
+GEOMETRIC,,--G3RJM98NM9##
+
+# --- The alias table reads a confusable letter as the symbol it stands for
+GEOMETRIC,,G3RJMI8NM9
+GEOMETRIC,,G3RJM98NMO
+GEOMETRIC,,G3RJM98NMB
+GEOMETRIC,,G3RJM98NMA
+GEOMETRIC,,G3RJM98NME
+GEOMETRIC,,G3RJM98NMS
+GEOMETRIC,,G3RJM98NMZ
+GEOMETRIC,,G3RJM98NMV
+
+# --- L is a symbol of the alphabet and is never read as 1
+GEOMETRIC,,G3RJM98NML
+GEOMETRIC,,LLLLLLLLLL
+
+# --- Reserved: well formed, begins with X, names no cell
+RESERVED,,X000000000
+RESERVED,,XXXXXXXXXX
+RESERVED,,#XG3RJ-98NM9
+
+# --- Wrong length, including an eleven-character version 1 code
+INVALID,GPC_LENGTH,G3RJM98NM
+INVALID,GPC_LENGTH,G3RJM98NM99
+INVALID,GPC_LENGTH,#FN5G-CDKL-HDC
+INVALID,GPC_LENGTH,#
+
+# --- U, Q and Y are rejected rather than aliased
+INVALID,GPC_CHAR,G3RJM98NMU
+INVALID,GPC_CHAR,G3RJM98NMQ
+INVALID,GPC_CHAR,G3RJM98NMY
+INVALID,GPC_CHAR,G3RJM98NM!
+
+# --- The check character has to hold, here as well as in decode
+GEOMETRIC,,#G3RJM-98NM9*T
+GEOMETRIC,,#g3rjm-98nm9*t
+RESERVED,,XG3RJ98NM9*6
+INVALID,GPC_CHECK,#G3RJM-98NM9*5
+INVALID,GPC_CHECK,#G3RJM-98NM9*
+INVALID,GPC_CHECK,#G3RJM-98NM9*TT
+INVALID,GPC_CHECK,#G3RJM-98NM9*Q
+INVALID,GPC_CHECK,XG3RJ98NM9*T

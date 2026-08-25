@@ -67,3 +67,11 @@
 # must not be line-ending normalized per platform.
 ###############################################################################
 test_data/*.csv text eol=lf
+
+###############################################################################
+# The TypeScript lint runs prettier with endOfLine: lf. A CRLF checkout makes
+# it report a stray carriage return on every line of every file, so pin the
+# files eslint reads to LF on every platform.
+###############################################################################
+typescript/**/*.ts text eol=lf
+typescript/**/*.js text eol=lf
