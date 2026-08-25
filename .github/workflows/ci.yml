@@ -25,8 +25,12 @@
 name: CI
 
 on:
+  # Work reaches main through a pull request, so testing pull requests and main
+  # itself covers every commit that lands, once each. Listening to pushes on
+  # every branch as well would run the whole matrix twice for every commit on a
+  # branch that has a pull request open.
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
