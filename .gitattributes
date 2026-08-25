@@ -61,3 +61,9 @@
 #*.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+
+###############################################################################
+# Conformance vectors are shared byte-for-byte between all four ports, so they
+# must not be line-ending normalized per platform.
+###############################################################################
+test_data/*.csv text eol=lf
