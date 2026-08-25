@@ -37,7 +37,7 @@
 | Port | Requires |
 | --- | --- |
 | Python | 3.9 or later |
-| TypeScript | Node.js 18 or later |
+| TypeScript | Node.js 22 or later |
 | C# | .NET 9.0 or .NET 10.0 |
 | Java | Java 21 or later |
 
