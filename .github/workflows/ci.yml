@@ -1,0 +1,179 @@
+#  Copyright 2017 Pranavkumar Patel
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Builds and tests all four ports on every push.
+#
+# Each port's suite reads the shared vectors in test_data/ and reproduces the
+# digest of the generated sample pinned in test_data/sample.csv. Four green
+# ports therefore mean four byte-identical encoders, which is the one thing no
+# amount of per-port testing could establish on its own.
+#
+# Actions are pinned to a commit rather than a tag: a tag can be moved to point
+# at different code, a commit cannot.
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  csharp:
+    name: C# on ${{ matrix.framework }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [net9.0, net10.0]
+    defaults:
+      run:
+        working-directory: csharp
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+      - name: Build the library
+        run: dotnet build --configuration Release
+      # The suite is run with dotnet run, not dotnet test; csharp/README.md
+      # explains why.
+      - name: Run the suite
+        run: dotnet run --project gpc.tests/gpc.tests.csproj -f ${{ matrix.framework }}
+
+  java:
+    name: Java ${{ matrix.java }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['21', '25']
+    defaults:
+      run:
+        working-directory: java
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+      # Signing belongs to a release, not to a build.
+      - name: Build, test and package
+        run: mvn -B -ntp verify -Dgpg.skip=true
+
+  python:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor the package declares, and the newest release. If the floor
+        # ever stops working, this is where it shows.
+        python: ['3.9', '3.14']
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Run the suite
+        run: python -m unittest discover --start-directory tests --top-level-directory . --verbose
+
+  typescript:
+    name: TypeScript on Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.x', '24.x']
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+      - name: Install exactly what the lockfile says
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Run the suite
+        run: npm test
+
+  vectors:
+    name: Vectors regenerate identically
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+      - name: Regenerate the corpus
+        run: python test_data/generate.py
+      # The generator is deterministic, so a diff here means the committed
+      # vectors are not the ones the generator produces. Either encoding
+      # behaviour changed, which is a breaking change, or a file was edited by
+      # hand, which the ports would then be conforming to for no reason.
+      - name: The committed corpus must be exactly what the generator produces
+        run: git diff --exit-code -- test_data
+
+  conformance:
+    name: All four ports agree
+    runs-on: ubuntu-latest
+    needs: [csharp, java, python, typescript, vectors]
+    if: always()
+    steps:
+      - name: Require every port to have passed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: |
+          echo "::error::A port failed, so the four implementations are not known to agree."
+          exit 1
+      - name: Record what was proven
+        run: |
+          {
+            echo "### Cross-port conformance"
+            echo
+            echo "C#, Java, Python and TypeScript each encoded the shared 100,000 point"
+            echo "sample and reproduced the SHA-256 pinned in \`test_data/sample.csv\`."
+            echo "All four ports emit byte-identical codes."
+          } >> "$GITHUB_STEP_SUMMARY"

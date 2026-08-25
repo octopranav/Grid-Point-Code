@@ -1,5 +1,6 @@
 # Grid Point Code (GPC)
 
+[![CI](https://github.com/octopranav/Grid-Point-Code/actions/workflows/ci.yml/badge.svg)](https://github.com/octopranav/Grid-Point-Code/actions/workflows/ci.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/ca.pranavpatel.algo/gridpointcode.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/ca.pranavpatel.algo/gridpointcode)
 [![NuGet](https://img.shields.io/nuget/v/Ca.Pranavpatel.Algo.GridPointCode?label=NuGet)](https://www.nuget.org/packages/Ca.Pranavpatel.Algo.GridPointCode)
 [![npm (scoped)](https://img.shields.io/npm/v/@pranavpatel.ca/algo-gridpointcode)](https://www.npmjs.com/package/@pranavpatel.ca/algo-gridpointcode)
@@ -159,6 +160,27 @@ Validation result = GPC.IsValid("#FN5G-CDKL-HDC");
 boolean isValid = result.IsValid;
 String message = result.Message;
 ```
+
+---
+
+## Testing
+
+Every port is built and tested on every push. Each suite reads the same
+conformance vectors from [`test_data/`](test_data/), and each one reproduces the
+digest of a shared hundred-thousand-point sample, so the four implementations
+are held to byte-identical output rather than to four separate sets of
+expectations.
+
+| Port | From that port's directory |
+| --- | --- |
+| Python | `python -m unittest discover -s tests -t .` |
+| TypeScript | `npm ci && npm test` |
+| C# | `dotnet run --project gpc.tests/gpc.tests.csproj -f net10.0` |
+| Java | `mvn test` |
+
+[`test_data/README.md`](test_data/README.md) describes the vector files and the
+generated sample. [`.github/workflows/README.md`](.github/workflows/README.md)
+describes what runs in CI and how releases are published.
 
 ---
 
