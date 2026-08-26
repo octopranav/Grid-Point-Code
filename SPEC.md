@@ -390,6 +390,7 @@ A box is a closed region; the +180 normalisation of
 
 The pole decodes to 89.999988 rather than 90: the code names the cell that
 contains the pole, and that cell's centre lies just inside it.
+
 ---
 
 ## 7. Floating-point rules
@@ -767,6 +768,7 @@ The integer form is the representation to use for a database key, a QR or NFC
 payload, or any place where six bytes is worth more than twelve characters. It
 is a re-encoding of the code, not a second format: conversion in both
 directions is exact and lossless.
+
 ---
 
 ## 14. The check character (optional)
@@ -1477,6 +1479,7 @@ for `classify`.
 Vectors are append-only in spirit. Changing an existing expected value means
 the format changed, which is a breaking change and needs a major version rather
 than a quiet vector update.
+
 ---
 
 ## Appendix A — Reference implementation
