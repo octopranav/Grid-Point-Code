@@ -670,8 +670,8 @@ def from_geo_uri(text):
 
 # ---------------------------------------------------------------- section 17
 #
-# The mechanism only. The list itself is expanded at build time from a word
-# file that is deliberately not in this repository, so nothing here carries a
+# The mechanism only. The list itself is expanded at build time from the
+# encrypted archive in `screening/`, and nothing in this directory carries a
 # word: `screen` takes the entries it is to match against.
 
 SCREEN_MIN = 4                                   # section 17.2
