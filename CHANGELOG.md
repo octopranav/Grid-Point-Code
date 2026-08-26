@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 2.0.0
 
-Version 2 of the format, which will be released as 2.0.0 on the four existing
-package names. Nothing is published yet; the registries still carry 1.1.0.
+Version 2 of the format, published on the four existing package names rather
+than beside them, so there is one package per language at its best version and
+no second listing to find.
 
 A code is now ten characters rather than eleven, and every character is a
 refinement of the ones before it, so two codes that begin with the same k
@@ -70,7 +71,13 @@ from without reading any source.
 * **The 48-bit integer form.** `toInteger` and `fromInteger` convert both ways.
   Six bytes big-endian, order-preserving, so a binary key sorts spatially the
   way the string does, and a single comparison separates geometric codes from
-  reserved ones without parsing.
+  reserved ones without parsing. Six bytes do not fill a 64-bit column, and
+  [section 13](SPEC.md#13-the-integer-form) says outright that the sixteen bits
+  left over are assigned no meaning — not a version marker, not a flags field.
+  An implementation that widens the form zeroes them, and rejects a value that
+  arrives with any of them set rather than masking it away. Stated rather than
+  left unsaid, because an undefined field is read by the next implementer as a
+  free one.
 * **Coordinate conversions.** `toGeoURI` and `fromGeoURI` for RFC 5870 `geo:`
   URIs, which carry all six decimal places and round-trip a code exactly, and
   `toDMS` and `fromDMS` for degrees, minutes and seconds, which are for a person
@@ -83,6 +90,16 @@ from without reading any source.
 * **Batch and streaming conversion.** `encodeAll` and `decodeAll` for dataset
   work, and lazy `encodeStream` and `decodeStream` beside them for callers that
   want to handle a bad row without losing the rest.
+* **Guidance on sharing a code**, in
+  [Appendix D](SPEC.md#appendix-d--sharing-a-code-non-normative): which of the
+  four written forms to hand to somebody, and how to read one out loud. The
+  alphabet excludes vowels and the shapes a reader confuses on paper, but it was
+  never chosen for phonetic distinctness and cannot be now — spoken in English,
+  `C`, `D`, `G`, `P`, `T` and the digit `3` all rhyme. The appendix gives one
+  rule, that a callout is any word beginning with that symbol, and a reference
+  table an application is meant to replace with words that suit its region. No
+  port emits callouts: an emitter would carry words, words are a language, and
+  the table is English whether or not anybody in the room is.
 * **A typed error carrying a reason code** in every port, alongside the
   existing exception types, so a caller can branch on the reason rather than on
   message text. `GPC_LEVEL`, `GPC_DMS` and `GPC_GEO` join the reasons the

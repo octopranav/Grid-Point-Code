@@ -74,3 +74,26 @@ Maven Central additionally needs the signing key inside the runner.
 CI still builds and tests both ports on every push, so a release is never cut
 from code that has not been through the same conformance run as the other two.
 Only the upload itself is manual.
+
+## Cutting a release
+
+All four packages carry the same version number, so the manifests move together
+and the tag is what starts everything.
+
+| Port | The version lives in |
+| --- | --- |
+| Python | `python/pyproject.toml` |
+| TypeScript | `typescript/package.json` and `typescript/package-lock.json` |
+| C# | `csharp/gpc/gpc.csproj` |
+| Java | `java/pom.xml` |
+
+1. On a branch, set all five files to the new version, write the release into
+   [`CHANGELOG.md`](../../CHANGELOG.md), and merge once CI is green.
+2. Tag the merge commit `vX.Y.Z` and push the tag. Each workflow checks the tag
+   against its own manifest and fails before uploading anything if the two
+   disagree, so a mistyped tag costs a failed run rather than a wrong release.
+3. PyPI and npm publish themselves. Watch both runs to the end.
+4. Publish NuGet and Maven Central by hand from that same commit.
+
+The failure worth avoiding is a version that reaches two registries and not the
+other two, so do not push the tag until whatever step 4 needs is to hand.

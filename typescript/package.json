@@ -1,6 +1,6 @@
 {
   "name": "@pranavpatel.ca/algo-gridpointcode",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -31,7 +31,7 @@
   ],
   "author": "Pranavkumar Patel",
   "license": "Apache-2.0",
-  "description": "Grid Point Code (GPC) is a global geocoding system that gives any location a compact 11-character alphanumeric code. Encoding and decoding run offline, with no network or API, and round-trip exactly at the code's fixed precision of five decimal places of latitude and longitude.",
+  "description": "Grid Point Code (GPC) names any location on Earth with a compact ten-character alphanumeric code. Encoding and decoding run offline, with no network and no lookup table, and two codes share their first k characters exactly when the two points lie in the same level-k cell, so a shared prefix is a shared region.",
   "engines": {
     "node": ">=22"
   },

@@ -12,8 +12,8 @@
   <!-- NuGet Package info -->
   <PropertyGroup>
     <PackageId>Ca.Pranavpatel.Algo.GridPointCode</PackageId>
-    <PackageVersion>1.1.0</PackageVersion>
-    <Description>Grid Point Code (GPC) is a global geocoding system that gives any location a compact 11-character alphanumeric code. Encoding and decoding run offline, with no network or API, and round-trip exactly at the code's fixed precision of five decimal places of latitude and longitude.</Description>
+    <PackageVersion>2.0.0</PackageVersion>
+    <Description>Grid Point Code (GPC) names any location on Earth with a compact ten-character alphanumeric code. Encoding and decoding run offline, with no network and no lookup table, and two codes share their first k characters exactly when the two points lie in the same level-k cell, so a shared prefix is a shared region.</Description>
     <Authors>Pranavkumar Patel</Authors>
     <PackageProjectUrl>https://github.com/octopranav/Grid-Point-Code</PackageProjectUrl>
     <RepositoryUrl>https://github.com/octopranav/Grid-Point-Code.git</RepositoryUrl>
