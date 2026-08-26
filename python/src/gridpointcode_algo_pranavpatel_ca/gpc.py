@@ -75,7 +75,7 @@ ALIASES = {"O": "0", "I": "1", "S": "5", "Z": "2",
 PREFIX = "#"
 SEPARATOR = "-"
 CHECK_MARK = "*"
-DEGREE_SIGN = "°"
+DEGREE_SIGN = "\u00b0"
 
 # Section 18. North, north-east, east, south-east, south, south-west, west,
 # north-west. Rows increase northward, so north is +1.

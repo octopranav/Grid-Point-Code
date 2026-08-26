@@ -6,7 +6,7 @@ import * as ScreenList from './ScreenList';
 import { V1 } from './V1';
 
 /** Section 19.1. U+00B0, written out so no editor can lose it. */
-const DEGREE_SIGN = '°';
+const DEGREE_SIGN = '\u00b0';
 
 /**
  * Section 18.3. North, north-east, east, south-east, south, south-west, west,
