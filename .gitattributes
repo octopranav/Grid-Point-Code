@@ -79,3 +79,7 @@ screening/words.zip binary
 ###############################################################################
 typescript/**/*.ts text eol=lf
 typescript/**/*.js text eol=lf
+
+# The differential drivers are compared byte for byte across four
+# toolchains on two platforms, so they are pinned like the vectors are.
+conformance/** text eol=lf
