@@ -7,21 +7,40 @@ decode or validate because of what it found.
 
 This directory turns a list of words into the form the four ports carry.
 
-## The word file is not here
+## The words are here, and they are not plaintext
 
-`screening/words.txt` is the input, and it is deliberately absent from this
-repository and ignored by git. What is committed is the output: hashes.
+`screening/words.zip` holds the word list. It is encrypted, and the passphrase
+is `gridpointcode` — written here, and in `expand.py`, because it is not a
+secret and nothing in this repository should pretend otherwise.
 
-That keeps the words out of source control, out of search results and out of
-four published packages. It is not a security measure and the specification
-says so — the variants are short strings over an alphabet of twenty-five
-symbols, and a space that small can be searched exhaustively by anyone who
-cares to. That is also why the hash is a cheap mixer rather than a
+The point is narrower than secrecy. Encrypting the archive keeps the words out
+of code search, out of `grep`, out of a web search for this repository, and out
+of the four published packages, which carry only hashes. It does not keep them
+from anyone who wants to read them, and it is not meant to: the specification
+says the same of the hashes, which are thirty-two bits over an alphabet of
+twenty-five symbols and would give the list up to anyone willing to spend a few
+seconds on it. That is also why the hash is a cheap mixer rather than a
 cryptographic one: it would buy nothing here, and it would cost three of the
 four ports an import they otherwise do not need.
 
-Its format is one word per line, lower case, `#` for a comment, blank lines
-ignored:
+So the list stays auditable. Anyone who wants to know what this library warns
+about can open the archive and read it, which is a better position for a public
+format than asking people to take it on trust.
+
+To read it by hand:
+
+```bash
+unzip -P gridpointcode screening/words.zip
+```
+
+`screening/words.txt` is the plain working copy. It is ignored by git and is
+optional — `expand.py` reads the archive. When the working copy is present it
+must agree with the archive, and the script stops if it does not, so a
+forgotten re-zip fails locally rather than in CI.
+
+## The word file
+
+One word per line, lower case, `#` for a comment, blank lines ignored:
 
 ```
 # unwanted words, one per line
@@ -34,10 +53,13 @@ up by chance often enough that warning about it would mean nothing. So are
 words containing `q`, `u`, `v` or `y`, which have no representation in the
 alphabet and therefore cannot appear in a code at all.
 
-## Running it
+## Changing the list
 
 ```bash
+unzip -P gridpointcode screening/words.zip     # then edit words.txt
+zip -q -j -X -P gridpointcode screening/words.zip screening/words.txt
 python screening/expand.py
+python test_data/generate.py
 ```
 
 Every word expands to each way it could be spelled in a code — `o` as `0`, `t`
@@ -52,28 +74,32 @@ script writes one generated file per port:
 | C# | `csharp/gpc/ScreenList.cs` |
 | Java | `java/src/main/java/ca/pranavpatel/algo/gridpointcode/ScreenList.java` |
 
-Do not edit those by hand. Then regenerate the vectors, because the screening
-ones are built from the list and will have moved:
+Do not edit those by hand. The vectors have to be regenerated as well, because
+the screening ones are built from the list and will have moved.
 
-```bash
-python test_data/generate.py
-```
+Re-zipping is not reproducible: the cipher salts every archive with a random
+twelve-byte header, so the file differs even when the words do not. Re-zip only
+when the list actually changes, or each run leaves a diff behind for nothing.
 
 ## The version tag
 
 `VERSION` holds it, one line, and every result `screen` returns carries it. A
-caller that stored a result can then tell a changed code from a changed list.
+caller that stored a result can then tell a changed result from a changed list.
 Bump it whenever the words change.
 
-## What CI can check, and what it cannot
+## What CI checks
 
-CI has no word file, so it cannot rebuild this. What it does instead is hold
-the four ports to each other: each asserts the version, the entry count and the
-digest recorded in `test_data/v2_screen_list.csv`, so a port whose copy drifted
-from the others fails the suite.
+Two things, in two places.
+
+`screening/expand.py` runs on every push, and the four generated files must not
+move — which catches one edited by hand, and an archive that was changed
+without rebuilding them. Separately, each port's suite asserts the version, the
+entry count and the digest recorded in `test_data/v2_screen_list.csv`, which
+catches a port whose copy drifted from the other three.
 
 ## The list in this repository today
 
 A placeholder, so that the machinery is exercised end to end and the vectors
-have something to assert. The words in it are ordinary and harmless. Replace it
-before 2.0.0 ships.
+have something to assert. The words in it are ordinary and harmless — `gnat`,
+`cattle`, `kettle` and five more, thirty-five variants between them, about one
+code in nine thousand. Replace it before 2.0.0 ships.

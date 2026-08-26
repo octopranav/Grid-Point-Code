@@ -1046,11 +1046,16 @@ report the same spans.
 * It MUST return matched spans and MUST NOT refuse to encode, decode or
   validate anything. Screening advises; it never blocks.
 * The list MUST be stored as hashes of the variants, expanded at build time, so
-  that no plaintext word list appears in source control or in a published
-  package. That keeps the words out of the repository. It is not a security
-  measure and MUST NOT be described as one: the variants are short strings over
-  an alphabet of twenty-five symbols, and a space that small can be searched
-  exhaustively by anyone who wants to.
+  that **no published package carries the words**. That is the part that
+  matters: a package is installed by people who never asked to receive a word
+  list, and a hash is what keeps it from reaching them.
+* Whatever holds the words themselves MUST NOT be plaintext in source control,
+  so that they are not indexed, not greppable and not turned up by a search.
+  Neither this nor the hashing is a security measure, and neither MUST be
+  described as one: the variants are short strings over an alphabet of
+  twenty-five symbols, and a space that small can be searched exhaustively by
+  anyone who wants to. The aim is that nobody meets these words by accident,
+  not that nobody can find them on purpose.
 * The list MUST carry a version tag, reported alongside any match, so that a
   caller can tell a changed result from a changed list.
 

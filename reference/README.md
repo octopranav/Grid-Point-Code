@@ -74,5 +74,6 @@ to exist for a port to be written.
 The advisory word list of specification section 17. `gpc2.py` implements the
 mechanism -- the expansion table, the hash, the matching -- and `screen` takes
 the entries it is to match against, so nothing in this directory carries a
-word. The list is expanded from a private source file by
-[`screening/expand.py`](../screening/) and embedded in the four ports.
+word. The list lives in [`screening/`](../screening/), in an encrypted archive
+so that the words are not plaintext in the repository, and is expanded into the
+four ports by `screening/expand.py`.
