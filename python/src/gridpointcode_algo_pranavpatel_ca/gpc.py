@@ -32,7 +32,6 @@ ten characters is version 2, eleven is version 1 -- and `encode` emits version
 2 only, so the old format cannot be minted again.
 """
 
-import hashlib
 import math
 from typing import Tuple
 
@@ -1024,8 +1023,16 @@ class GPC:
 
     @staticmethod
     def _screen_hash(text: str) -> str:
-        """The first eight hexadecimal characters of the SHA-256. 17.3."""
-        return hashlib.sha256(text.encode("utf-8")).hexdigest()[:8]
+        """The 32-bit FNV-1a hash, eight lower-case hex characters. 17.3.
+
+        Not a cryptographic hash, and section 17.1 says why it does not need to
+        be. Three integer operations per byte, over ASCII symbols, so all four
+        ports compute it identically with nothing imported.
+        """
+        h = 2166136261
+        for byte in text.encode("utf-8"):
+            h = ((h ^ byte) * 16777619) & 0xFFFFFFFF
+        return "%08x" % h
 
     @staticmethod
     def _dms_axis(value: float, positive: str, negative: str) -> str:

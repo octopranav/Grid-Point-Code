@@ -520,6 +520,11 @@ def main():
     check("the hash is eight lower-case hexadecimal characters",
           len(g.screen_hash("GN4T")) == 8
           and all(c in "0123456789abcdef" for c in g.screen_hash("GN4T")), True)
+    # The published FNV-1a test vectors, so the mixer is the one section 17.3
+    # names and not a variant of it.
+    check("FNV-1a of the empty string", g.screen_hash(""), "811c9dc5")
+    check("FNV-1a of a", g.screen_hash("a"), "e40c292c")
+    check("FNV-1a of foobar", g.screen_hash("foobar"), "bf9cf968")
     planted = {g.screen_hash("CDFG"), g.screen_hash("N4TL")}
     check("a planted variant is found",
           g.screen("CDFGN4TL00", planted), [(1, 4), (5, 4)])

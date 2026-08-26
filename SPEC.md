@@ -1085,16 +1085,34 @@ by chance often enough that a warning built on them would mean nothing.
 
 ### 17.3 The list
 
-Each variant is stored as the first eight hexadecimal characters, lower case,
-of the SHA-256 of its symbols encoded as UTF-8. The list is those strings,
-deduplicated and sorted ascending, together with a version tag.
+Each variant is stored as its 32-bit FNV-1a hash, written as eight lower-case
+hexadecimal characters:
+
+```
+h = 2166136261
+for each byte b of the variant, encoded UTF-8:
+    h = h XOR b
+    h = h * 16777619, kept to 32 bits
+```
+
+The list is those strings, deduplicated and sorted ascending, together with a
+version tag.
+
+A cryptographic hash would be no better here and would cost three of the four
+ports an import they otherwise do not need. [17.1](#171-what-screening-is)
+already says this is not protection: what matters is that the words are not in
+the repository, and thirty-two bits of a cheap mixer achieves that exactly as
+well as thirty-two bits of an expensive one. What the function does have to be
+is identical in every language, and this one is -- three integer operations per
+byte, over symbols that are all ASCII, so there is no encoding question and no
+library to agree with.
 
 ### 17.4 Matching
 
 `screen(code)` normalises its argument per
 [section 8](#8-parsing-and-normalisation) and then, for each length L from 4 to
 10 and each start position from 1 to 11 - L, hashes that substring the same way
-and looks it up.
+and looks it up. Thirty-six lookups, no allocation worth the name.
 
 It returns the version tag and the spans that matched, as (position, length),
 ordered by position and then by length. Spans may overlap, and every one that

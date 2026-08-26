@@ -22,7 +22,6 @@ one of the four ports.
 Section numbers in the comments refer to SPEC.md.
 """
 
-import hashlib
 import math
 
 ALPHABET = "0123456789CDFGHJKLMNPRTWX"          # section 4
@@ -672,8 +671,11 @@ SCREEN_LETTERS = {
 
 
 def screen_hash(text):
-    """The first eight hexadecimal characters of the SHA-256. Section 17.3."""
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:8]
+    """The 32-bit FNV-1a hash, eight lower-case hex characters. Section 17.3."""
+    h = 2166136261
+    for byte in text.encode("utf-8"):
+        h = ((h ^ byte) * 16777619) & 0xFFFFFFFF
+    return "%08x" % h
 
 
 def expand_word(word):

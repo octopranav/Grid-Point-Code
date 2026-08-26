@@ -16,7 +16,9 @@ That keeps the words out of source control, out of search results and out of
 four published packages. It is not a security measure and the specification
 says so — the variants are short strings over an alphabet of twenty-five
 symbols, and a space that small can be searched exhaustively by anyone who
-cares to.
+cares to. That is also why the hash is a cheap mixer rather than a
+cryptographic one: it would buy nothing here, and it would cost three of the
+four ports an import they otherwise do not need.
 
 Its format is one word per line, lower case, `#` for a comment, blank lines
 ignored:
@@ -40,8 +42,8 @@ python screening/expand.py
 
 Every word expands to each way it could be spelled in a code — `o` as `0`, `t`
 as `T` or `7`, and so on down the table in section 17.2 — and each variant is
-stored as the first eight hexadecimal characters of its SHA-256. The script
-writes one generated file per port:
+stored as its 32-bit FNV-1a hash, eight lower-case hexadecimal characters. The
+script writes one generated file per port:
 
 | Port | File |
 | --- | --- |
