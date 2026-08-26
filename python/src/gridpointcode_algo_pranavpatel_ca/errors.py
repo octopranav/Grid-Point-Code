@@ -24,7 +24,12 @@ class GPCError(ValueError):
 
     Reasons are ``LATITUDE`` and ``LONGITUDE`` for coordinates, and
     ``GPC_NULL``, ``GPC_LENGTH``, ``GPC_CHAR``, ``GPC_CHECK``, ``GPC_RESERVED``
-    and ``GPC_RANGE`` for codes. The last belongs to version 1 only.
+    and ``GPC_RANGE`` for codes. The last covers both an eleven-character
+    version 1 code out of range and an integer form outside 0 to 25^10 - 1.
+
+    The locality API adds three more, none of which ``validate`` ever returns:
+    ``GPC_LEVEL`` for a level outside 1 to 10, and ``GPC_DMS`` and ``GPC_GEO``
+    for text the two coordinate parsers do not accept.
 
     Subclasses ``ValueError``, which is what version 1 raised, so existing
     ``except ValueError`` blocks keep working.

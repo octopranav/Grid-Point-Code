@@ -34,9 +34,54 @@ from without reading any source.
 * **An alias table** for confusable input: `O` reads as `0`, `I` as `1`, `S` as
   `5`, `Z` as `2`, `B` as `8`, `A` as `4`, `E` as `3` and `V` as `W`. `L` is a
   real symbol and is never read as `1`. `U`, `Q` and `Y` are rejected.
+* **A spatial API on top of the guarantee.** A shared prefix means a shared
+  cell, and these are the operations that follow from that: `cell` takes the
+  first k characters as a region identifier, `contains` is the prefix test,
+  `neighbours` returns the eight cells around one, `cellDimensions` says how big
+  a cell is at each level, `distance` gives great-circle metres between two cell
+  centres, and `decodeToGrid` hands back the raw row and column for a caller
+  building its own spatial structure.
+
+  Columns wrap at the antimeridian and rows do not, so a cell in a polar row has
+  five neighbours rather than eight. `distance` is the one operation in the
+  format that is not bit-identical across the four ports — no standard library
+  rounds sine, cosine or arc sine correctly — and the ports agree to within a
+  millimetre rather than exactly.
+* **The short form.** `shorten` returns the last five characters of a code,
+  which is literally the second printed group, and `recoverShort` turns those
+  five back into a full code given a nearby reference. Exact whenever the
+  reference is within half a level-5 cell of the true point on each axis: 4.0 km
+  of latitude, and 5.3 km of longitude at the equator. Outside that box it
+  returns a plausible location 8 or 10 km away, so the full ten characters
+  remain the form of record.
+* **Typo correction.** `suggestCorrections(code, nearLatitude, nearLongitude)`
+  returns the codes one typo away that are plausible near a reference, best
+  first. The structure that hides an error also locates it: at the default
+  level, the true code is usually the only candidate. This corrects rather than
+  detects and is not a checksum — the advice to confirm a decoded point on a map
+  applies to its output as much as to anything else.
+* **The 48-bit integer form.** `toInteger` and `fromInteger` convert both ways.
+  Six bytes big-endian, order-preserving, so a binary key sorts spatially the
+  way the string does, and a single comparison separates geometric codes from
+  reserved ones without parsing.
+* **Coordinate conversions.** `toGeoURI` and `fromGeoURI` for RFC 5870 `geo:`
+  URIs, which carry all six decimal places and round-trip a code exactly, and
+  `toDMS` and `fromDMS` for degrees, minutes and seconds, which are for a person
+  to read and are rounded to a hundredth of a second.
+* **Advisory screening.** `screen(code)` reports substrings that spell something
+  unwanted, as spans, alongside the version of the list it used. It advises and
+  never blocks: nothing refuses to encode, decode or validate because of what it
+  found. The list is stored as hashes and the words themselves are not in the
+  repository.
+* **Batch and streaming conversion.** `encodeAll` and `decodeAll` for dataset
+  work, and lazy `encodeStream` and `decodeStream` beside them for callers that
+  want to handle a bad row without losing the rest.
 * **A typed error carrying a reason code** in every port, alongside the
   existing exception types, so a caller can branch on the reason rather than on
-  message text.
+  message text. `GPC_LEVEL`, `GPC_DMS` and `GPC_GEO` join the reasons the
+  locality API can raise; none of them ever comes back from `validate`. In the
+  C# port a level outside 1 to 10 is an `ArgumentOutOfRangeException`, as a
+  coordinate outside the domain already was.
 
 ### Changed
 

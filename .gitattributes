@@ -68,6 +68,10 @@
 ###############################################################################
 test_data/*.csv text eol=lf
 
+# The advisory word archive of screening/. Binary: an encrypted member is bytes,
+# and normalising line endings inside it would corrupt it.
+screening/words.zip binary
+
 ###############################################################################
 # The TypeScript lint runs prettier with endOfLine: lf. A CRLF checkout makes
 # it report a stray carriage return on every line of every file, so pin the

@@ -27,6 +27,7 @@ import random
 import sys
 
 import from_spec
+import geodesy
 import gpc2 as g
 
 FAILURES = []
@@ -197,6 +198,31 @@ def main():
     check("every single-symbol error detected (%d tested)" % n_sub, missed_sub, 0)
     check("every adjacent transposition detected (%d tested)" % n_tr, missed_tr, 0)
 
+    section("the check form, section 14.6")
+    for code, form in [("#G3RJM-98NM9", "#G3RJM-98NM9*T"),
+                       ("#KDC8X-JM49X", "#KDC8X-JM49X*D"),
+                       ("#P4444-PPPPP", "#P4444-PPPPP*2"),
+                       ("#JPPPP-00000", "#JPPPP-00000*M")]:
+        check("with_check %s" % code, g.with_check(code), form)
+    check("with_check unformatted",
+          g.with_check("#G3RJM-98NM9", False), "G3RJM98NM9*T")
+    # A check character on the input is ignored, right or wrong.
+    check("with_check recomputes rather than trusting the input",
+          [g.with_check(t) for t in ("#G3RJM-98NM9*T", "#G3RJM-98NM9*5",
+                                     "#G3RJM-98NM9*")],
+          ["#G3RJM-98NM9*T"] * 3)
+    check("with_check output validates", g.is_valid(g.with_check("#G3RJM-98NM9")), True)
+    check("a reserved code has a check form",
+          g.with_check("XG3RJ98NM9"), "#XG3RJ-98NM9*6")
+    rng = random.Random(1406)
+    bad_form = 0
+    for _ in range(20_000):
+        code = g.encode(rng.uniform(-90, 90), rng.uniform(-180, 180), False)
+        form = g.with_check(code)
+        if not g.is_valid(form) or g.decode(form) != g.decode(code):
+            bad_form += 1
+    check("the check form validates and decodes the same, 20,000 codes", bad_form, 0)
+
     section("candidate generation, section 15.3")
     check("candidates, no repeats", len(g.candidates("G3RJM98NM9")), 249)
     check("candidates with repeats", len(g.candidates("P4444PPPPP")), 242)
@@ -295,6 +321,247 @@ def main():
     check("read_tail inverts the tail",
           g.read_tail(g.grid_to_code(*g.to_grid(43.65, -79.38))[5:]),
           (g.to_grid(43.65, -79.38)[0] % g.P5, g.to_grid(43.65, -79.38)[1] % g.P5))
+
+    section("cells and containment, sections 18.1 and 18.2")
+    check("cell of a code", g.cell("#G3RJM-98NM9", 3), "G3R")
+    check("cell normalises first", g.cell("#g3rjm-98nm9", 5), "G3RJM")
+    check("cell reads confusable letters", g.cell("G3RJMI8NM9", 6), "G3RJM1")
+    check("cell of a cell", g.cell("G3RJM", 2), "G3")
+    check("a cell contains its own code",
+          g.contains("G3RJM", "G3RJM98NM9"), True)
+    check("a cell does not contain its neighbour",
+          g.contains("G3RJM", "G3RJD98NM9"), False)
+    check("containment is transitive through levels",
+          g.contains("G3R", "G3RJM") and g.contains("G3RJM", "G3RJM98NM9"), True)
+    for text, reason in [("XG3RJ", "GPC_RESERVED"),
+                         ("", "GPC_NULL"),
+                         ("G3RJM98NM99", "GPC_LENGTH"),
+                         ("G3RJQ", "GPC_CHAR")]:
+        try:
+            g.neighbours(text)
+            check("neighbours %r raises" % text, "accepted", reason)
+        except g.GpcError as exc:
+            check("neighbours %r raises" % text, exc.reason, reason)
+    for level in (0, 11, -1):
+        try:
+            g.cell("G3RJM98NM9", level)
+            check("cell at level %d raises" % level, "accepted", "GPC_LEVEL")
+        except g.GpcError as exc:
+            check("cell at level %d raises" % level, exc.reason, "GPC_LEVEL")
+
+    rng = random.Random(1801)
+    bad_contains = 0
+    for _ in range(40_000):
+        a = (rng.randrange(g.ROWS), rng.randrange(g.COLS))
+        b = (rng.randrange(g.ROWS), rng.randrange(g.COLS))
+        if rng.random() < 0.5:                   # half the pairs close together
+            b = (min(g.ROWS - 1, a[0] + rng.randrange(4000)),
+                 min(g.COLS - 1, a[1] + rng.randrange(4000)))
+        ca, cb = g.grid_to_code(*a), g.grid_to_code(*b)
+        k = rng.randrange(1, 11)
+        p = 5 ** (10 - k)
+        same = a[0] // p == b[0] // p and a[1] // p == b[1] // p
+        if g.contains(g.cell(ca, k), cb) != same:
+            bad_contains += 1
+    check("contains agrees with the grid, 40,000 pairs", bad_contains, 0)
+
+    section("neighbours, section 18.3")
+    check("eight neighbours inland", len(g.neighbours("G3RJM98NM9")), 8)
+    check("five at the top row", len(g.neighbours("#P4444-PPPPP")), 5)
+    check("five at the bottom row", len(g.neighbours("#3PPPP-00000")), 5)
+    check("eight at level 1 away from the poles",
+          len(g.neighbours("G")), 8)
+    # Level 1 rows 0 and 3 are the polar rows, so every cell in them has five.
+    check("five at level 1 in the polar row", len(g.neighbours("0")), 5)
+    # The first column of the grid: its western neighbour is the last column,
+    # on the far side of the antimeridian.
+    row, col = g.to_grid(0.0, -180.0)
+    check("columns wrap at the antimeridian",
+          g.neighbours(g.grid_to_code(row, col))[6],
+          g.grid_to_code(row, g.COLS - 1))
+    rng = random.Random(1803)
+    bad_adjacent = bad_distinct = bad_order = 0
+    for _ in range(20_000):
+        k = rng.randrange(1, 11)
+        p = 5 ** (10 - k)
+        row_cells, col_cells = 4 * 5 ** (k - 1), 6 * 5 ** (k - 1)
+        code = g.grid_to_code(rng.randrange(g.ROWS), rng.randrange(g.COLS))
+        here = g.cell(code, k)
+        _, _, cell_row, cell_col = g._cell_grid(here)
+        got = g.neighbours(here)
+        expected = 8 if 0 < cell_row < row_cells - 1 else 5
+        if len(got) != expected:
+            bad_order += 1
+        if len(set(got)) != len(got) or here in got:
+            bad_distinct += 1
+        for neighbour in got:
+            _, _, n_row, n_col = g._cell_grid(neighbour)
+            d_col = (n_col - cell_col + col_cells) % col_cells
+            if d_col > col_cells // 2:
+                d_col -= col_cells
+            if abs(n_row - cell_row) > 1 or abs(d_col) > 1:
+                bad_adjacent += 1
+    check("every neighbour is one cell away, 20,000 cells", bad_adjacent, 0)
+    check("neighbours are distinct and exclude the cell", bad_distinct, 0)
+    check("the count is eight inland and five in a polar row", bad_order, 0)
+
+    section("cell dimensions, section 18.4")
+    check("level 1 spans", g.cell_dimensions(1)[:2], (45.0, 60.0))
+    check("level 10 spans",
+          [round(v, 8) for v in g.cell_dimensions(10)[:2]], [2.304e-05, 3.072e-05])
+    check("level 1 in kilometres",
+          [round(v / 1000, 1) for v in g.cell_dimensions(1)[2:]], [5000.9, 6679.2])
+    check("level 5 in kilometres",
+          [round(v / 1000, 1) for v in g.cell_dimensions(5)[2:]], [8.0, 10.7])
+    check("level 10 in metres",
+          [round(v, 1) for v in g.cell_dimensions(10)[2:]], [2.6, 3.4])
+    check("the aspect ratio is 0.75 at every level",
+          {round(g.cell_dimensions(k)[0] / g.cell_dimensions(k)[1], 12)
+           for k in range(1, 11)}, {0.75})
+
+    section("distance, section 18.5")
+    check("zero to itself", g.distance("G3RJM98NM9", "G3RJM98NM9"), 0.0)
+    check("symmetric",
+          g.distance("G3RJM98NM9", "6LK4XNRP0R"),
+          g.distance("6LK4XNRP0R", "G3RJM98NM9"))
+    # geodesy.haversine is written differently -- radians(), a squaring
+    # operator -- so agreeing with it to a millimetre is a second opinion and
+    # not a restatement.
+    check("agrees with an independently written haversine",
+          abs(g.distance("#G3RJM-98NM9", "#6LK4X-NRP0R")
+              - geodesy.haversine(g.cell_centre("#G3RJM-98NM9"),
+                                  g.cell_centre("#6LK4X-NRP0R"))) < 0.001, True)
+    check("pole to pole is half the meridian",
+          round(g.distance("#P4444-PPPPP", "#3PPPP-00000") / 1000), 20015)
+    check("antipodal points do not produce NaN",
+          g.distance(g.encode(0.0, 0.0, False), g.encode(0.0, 180.0, False)) > 0,
+          True)
+    check("a cell and the code inside it are close",
+          g.distance("G3RJM", "G3RJM98NM9") < 7000, True)
+
+    section("grid indices, section 18.6")
+    check("decodeToGrid inverts toGrid",
+          g.decode_to_grid(g.encode(43.65, -79.38, False)),
+          g.to_grid(43.65, -79.38))
+    try:
+        g.decode_to_grid("XG3RJ98NM9")
+        check("decodeToGrid rejects a reserved code", "accepted", "GPC_RESERVED")
+    except g.GpcError as exc:
+        check("decodeToGrid rejects a reserved code", exc.reason, "GPC_RESERVED")
+
+    section("degrees, minutes and seconds, section 19.1")
+    check("worked example", g.to_dms(43.65, -79.38),
+          "43°39'00.00\"N, 79°22'48.00\"W")
+    check("the poles", g.to_dms(90.0, 0.0), "90°00'00.00\"N, 0°00'00.00\"E")
+    check("negative zero is not negative",
+          g.to_dms(-0.0, -0.0), "0°00'00.00\"N, 0°00'00.00\"E")
+    check("seconds carry into the next minute",
+          g.to_dms(1.0 - 1e-9, 0.0).split(",")[0], "1°00'00.00\"N")
+    check("read back", g.from_dms("43°39'00.00\"N, 79°22'48.00\"W"),
+          (43.65, -79.38))
+    check("letters for the markers", g.from_dms("43d39m0s N 79d22m48s W"),
+          (43.65, -79.38))
+    check("signs instead of hemispheres", g.from_dms("-43°39', +79°22'"),
+          (-43.65, 79.36666666666666))
+    check("degrees alone", g.from_dms("43°N 79°W"), (43.0, -79.0))
+    for text in ["43°39'00.00\"N",                      # one axis only
+                 "43 39",                                     # no unit markers
+                 "-43°N, 79°W",                     # sign and hemisphere
+                 "43°W, 79°N",                      # axes crossed
+                 "43°60'00.00\"N, 0°0'0\"E",        # sixty minutes
+                 "43°39'60.00\"N, 0°0'0\"E",        # sixty seconds
+                 "91°N, 0°E",                       # outside the domain
+                 "43°39'N, 79°22'W extra"]:         # trailing text
+        try:
+            g.from_dms(text)
+            check("fromDMS rejects %r" % text, "accepted", "an error")
+        except g.GpcError:
+            check("fromDMS rejects %r" % text, "an error", "an error")
+    rng = random.Random(1901)
+    worst = 0.0
+    for _ in range(20_000):
+        la, lo = rng.uniform(-90, 90), rng.uniform(-180, 180)
+        back = g.from_dms(g.to_dms(la, lo))
+        worst = max(worst, abs(back[0] - la), abs(back[1] - lo))
+    check("the round trip stays within half a hundredth of a second",
+          worst <= 0.5 / 360000 + 1e-12, True)
+    rng = random.Random(1903)
+    bad_dms = 0
+    for _ in range(20_000):
+        code = g.encode(rng.uniform(-90, 90), rng.uniform(-180, 180), False)
+        if g.encode(*g.from_dms(g.to_dms(*g.decode(code))), False) != code:
+            bad_dms += 1
+    check("a decoded code survives the trip, 20,000 codes", bad_dms, 0)
+
+    section("geo URIs, section 19.2")
+    check("worked example", g.to_geo_uri(43.650006, -79.380004),
+          "geo:43.650006,-79.380004")
+    check("trailing zeros are dropped", g.to_geo_uri(43.65, -79.38),
+          "geo:43.65,-79.38")
+    check("and the point with them", g.to_geo_uri(43.0, -79.0), "geo:43,-79")
+    check("negative zero is written 0", g.to_geo_uri(-0.0, -0.0), "geo:0,0")
+    check("read back", g.from_geo_uri("geo:43.650006,-79.380004"),
+          (43.650006, -79.380004))
+    check("altitude is discarded", g.from_geo_uri("geo:43.65,-79.38,76.1"),
+          (43.65, -79.38))
+    check("parameters are ignored", g.from_geo_uri("geo:43.65,-79.38;u=35"),
+          (43.65, -79.38))
+    check("the scheme is case-insensitive", g.from_geo_uri("GEO:43.65,-79.38"),
+          (43.65, -79.38))
+    check("wgs84 is accepted", g.from_geo_uri("geo:43.65,-79.38;crs=WGS84"),
+          (43.65, -79.38))
+    for text in ["geo:43.65", "43.65,-79.38", "geo:43.65,-79.38;crs=nad83",
+                 "geo:+43.65,-79.38", "geo:43.65,-79.38,1,2", "geo:1e2,0",
+                 "geo:91,0", "geo:0,181"]:
+        try:
+            g.from_geo_uri(text)
+            check("fromGeoURI rejects %r" % text, "accepted", "an error")
+        except g.GpcError:
+            check("fromGeoURI rejects %r" % text, "an error", "an error")
+    rng = random.Random(1902)
+    bad_uri = 0
+    for _ in range(20_000):
+        code = g.encode(rng.uniform(-90, 90), rng.uniform(-180, 180), False)
+        if g.encode(*g.from_geo_uri(g.to_geo_uri(*g.decode(code))), False) != code:
+            bad_uri += 1
+    check("a geo URI round-trips to the same code, 20,000 codes", bad_uri, 0)
+
+    section("advisory screening, section 17")
+    check("every letter of the alphabet has a rule",
+          sorted(g.SCREEN_LETTERS), list("abcdefghijklmnopqrstuvwxyz"))
+    check("only the symbols of the alphabet appear on the right",
+          sorted({s for v in g.SCREEN_LETTERS.values() for s in v}
+                 - set(g.ALPHABET)), [])
+    check("the letters with no symbol", sorted(k for k, v in
+          g.SCREEN_LETTERS.items() if not v), ["q", "u", "v", "y"])
+    check("expansion is the product of the choices",
+          len(g.expand_word("gnat")), 6)
+    check("expansion keeps the order",
+          g.expand_word("gnat"),
+          ["GN4T", "GN47", "6N4T", "6N47", "9N4T", "9N47"])
+    check("a word with an unrepresentable letter is dropped",
+          g.expand_word("quart"), [])
+    check("a word below the floor is dropped", g.expand_word("cat"), [])
+    check("the hash is eight lower-case hexadecimal characters",
+          len(g.screen_hash("GN4T")) == 8
+          and all(c in "0123456789abcdef" for c in g.screen_hash("GN4T")), True)
+    # The published FNV-1a test vectors, so the mixer is the one section 17.3
+    # names and not a variant of it.
+    check("FNV-1a of the empty string", g.screen_hash(""), "811c9dc5")
+    check("FNV-1a of a", g.screen_hash("a"), "e40c292c")
+    check("FNV-1a of foobar", g.screen_hash("foobar"), "bf9cf968")
+    planted = {g.screen_hash("CDFG"), g.screen_hash("N4TL")}
+    check("a planted variant is found",
+          g.screen("CDFGN4TL00", planted), [(1, 4), (5, 4)])
+    check("a clean code matches nothing",
+          g.screen("G3RJM98NM9", planted), [])
+    check("a reserved code screens like any other",
+          g.screen("XCDFG00000", {g.screen_hash("CDFG")}), [(2, 4)])
+    check("overlapping spans are both reported",
+          g.screen("CDFG000000", {g.screen_hash("CDFG"), g.screen_hash("DFG0")}),
+          [(1, 4), (2, 4)])
+    check("spans below the floor are never reported",
+          g.screen("CDF0000000", {g.screen_hash("CDF")}), [])
 
     print()
     if FAILURES:

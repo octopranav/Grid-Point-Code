@@ -328,3 +328,8 @@ target/
 
 # Local scratch space, never committed
 scratch/
+
+# The advisory word list. screening/words.zip is committed; this is the plain
+# working copy, which stays out so the words are never plaintext in the
+# repository. See screening/README.md.
+screening/words.txt

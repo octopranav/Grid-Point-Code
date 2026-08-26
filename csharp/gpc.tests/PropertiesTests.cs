@@ -397,5 +397,152 @@ namespace Ca.Pranavpatel.Algo.GridPointCode.Tests {
             }
             Assert.True(tested > 20, "expected a substantial number of transitions");
         }
+
+        /*  Sections 12, 13 and 18, over the same wide sample.
+         *
+         *  The vector files pin these operations case by case. What follows pins
+         *  that they hold everywhere -- including in the quadrants a case-by-case
+         *  corpus might happen not to reach.  */
+
+        /// <summary>Containment answers what the grid indices answer.</summary>
+        [Fact]
+        public void AgreesWithTheGridAboutContainment() {
+            Sample sample = Shared.Value;
+            for (int i = 0; i < 4000; i++) {
+                string code = sample.Codes[i];
+                foreach (int k in new[] { 1, 3, 5, 7, 10 }) {
+                    string cell = GPC.Cell(code, k);
+                    Assert.Equal(code[..k], cell);
+                    Assert.True(GPC.Contains(cell, code), $"{cell} should contain {code}");
+                    // And a cell the point is not in never claims it.
+                    Assert.False(GPC.Contains(GPC.Neighbours(cell)[0], code));
+                }
+            }
+        }
+
+        /// <summary>Every neighbour is one cell away, and there are the right number.</summary>
+        [Fact]
+        public void PutsEveryNeighbourOneCellAway() {
+            Sample sample = Shared.Value;
+            for (int i = 0; i < 2000; i++) {
+                string code = sample.Codes[i];
+                foreach (int k in new[] { 1, 4, 7, 10 }) {
+                    long p = (long)Math.Pow(5, 10 - k);
+                    long rowCells = 4 * (long)Math.Pow(5, k - 1);
+                    long colCells = 6 * (long)Math.Pow(5, k - 1);
+                    string cell = GPC.Cell(code, k);
+                    (long row, long col) = GPC.DecodeToGrid(code);
+                    long cellRow = row / p;
+                    long cellCol = col / p;
+                    IReadOnlyList<string> got = GPC.Neighbours(cell);
+
+                    // Five in a polar row, eight everywhere else. Rows do not
+                    // wrap; columns always do.
+                    Assert.Equal(cellRow > 0 && cellRow < rowCells - 1 ? 8 : 5, got.Count);
+                    Assert.Equal(got.Count, new HashSet<string>(got).Count);
+                    Assert.DoesNotContain(cell, got);
+
+                    foreach (string neighbour in got) {
+                        (long nRow, long nCol) = GPC.CodeToGrid(neighbour + new string('0', 10 - k));
+                        long dCol = ((nCol / p) - cellCol + colCells) % colCells;
+                        if (dCol > colCells / 2) {
+                            dCol -= colCells;
+                        }
+                        Assert.True(Math.Abs((nRow / p) - cellRow) <= 1, neighbour);
+                        Assert.True(Math.Abs(dCol) <= 1, neighbour);
+                    }
+                }
+            }
+        }
+
+        /// <summary>Recovery is exact anywhere inside half a level-5 cell.</summary>
+        [Fact]
+        public void RecoversEveryShortFormInsideHalfALevel5Cell() {
+            Sample sample = Shared.Value;
+            // Half a level-5 cell on each axis: 1562 rows and 1562 columns.
+            double halfLatitude = 1562 * 180.0 / 7812500.0;
+            double halfLongitude = 1562 * 360.0 / 11718750.0;
+            (double Latitude, double Longitude)[] offsets = [
+                (0.0, 0.0), (halfLatitude, halfLongitude), (-halfLatitude, -halfLongitude),
+                (halfLatitude, -halfLongitude), (-halfLatitude, halfLongitude),
+            ];
+            for (int i = 0; i < 4000; i++) {
+                (double latitude, double longitude) = sample.Points[i];
+                string code = sample.Codes[i];
+                string shortForm = GPC.Shorten(code);
+                foreach ((double dLatitude, double dLongitude) in offsets) {
+                    double referenceLatitude = latitude + dLatitude;
+                    double referenceLongitude = longitude + dLongitude;
+                    if (referenceLatitude is < -90 or > 90 || referenceLongitude is < -180 or > 180) {
+                        continue;
+                    }
+                    Assert.Equal(code, GPC.RecoverShort(shortForm,
+                        referenceLatitude, referenceLongitude, false));
+                }
+            }
+        }
+
+        /// <summary>The integer form round-trips and sorts the way the strings do.</summary>
+        [Fact]
+        public void RoundTripsTheIntegerFormAndKeepsTheOrder() {
+            Sample sample = Shared.Value;
+            const long ReservedFloor = 91_552_734_375_000L;
+            string[] byString = new string[20_000];
+            Array.Copy(sample.Codes, byString, byString.Length);
+            foreach (string code in byString) {
+                long value = GPC.ToInteger(code);
+                Assert.Equal(code, GPC.FromInteger(value, false));
+                // No encoded code reaches the reserved namespace, so no integer
+                // form of one reaches the floor either.
+                Assert.True(value < ReservedFloor, code);
+            }
+            Array.Sort(byString, StringComparer.Ordinal);
+            for (int i = 1; i < byString.Length; i++) {
+                Assert.True(GPC.ToInteger(byString[i - 1]) <= GPC.ToInteger(byString[i]));
+            }
+        }
+
+        /// <summary>Distance is symmetric, and zero only from a cell to itself.</summary>
+        [Fact]
+        public void MeasuresDistanceSymmetrically() {
+            Sample sample = Shared.Value;
+            for (int i = 0; i < 2000; i += 2) {
+                string a = sample.Codes[i];
+                string b = sample.Codes[i + 1];
+                Assert.Equal(GPC.Distance(a, b), GPC.Distance(b, a));
+                Assert.Equal(0.0, GPC.Distance(a, a));
+                Assert.Equal(string.Equals(a, b, StringComparison.Ordinal), GPC.Distance(a, b) == 0.0);
+            }
+        }
+
+        /// <summary>
+        /// Decode returns a cell centre, which sits far enough from the nearest
+        /// boundary that neither rounding can push it into the next cell.
+        /// </summary>
+        [Fact]
+        public void LetsACodeSurviveBothCoordinateConversions() {
+            Sample sample = Shared.Value;
+            for (int i = 0; i < 5000; i++) {
+                string code = sample.Codes[i];
+                (double latitude, double longitude) = GPC.Decode(code);
+                (double uriLatitude, double uriLongitude) =
+                    GPC.FromGeoURI(GPC.ToGeoURI(latitude, longitude));
+                Assert.Equal(code, GPC.Encode(uriLatitude, uriLongitude, false));
+                (double dmsLatitude, double dmsLongitude) =
+                    GPC.FromDMS(GPC.ToDMS(latitude, longitude));
+                Assert.Equal(code, GPC.Encode(dmsLatitude, dmsLongitude, false));
+            }
+        }
+
+        /// <summary>Screening advises and never changes what a code does.</summary>
+        [Fact]
+        public void NeverLetsScreeningChangeWhatACodeDoes() {
+            Sample sample = Shared.Value;
+            for (int i = 0; i < 5000; i++) {
+                string code = sample.Codes[i];
+                Assert.NotEqual(string.Empty, GPC.Screen(code).Version);
+                Assert.True(GPC.IsValid(code), code);
+            }
+        }
     }
 }

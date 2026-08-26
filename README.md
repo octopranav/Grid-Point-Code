@@ -17,6 +17,8 @@
 * **Offline Support** – Works without internet or APIs
 * **Zero Dependencies** – No third-party packages in any of the four ports
 * **Formatted Output** – Easy-to-read `#XXXXX-XXXXX` format
+* **A Spatial API** – Cells, neighbours, containment, distance, the short form,
+  typo correction and the 48-bit integer form, all following from the guarantee
 * **Reads Version 1 Codes** – Every code ever issued still resolves
 * **Open Source** – Licensed under Apache 2.0
 
@@ -182,6 +184,72 @@ CodeClass kind = GPC.Classify("XG3RJ98NM9");  // CodeClass.RESERVED
 // Version 1 codes still decode
 Coordinates old = GPC.Decode("#FN5G-CDKL-HDC");
 ```
+
+---
+
+## The Locality API
+
+The guarantee is only useful if a caller can act on it, so each port carries the
+operations that follow from it rather than leaving everyone to re-derive the
+arithmetic. Every one of them is exact integer arithmetic except `distance`.
+
+| What it does | Python | TypeScript | C# and Java |
+| --- | --- | --- | --- |
+| The region the first k characters name | `cell` | `cell` | `Cell` |
+| Whether a code lies in a cell | `contains` | `contains` | `Contains` |
+| The eight cells around one | `neighbours` | `neighbours` | `Neighbours` |
+| How big a cell is at a level | `cell_dimensions` | `cellDimensions` | `CellDimensions` |
+| Great-circle metres between two cells | `distance` | `distance` | `Distance` |
+| The grid row and column | `decode_to_grid` | `decodeToGrid` | `DecodeToGrid` |
+| The last five characters | `shorten` | `shorten` | `Shorten` |
+| The full code, from those five and a reference | `recover_short` | `recoverShort` | `RecoverShort` |
+| Codes one typo away, best first | `suggest_corrections` | `suggestCorrections` | `SuggestCorrections` |
+| The 48-bit integer form | `to_integer`, `from_integer` | `toInteger`, `fromInteger` | `ToInteger`, `FromInteger` |
+| An RFC 5870 `geo:` URI | `to_geo_uri`, `from_geo_uri` | `toGeoURI`, `fromGeoURI` | `ToGeoURI`, `FromGeoURI` |
+| Degrees, minutes and seconds | `to_dms`, `from_dms` | `toDMS`, `fromDMS` | `ToDMS`, `FromDMS` |
+| Advisory word screening | `screen` | `screen` | `Screen` |
+| Batch and streaming conversion | `encode_all`, `encode_stream` | `encodeAll`, `encodeStream` | `EncodeAll`, `EncodeStream` |
+
+```python
+GPC.cell("#G3RJM-98NM9", 5)                    # 'G3RJM', the 8.0 by 10.7 km cell
+GPC.contains("G3RJM", "G3RJM98NM9")            # True -- the prefix test, exactly
+GPC.neighbours("G3RJM")                        # the eight cells around it
+
+GPC.shorten("#G3RJM-98NM9")                    # '98NM9', the second printed group
+GPC.recover_short("-98NM9", 43.66, -79.39)     # '#G3RJM-98NM9', near a reference
+
+GPC.suggest_corrections("#G3RJT-98NM9", 43.65, -79.38)
+# ['#G3RJM-98NM9'] -- the geography does the work a check digit would
+```
+
+A few things worth knowing before reaching for these:
+
+* **`contains` is the prefix test and nothing else.** There is no tolerance and
+  no edge case at a boundary, because the guarantee makes the string answer and
+  the geometric answer the same answer.
+* **Columns wrap at the antimeridian and rows do not**, so a cell in the top or
+  bottom row has five neighbours rather than eight. The three that would lie off
+  the grid are absent from the result rather than present and empty.
+* **`distance` is the one operation that is not bit-identical across the four
+  ports.** No standard library rounds sine, cosine or arc sine correctly, so the
+  ports agree to about a millimetre rather than exactly, and its conformance
+  vectors are the only ones in the corpus asserted to a tolerance. Anything that
+  needs a reproducible ordering should rank on the grid indices instead.
+* **The short form is a convenience and the ten characters are the form of
+  record.** Recovery is exact whenever the reference is within half a level-5
+  cell of the true point on each axis -- 4.0 km of latitude, 5.3 km of longitude
+  at the equator -- and outside that box it returns a plausible location 8 or
+  10 km away.
+* **`suggest_corrections` corrects, it does not detect.** It is not a checksum,
+  and the advice above about confirming on a map applies to its output as much
+  as to anything else.
+* **`screen` advises and never blocks.** Nothing in any port refuses to encode,
+  decode or validate because of what it found, and it reports the version of the
+  list it used whether or not anything matched.
+
+The optional check character of the specification is the one mechanism here that
+detects rather than corrects, and it is never present unless someone asks for
+it: `#G3RJM-98NM9*T`.
 
 ---
 

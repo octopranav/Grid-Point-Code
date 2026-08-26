@@ -16,6 +16,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using Xunit;
 
 namespace Ca.Pranavpatel.Algo.GridPointCode.Tests {
@@ -190,6 +192,143 @@ namespace Ca.Pranavpatel.Algo.GridPointCode.Tests {
                 Assert.Equal(r[1], GPC.CheckCharacter(r[0]));
                 Assert.Equal(GPC.Classify(r[0]), GPC.Classify($"{r[0]}*{r[1]}"));
             }
+        }
+
+
+        /// <summary>Short-form recovery, against every reference in the corpus.</summary>
+        [Fact]
+        public void RecoversEveryShortFormAgainstItsReference() {
+            List<string[]> data = Rows("v2_short.csv", 4);
+            Assert.True(data.Count > 100, "expected a short-form corpus");
+            foreach (string[] r in data) {
+                Assert.Equal(r[3], GPC.RecoverShort(r[0], Num(r[1]), Num(r[2]), false));
+                Assert.Equal(r[0], GPC.Shorten(r[3]));
+            }
+        }
+
+        /// <summary>The candidate list, and the order it comes back in.</summary>
+        [Fact]
+        public void SuggestsTheSameCorrectionsInTheSameOrder() {
+            List<string[]> data = Rows("v2_corrections.csv", 5);
+            Assert.True(data.Count > 10, "expected a corrections corpus");
+            foreach (string[] r in data) {
+                string[] expected = r[4].Length == 0 ? [] : r[4].Split(' ');
+                Assert.Equal(expected, GPC.SuggestCorrections(r[3], Num(r[1]), Num(r[2]),
+                    int.Parse(r[0], CultureInfo.InvariantCulture), false));
+            }
+        }
+
+        /// <summary>Cells and their neighbours, at every level of every code.</summary>
+        [Fact]
+        public void TakesTheExpectedCellAndNeighboursAtEveryLevel() {
+            List<string[]> data = Rows("v2_cells.csv", 4);
+            Assert.True(data.Count > 50, "expected a cell corpus");
+            foreach (string[] r in data) {
+                string cell = GPC.Cell(r[1], int.Parse(r[0], CultureInfo.InvariantCulture));
+                Assert.Equal(r[2], cell);
+                Assert.Equal(r[3].Length == 0 ? [] : r[3].Split(' '), GPC.Neighbours(cell));
+                Assert.True(GPC.Contains(cell, r[1]), $"{cell} should contain {r[1]}");
+            }
+        }
+
+        /// <summary>The base-25 integer form, both directions.</summary>
+        [Fact]
+        public void ConvertsToAndFromTheIntegerForm() {
+            List<string[]> data = Rows("v2_integer.csv", 2);
+            Assert.True(data.Count > 50, "expected an integer corpus");
+            foreach (string[] r in data) {
+                long value = long.Parse(r[1], CultureInfo.InvariantCulture);
+                Assert.Equal(value, GPC.ToInteger(r[0]));
+                Assert.Equal(r[0], GPC.FromInteger(value, false));
+            }
+        }
+
+        /// <summary>
+        /// The one file compared to a tolerance. See SPEC.md 18.5: no standard
+        /// library rounds sine, cosine or arc sine correctly, so asserting
+        /// equality here would pass on one machine and fail on the next.
+        /// </summary>
+        [Fact]
+        public void MeasuresEveryDistanceToWithinAMillimetre() {
+            List<string[]> data = Rows("v2_distance.csv", 3);
+            Assert.True(data.Count > 10, "expected a distance corpus");
+            foreach (string[] r in data) {
+                Assert.True(Math.Abs(GPC.Distance(r[0], r[1]) - Num(r[2])) < 0.001,
+                    $"{r[0]} to {r[1]}: {GPC.Distance(r[0], r[1])} against {r[2]}");
+            }
+        }
+
+        /// <summary>The geo URI, written and read back.</summary>
+        [Fact]
+        public void WritesAndReadsEveryGeoUri() {
+            List<string[]> data = Rows("v2_geo.csv", 3);
+            Assert.True(data.Count > 50, "expected a geo URI corpus");
+            foreach (string[] r in data) {
+                Assert.Equal(r[2], GPC.ToGeoURI(Num(r[0]), Num(r[1])));
+                // Six decimal places, so a coordinate carrying more comes back
+                // rounded. Everything Decode produces already has six, which is
+                // why the round trip through a code is exact; that is asserted
+                // in TestGPC rather than here.
+                (double latitude, double longitude) = GPC.FromGeoURI(r[2]);
+                Assert.True(Math.Abs(latitude - Num(r[0])) < 5e-7, r[2]);
+                Assert.True(Math.Abs(longitude - Num(r[1])) < 5e-7, r[2]);
+            }
+        }
+
+        /// <summary>Degrees, minutes and seconds, written and read back.</summary>
+        [Fact]
+        public void WritesAndReadsEveryDegreesMinutesSecondsForm() {
+            List<string[]> data = Rows("v2_dms.csv", 3);
+            Assert.True(data.Count > 50, "expected a DMS corpus");
+            foreach (string[] r in data) {
+                Assert.Equal(r[2], GPC.ToDMS(Num(r[0]), Num(r[1])));
+                // Lossy by a hundredth of a second, so the coordinates come back
+                // near rather than equal.
+                (double latitude, double longitude) = GPC.FromDMS(r[2]);
+                Assert.True(Math.Abs(latitude - Num(r[0])) < (0.5 / 360000) + 1e-12, r[2]);
+                Assert.True(Math.Abs(longitude - Num(r[1])) < (0.5 / 360000) + 1e-12, r[2]);
+            }
+        }
+
+        /// <summary>
+        /// Every port embeds its own copy of the advisory list. This is how the
+        /// four are held to being the same list, since CI cannot rebuild it.
+        /// </summary>
+        [Fact]
+        public void CarriesTheSameAdvisoryListAsEveryOtherPort() {
+            List<string[]> data = Rows("v2_screen_list.csv", 3);
+            string[] row = Assert.Single(data);
+            List<string> entries = [.. ScreenList.Entries];
+            entries.Sort(StringComparer.Ordinal);
+            Assert.Equal(int.Parse(row[1], CultureInfo.InvariantCulture), entries.Count);
+            Assert.Equal(ScreenList.Version, row[0]);
+            byte[] joined = Encoding.UTF8.GetBytes(string.Join('\n', entries));
+            Assert.Equal(row[2], Convert.ToHexStringLower(SHA256.HashData(joined)));
+        }
+
+        /// <summary>The matched spans, including the codes that match nothing.</summary>
+        [Fact]
+        public void ScreensEveryVectorToTheExpectedSpans() {
+            List<string[]> data = Rows("v2_screen.csv", 2);
+            Assert.True(data.Count > 10, "expected a screening corpus");
+            int matched = 0;
+            foreach (string[] r in data) {
+                List<(int Position, int Length)> expected = [];
+                if (r[1].Length > 0) {
+                    foreach (string span in r[1].Split(' ')) {
+                        string[] parts = span.Split(':');
+                        expected.Add((int.Parse(parts[0], CultureInfo.InvariantCulture),
+                                      int.Parse(parts[1], CultureInfo.InvariantCulture)));
+                    }
+                }
+                (string version, IReadOnlyList<(int Position, int Length)> spans) = GPC.Screen(r[0]);
+                Assert.Equal(expected, spans);
+                // The version comes back either way: a caller has to be able to
+                // tell "clean under this list" from "never screened".
+                Assert.Equal(ScreenList.Version, version);
+                matched += expected.Count > 0 ? 1 : 0;
+            }
+            Assert.True(matched > 0, "expected at least one code to match");
         }
 
         /*  Version 1  */
