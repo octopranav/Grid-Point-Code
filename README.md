@@ -14,6 +14,57 @@ lines of integer arithmetic, with no lookup table and no network.
 43.65000, -79.38000   ->   #G3RJM-98NM9
 ```
 
+## Who this is for
+
+**If you just need to tell somebody where something is**, a code is ten
+characters and names any spot on Earth to about three metres. A gate in a field,
+a stall in a market, the door round the back of a building, the bench you agreed
+to meet at. It works where there is no street number and no street name, it
+needs no app and no account, and neither end needs a signal to turn it back into
+a point on a map.
+
+**If you write software**, conversion is a few lines of integer arithmetic in
+both directions. No service to call, no API key, no rate limit, no data file to
+ship, and no third-party dependency in any of the four ports. What you compute
+on a phone in a basement is what you compute on a server.
+
+**If you keep locations in a database**, the guarantee below does the work an
+extra index usually does. Codes sort geographically as plain strings, so
+`ORDER BY code` is a spatial sort and an ordinary index is a spatial index. A
+prefix is a region, so `WHERE code LIKE 'G3RJM%'` means "everything in this
+8.0 by 10.7 km cell". And a code fits in six bytes if you would rather store a
+number than a string.
+
+**If codes get spoken or written down** — over a radio, down a telephone, onto a
+sign or a delivery note — an optional check character catches every
+single-character mistake and every swapped pair, and
+[Appendix D](SPEC.md#appendix-d--sharing-a-code-non-normative) covers reading
+one aloud.
+
+**If you work on small hardware or at scale**, there is no lookup table and no
+state to keep. The same ten-step loop fits in a microcontroller, a database
+function, or a batch over a billion rows.
+
+### What you would reach for
+
+| You want to | Use |
+| --- | --- |
+| Share one exact spot | The full code, `#G3RJM-98NM9` |
+| Say it aloud, or have it written down | The check form, `#G3RJM-98NM9*T` |
+| Group points by area | The first k characters — `cell` |
+| Ask whether a point is in an area | `contains`, which is a string comparison |
+| Find what is next door | `neighbours` |
+| Store it small, or sort it | The 48-bit integer form |
+| Repair a code somebody mistyped | `suggest_corrections` |
+| Warn before a code goes on a sign | `screen` |
+
+Two things worth knowing before you start. A code names a **cell, not a point**,
+so it comes back as the centre of a 2.56 by 3.42 m box rather than the exact
+coordinate you put in. And a shared prefix proves nearness, but nearness does
+not promise a shared prefix — two points either side of a grid boundary can
+share nothing at all. Both are covered under
+[Precision and limits](#precision-and-limits).
+
 ## The guarantee
 
 > Two codes agree in their first **k** characters **if and only if** the two
