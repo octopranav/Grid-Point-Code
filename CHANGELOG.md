@@ -85,8 +85,12 @@ from without reading any source.
 * **Advisory screening.** `screen(code)` reports substrings that spell something
   unwanted, as spans, alongside the version of the list it used. It advises and
   never blocks: nothing refuses to encode, decode or validate because of what it
-  found. The list is stored as hashes and the words themselves are not in the
-  repository.
+  found. The published packages carry hashes and never the words, which is the
+  part that matters: a package is installed by people who never asked to receive
+  a word list. The words live in an encrypted archive in the repository, so the
+  list stays auditable without being greppable or turned up by a search; the
+  passphrase is published, because none of this is protection and the
+  specification says so. Roughly one code in a thousand matches something.
 * **Batch and streaming conversion.** `encodeAll` and `decodeAll` for dataset
   work, and lazy `encodeStream` and `decodeStream` beside them for callers that
   want to handle a bad row without losing the rest.

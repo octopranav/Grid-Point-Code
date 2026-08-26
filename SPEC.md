@@ -1153,8 +1153,14 @@ matched MUST be reported. A code that matches nothing returns no spans and the
 version tag all the same, because a caller has to be able to tell "clean under
 list 2026.1" from "never screened".
 
-Measured against a core list, roughly one code in 250 matches something, which
-is low enough that a warning does not become noise.
+How often a warning fires is set by the shortest entries and by almost nothing
+else. A four-symbol variant occupies seven of those twenty-eight windows
+against 25⁴ = 390,625 possibilities, so it matches about one code in 55,800; a
+six-symbol variant matches about one in 49 million, and a longer one never
+fires in practice. A list is therefore exactly as noisy as its four-letter
+words and no noisier -- fifty such variants come to roughly one code in a
+thousand -- so a list that has become noisy is shortened from the bottom, not
+the top.
 
 ---
 

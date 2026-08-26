@@ -545,6 +545,10 @@ def main():
     check("a word with an unrepresentable letter is dropped",
           g.expand_word("quart"), [])
     check("a word below the floor is dropped", g.expand_word("cat"), [])
+    check("a four-symbol variant matches about one code in 55,800",
+          round(25 ** 4 / (10 - 4 + 1)), 55_804)
+    check("a six-symbol variant matches about one code in 49 million",
+          round(25 ** 6 / (10 - 6 + 1)), 48_828_125)
     check("windows a screen considers",
           sum(10 - length + 1 for length in range(g.SCREEN_MIN, 11)), 28)
     check("the hash is eight lower-case hexadecimal characters",

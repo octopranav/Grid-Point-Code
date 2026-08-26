@@ -99,7 +99,23 @@ catches a port whose copy drifted from the other three.
 
 ## The list in this repository today
 
-A placeholder, so that the machinery is exercised end to end and the vectors
-have something to assert. The words in it are ordinary and harmless — `gnat`,
-`cattle`, `kettle` and five more, thirty-five variants between them, about one
-code in nine thousand. Replace it before 2.0.0 ships.
+Seventy-one English words expanding to 193 variants. Measured over 300,000
+random codes, **one code in 1,107 matches something**.
+
+Two rules of the format decide what can be on the list at all, and both cut
+deeper than any editorial judgement. Four letters minimum, because a
+three-symbol run occurs by chance often enough that a warning built on it would
+mean nothing. And no `q`, `u`, `v` or `y`, because those have no symbol in the
+alphabet, so a word containing one cannot appear in a code however much anyone
+might want it flagged. Between them they remove most of the obvious English
+vocabulary before there is anything to decide.
+
+The warning rate is made almost entirely of the four-letter entries: one of
+those matches about one code in 55,800, where a six-letter entry matches about
+one in 49 million and a longer one never fires at all. Long words are therefore
+free to add and cover nothing — if the list ever needs to be quieter, it is the
+four-letter words that have to go.
+
+The list is English. A word that is unremarkable in English and offensive
+somewhere else is not covered, and adding one is a release rather than a
+setting, because the hashes are compiled into the four ports.

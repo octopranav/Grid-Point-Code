@@ -25,15 +25,42 @@ namespace Ca.Pranavpatel.Algo.GridPointCode {
 
     internal static class ScreenList {
 
-        internal const string Version = "2026.1";
+        internal const string Version = "2026.2";
 
         private const string Packed = ""
-            + "091a21210c99406e11d8522415e33f40194826ea1e3225bb"
-            + "1e75e3a51f2c744e238d033127f3a33e2e7026f9408d30d8"
-            + "4bd57b15526fcc485559ef785b7931fd5d7a67ac5dee0df3"
-            + "68d5a8bc6b99d5fb72b0d782785a26918236485983cdd187"
-            + "8a3d159f94c12502a924d54bb33a58e9b95f7094ba9445fc"
-            + "cb0e5110d3c2a92ad81a9b47db1842ffee0e8829";
+            + "00b484d7027bf2ac034318e3059c3b58061e821306635810"
+            + "078fdaa2085159a20a8fdf5b0b232e690c64f6910e3cde7e"
+            + "0fab75d511b90ef411bdd721123ae66c13fb5ad0163b8b34"
+            + "166236f9180678a41832fb811c154bd21d556b241ee834e7"
+            + "22228b1522f6bfc924072bc324ffe1f225049212254d4d6d"
+            + "2556bff6257c29c5267fded927539dee280496cb2945f6ef"
+            + "2c38e6b52d30cad62d38e8482d3cd2922e5a2e762f48d644"
+            + "3033c67b30499e89313b3928327d0f7433860bb334d81d72"
+            + "3949acb43ad3a7a73ba9799c3ef6293c4084f6f642a0f0bd"
+            + "43242cc943a4d9bb4741fa834758af4747b27abe492f3b60"
+            + "4a462ae24acfbc244bfc83a94e1b91a85181934252715479"
+            + "52a44c0f53d0109c57d5075057eca39359905bb85ad70fbf"
+            + "5af919ab5bb2beb45d19a427614b47fd62336fff632fcc43"
+            + "649070cb66b6ad7b673377de68a74cef692fd5b5699a533d"
+            + "6a0ee9486acc9a786ba9a4166db4a3106e1977726e90d294"
+            + "6f5569f66ffd821571bce5e471dd9f6475bccea977ae37ef"
+            + "797c2cf779e08ae47b3963127c914b677e4b75a47e91d0fa"
+            + "81f8996d8400777f8507c4768637562b870de3268a449bf2"
+            + "8af9b6808b4584e58bf321c28cf1eefa8dccd19190b4da29"
+            + "90cd4340920df47793436e6195e9b349995fe7a59a17f82a"
+            + "9e6653a09ee9c174a2408209a4428356a4e9cae6a5a4ceb8"
+            + "a9e04024ac43f9b7adbc5a07af6c2982b105f722b1406995"
+            + "b1b3219cb6fac869b8b32ca1b8b79411b8d8c3d8ba45cee2"
+            + "bbd74be0bbf9b25ebcb03b5abd45d39bbe1a3cdabfa7e228"
+            + "c2a00719c3296d6cc370d692c4562743c46c4a91c83f8f00"
+            + "c86e3ea7ca48fdf7cb017543cbaca9a4cca8cadfccd8d9da"
+            + "cd0f8521ce227f7dd1a8d2bed28534f8d2af9084d4bd81bd"
+            + "d4de3b3dd5f8e653d7041748d8549f0dda01b44ddbaf1f88"
+            + "dce126bddf012d92e35e7ad2e4a05cc3e4a3b54ce4e7d999"
+            + "e56d7f2ae902499deaa7bee0ede7e7c4ef219a6df0bb12e3"
+            + "f11dada4f1568119f1a0713af2e7b8d8f2ee27daf361ffe0"
+            + "f80e9509f80f7978f8e7c24af968c0fdf97db847fb064afd"
+            + "fbbc268f";
 
         internal static readonly HashSet<string> Entries = Unpack();
 
