@@ -1,6 +1,7 @@
 package ca.pranavpatel.algo.gridpointcode;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,7 +15,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -365,5 +368,134 @@ class PropertiesTest {
             }
         }
         assertTrue(tested > 20, "expected a substantial number of transitions");
+    }
+
+    /*  Sections 12, 13 and 18, over the same wide sample.
+     *
+     *  The vector files pin these operations case by case. What follows pins
+     *  that they hold everywhere -- including in the quadrants a case-by-case
+     *  corpus might happen not to reach.  */
+
+    @Test
+    void agreesWithTheGridAboutContainment() {
+        for (int i = 0; i < 4000; i++) {
+            String code = codes[i];
+            for (int k : new int[] {1, 3, 5, 7, 10}) {
+                String cell = GPC.Cell(code, k);
+                assertEquals(code.substring(0, k), cell);
+                assertTrue(GPC.Contains(cell, code), cell + " should contain " + code);
+                // And a cell the point is not in never claims it.
+                assertFalse(GPC.Contains(GPC.Neighbours(cell).get(0), code));
+            }
+        }
+    }
+
+    @Test
+    void putsEveryNeighbourOneCellAway() {
+        for (int i = 0; i < 2000; i++) {
+            String code = codes[i];
+            for (int k : new int[] {1, 4, 7, 10}) {
+                long p = (long)Math.pow(5, 10 - k);
+                long rowCells = 4 * (long)Math.pow(5, k - 1);
+                long colCells = 6 * (long)Math.pow(5, k - 1);
+                String cell = GPC.Cell(code, k);
+                long[] grid = GPC.DecodeToGrid(code);
+                long cellRow = grid[0] / p;
+                long cellCol = grid[1] / p;
+                List<String> got = GPC.Neighbours(cell);
+
+                // Five in a polar row, eight everywhere else. Rows do not wrap;
+                // columns always do.
+                assertEquals(cellRow > 0 && cellRow < rowCells - 1 ? 8 : 5, got.size(), cell);
+                assertEquals(got.size(), new HashSet<>(got).size(), cell);
+                assertFalse(got.contains(cell), cell);
+
+                for (String neighbour : got) {
+                    long[] other = GPC.CodeToGrid(neighbour + "0".repeat(10 - k));
+                    long dCol = (other[1] / p - cellCol + colCells) % colCells;
+                    if (dCol > colCells / 2) {
+                        dCol -= colCells;
+                    }
+                    assertTrue(Math.abs(other[0] / p - cellRow) <= 1, neighbour);
+                    assertTrue(Math.abs(dCol) <= 1, neighbour);
+                }
+            }
+        }
+    }
+
+    @Test
+    void recoversEveryShortFormInsideHalfALevelFiveCell() {
+        // Half a level-5 cell on each axis: 1562 rows and 1562 columns.
+        double halfLatitude = 1562 * 180.0 / 7812500.0;
+        double halfLongitude = 1562 * 360.0 / 11718750.0;
+        double[][] offsets = {{0.0, 0.0}, {halfLatitude, halfLongitude},
+                              {-halfLatitude, -halfLongitude},
+                              {halfLatitude, -halfLongitude},
+                              {-halfLatitude, halfLongitude}};
+        for (int i = 0; i < 4000; i++) {
+            String code = codes[i];
+            String shortForm = GPC.Shorten(code);
+            for (double[] offset : offsets) {
+                double latitude = latitudes[i] + offset[0];
+                double longitude = longitudes[i] + offset[1];
+                if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+                    continue;
+                }
+                assertEquals(code, GPC.RecoverShort(shortForm, latitude, longitude, false));
+            }
+        }
+    }
+
+    @Test
+    void roundTripsTheIntegerFormAndKeepsTheOrder() {
+        long reservedFloor = 91_552_734_375_000L;
+        String[] sorted = Arrays.copyOf(codes, 20_000);
+        for (String code : sorted) {
+            long value = GPC.ToInteger(code);
+            assertEquals(code, GPC.FromInteger(value, false));
+            // No encoded code reaches the reserved namespace, so no integer form
+            // of one reaches the floor either.
+            assertTrue(value < reservedFloor, code);
+        }
+        Arrays.sort(sorted);
+        for (int i = 1; i < sorted.length; i++) {
+            assertTrue(GPC.ToInteger(sorted[i - 1]) <= GPC.ToInteger(sorted[i]));
+        }
+    }
+
+    @Test
+    void measuresDistanceSymmetrically() {
+        for (int i = 0; i < 2000; i += 2) {
+            String a = codes[i];
+            String b = codes[i + 1];
+            assertEquals(GPC.Distance(a, b), GPC.Distance(b, a));
+            assertEquals(0.0, GPC.Distance(a, a));
+            assertEquals(a.equals(b), GPC.Distance(a, b) == 0.0, a + " " + b);
+        }
+    }
+
+    /**
+     * Decode returns a cell centre, which sits far enough from the nearest
+     * boundary that neither rounding can push it into the next cell.
+     */
+    @Test
+    void letsACodeSurviveBothCoordinateConversions() {
+        for (int i = 0; i < 5000; i++) {
+            String code = codes[i];
+            Coordinates centre = GPC.Decode(code);
+            Coordinates viaUri = GPC.FromGeoURI(GPC.ToGeoURI(centre.Latitude, centre.Longitude));
+            assertEquals(code, GPC.Encode(viaUri.Latitude, viaUri.Longitude, false));
+            Coordinates viaDms = GPC.FromDMS(GPC.ToDMS(centre.Latitude, centre.Longitude));
+            assertEquals(code, GPC.Encode(viaDms.Latitude, viaDms.Longitude, false));
+        }
+    }
+
+    @Test
+    void neverLetsScreeningChangeWhatACodeDoes() {
+        for (int i = 0; i < 5000; i++) {
+            String code = codes[i];
+            assertNotEquals("", GPC.Screen(code).Version);
+            assertTrue(GPC.IsValid(code), code);
+        }
     }
 }
