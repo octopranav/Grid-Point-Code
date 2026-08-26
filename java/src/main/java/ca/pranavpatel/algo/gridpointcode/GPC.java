@@ -830,6 +830,22 @@ public final class GPC {
     }
 
     /**
+     * Codes one typo away at a chosen level, formatted. Section 15.3.
+     *
+     * @param gridPointCode The code as typed.
+     * @param nearLatitude Reference latitude.
+     * @param nearLongitude Reference longitude.
+     * @param level The level whose cell and eight neighbours bound the search.
+     * @return the candidates, best first.
+     * @throws ca.pranavpatel.algo.gridpointcode.GPCException if the level is
+     *  outside 1 to 10, or the code is not ten symbols of the alphabet.
+     */
+    public static List<String> SuggestCorrections(String gridPointCode, double nearLatitude,
+            double nearLongitude, int level) {
+        return SuggestCorrections(gridPointCode, nearLatitude, nearLongitude, level, true);
+    }
+
+    /**
      * The code as a base-25 numeral. Section 13.
      *
      * <p>Forty-seven bits, so six bytes big-endian, and order-preserving: sorting
@@ -927,6 +943,16 @@ public final class GPC {
     }
 
     /**
+     * Encodes a sequence of coordinates, formatted.
+     *
+     * @param points The coordinates.
+     * @return the codes.
+     */
+    public static List<String> EncodeAll(List<Coordinates> points) {
+        return EncodeAll(points, true);
+    }
+
+    /**
      * Encodes a stream lazily, one code at a time.
      *
      * @param points The coordinates.
@@ -935,6 +961,16 @@ public final class GPC {
      */
     public static Stream<String> EncodeStream(Stream<Coordinates> points, Boolean formatted) {
         return points.map(point -> Encode(point.Latitude, point.Longitude, formatted));
+    }
+
+    /**
+     * Encodes a stream lazily, formatted, one code at a time.
+     *
+     * @param points The coordinates.
+     * @return the codes, produced as they are asked for.
+     */
+    public static Stream<String> EncodeStream(Stream<Coordinates> points) {
+        return EncodeStream(points, true);
     }
 
     /**

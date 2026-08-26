@@ -339,6 +339,24 @@ namespace Ca.Pranavpatel.Algo.GridPointCode.Tests {
             }
         }
 
+        /// <summary>
+        /// The convenience overloads agree with the explicit ones. A caller who
+        /// wants a different level should not have to pass a formatting flag they
+        /// do not care about.
+        /// </summary>
+        [Fact]
+        public void ConvenienceOverloadsMatchTheExplicitForms() {
+            Assert.Equal(GPC.SuggestCorrections("G3RJM98N09", 43.65, -79.38, 4, true),
+                GPC.SuggestCorrections("G3RJM98N09", 43.65, -79.38, 4));
+            Assert.Equal(GPC.SuggestCorrections("G3RJM98N09", 43.65, -79.38, 6, true),
+                GPC.SuggestCorrections("G3RJM98N09", 43.65, -79.38));
+
+            List<(double, double)> points = [(43.65, -79.38), (0.0, 0.0)];
+            Assert.Equal(GPC.EncodeAll(points, true), GPC.EncodeAll(points));
+            Assert.Equal(GPC.EncodeStream(points, true), GPC.EncodeStream(points));
+            Assert.Equal(["#G3RJM-98NM9", "#JPPPP-00000"], GPC.EncodeAll(points));
+        }
+
         /// <summary>withCheck builds the check form.</summary>
         [Fact]
         public void BuildsTheCheckForm() {

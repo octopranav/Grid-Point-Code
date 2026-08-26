@@ -869,6 +869,20 @@ namespace Ca.Pranavpatel.Algo.GridPointCode {
         }
 
         /// <summary>
+        /// Codes one typo away at a chosen level, formatted. Section 15.3.
+        /// </summary>
+        /// <param name="gridPointCode">The code as typed.</param>
+        /// <param name="nearLatitude">Reference latitude.</param>
+        /// <param name="nearLongitude">Reference longitude.</param>
+        /// <param name="level">The level whose cell and eight neighbours bound the search.</param>
+        /// <returns>The candidates, best first.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">if the level is outside 1 to 10.</exception>
+        public static IReadOnlyList<string> SuggestCorrections(string gridPointCode, double nearLatitude,
+                double nearLongitude, int level) {
+            return SuggestCorrections(gridPointCode, nearLatitude, nearLongitude, level, true);
+        }
+
+        /// <summary>
         /// The code as a base-25 numeral. Section 13.
         /// <para>
         /// Forty-seven bits, so six bytes big-endian, and order-preserving:
@@ -951,7 +965,7 @@ namespace Ca.Pranavpatel.Algo.GridPointCode {
         /// Encodes a sequence of coordinates.
         /// <para>
         /// For dataset work. The first bad coordinate throws, rather than a bad
-        /// row being silently dropped; <see cref="EncodeStream" /> is the one to
+        /// row being silently dropped; <c>EncodeStream</c> is the one to
         /// reach for when the caller wants to handle failures row by row.
         /// </para>
         /// </summary>
@@ -967,6 +981,14 @@ namespace Ca.Pranavpatel.Algo.GridPointCode {
             return codes;
         }
 
+        /// <summary>Encodes a sequence of coordinates, formatted.</summary>
+        /// <param name="points">The coordinates.</param>
+        /// <returns>The codes.</returns>
+        public static IReadOnlyList<string> EncodeAll(
+                IEnumerable<(double Latitude, double Longitude)> points) {
+            return EncodeAll(points, true);
+        }
+
         /// <summary>Encodes a sequence lazily, one code at a time.</summary>
         /// <param name="points">The coordinates.</param>
         /// <param name="formatted">True for <c>#XXXXX-XXXXX</c>, false for the bare ten.</param>
@@ -977,6 +999,14 @@ namespace Ca.Pranavpatel.Algo.GridPointCode {
             foreach ((double latitude, double longitude) in points) {
                 yield return Encode(latitude, longitude, formatted);
             }
+        }
+
+        /// <summary>Encodes a sequence lazily, formatted, one code at a time.</summary>
+        /// <param name="points">The coordinates.</param>
+        /// <returns>The codes, produced as they are asked for.</returns>
+        public static IEnumerable<string> EncodeStream(
+                IEnumerable<(double Latitude, double Longitude)> points) {
+            return EncodeStream(points, true);
         }
 
         /// <summary>Decodes a sequence of codes.</summary>

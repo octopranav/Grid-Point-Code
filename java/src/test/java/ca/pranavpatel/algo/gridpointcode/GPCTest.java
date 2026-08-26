@@ -8,8 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -318,6 +320,22 @@ class GPCTest {
     void givesAReservedCodeACheckCharacterLikeAnyOther() {
         assertEquals(CodeClass.RESERVED,
                 GPC.Classify("XG3RJ98NM9*" + GPC.CheckCharacter("XG3RJ98NM9")));
+    }
+
+    @Test
+    void convenienceOverloadsMatchTheExplicitForms() {
+        assertEquals(GPC.SuggestCorrections("G3RJM98N09", 43.65, -79.38, 4, true),
+                GPC.SuggestCorrections("G3RJM98N09", 43.65, -79.38, 4));
+        assertEquals(GPC.SuggestCorrections("G3RJM98N09", 43.65, -79.38, 6, true),
+                GPC.SuggestCorrections("G3RJM98N09", 43.65, -79.38));
+
+        List<Coordinates> points = new ArrayList<>();
+        points.add(new Coordinates(43.65, -79.38));
+        points.add(new Coordinates(0.0, 0.0));
+        assertEquals(GPC.EncodeAll(points, true), GPC.EncodeAll(points));
+        assertEquals(Arrays.asList("#G3RJM-98NM9", "#JPPPP-00000"), GPC.EncodeAll(points));
+        assertEquals(GPC.EncodeStream(points.stream(), true).collect(Collectors.toList()),
+                GPC.EncodeStream(points.stream()).collect(Collectors.toList()));
     }
 
     @Test
