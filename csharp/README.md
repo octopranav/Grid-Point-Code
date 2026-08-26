@@ -43,6 +43,8 @@ lines share nothing.
 - **Prefix locality.** Sorting codes as plain strings sorts them geographically.
 - **Offline.** No network access, no API, no data files.
 - **No dependencies.** Nothing beyond the .NET base class library.
+- **A spatial API on top of the guarantee.** Cells, neighbours, containment,
+  distance, the short form, typo correction and the integer form.
 - **Reads version 1 codes.** Every code ever issued still resolves.
 
 ## Requirements
@@ -106,9 +108,132 @@ try {
 ```
 
 Code reasons are `GPC_NULL`, `GPC_LENGTH`, `GPC_CHAR`, `GPC_CHECK`,
-`GPC_RESERVED` and `GPC_RANGE`. The last belongs to version 1 only. A
-coordinate outside the domain throws `ArgumentOutOfRangeException`, as it did
-in version 1.
+`GPC_RESERVED` and `GPC_RANGE`. `GPC_RANGE` covers both an eleven-character
+version 1 code out of range and an integer form outside 0 to 25^10 - 1. The
+locality API adds `GPC_DMS` and `GPC_GEO`, for text the two coordinate parsers
+do not accept; neither ever comes back from `Validate`.
+
+An argument outside its range throws `ArgumentOutOfRangeException`, as it did in
+version 1 -- a coordinate outside the domain, and now also a level outside 1 to
+10. The other three ports carry that one as a `GPC_LEVEL` reason instead, each
+port following the convention it already had.
+
+### The locality API
+
+A shared prefix means a shared cell. These are the operations that let a caller
+act on that without re-deriving the arithmetic.
+
+```csharp
+// A cell is the first k characters: the region those characters name.
+GPC.Cell("#G3RJM-98NM9", 5);                   // "G3RJM", a cell 8.0 by 10.7 km
+GPC.Contains("G3RJM", "G3RJM98NM9");           // true -- the prefix test, exactly
+GPC.Neighbours("G3RJM");                       // the eight cells around it
+GPC.CellDimensions(5);                         // spans in degrees, then in metres
+GPC.Distance("#G3RJM-98NM9", "#6LK4X-NRP0R");  // 15566716.58 metres
+
+// The row and column, for building your own spatial structure.
+GPC.DecodeToGrid("#G3RJM-98NM9");              // (5800781, 3275390)
+
+// The integer form: 48 bits, big-endian, and it sorts spatially too.
+GPC.ToInteger("G3RJM98NM9");                   // 50180843496709
+GPC.FromInteger(50180843496709L);              // "#G3RJM-98NM9"
+```
+
+Columns wrap at the antimeridian and rows do not, so a cell in the top or bottom
+row has five neighbours rather than eight, and the missing three are absent from
+the result rather than present and empty.
+
+`Distance` is the one operation here that is not bit-identical across the four
+ports: no standard library rounds sine, cosine or arc sine correctly, so they
+agree to about a millimetre rather than exactly. Anything that needs a
+reproducible ordering should rank on the grid indices instead.
+
+### The short form
+
+The last five characters of a code -- literally the second printed group -- name
+a position uniquely inside a level-5 cell, which is 8.0 by 10.7 km.
+
+```csharp
+GPC.Shorten("#G3RJM-98NM9");                   // "98NM9"
+GPC.RecoverShort("-98NM9", 43.66, -79.39);     // "#G3RJM-98NM9"
+```
+
+Recovery is exact whenever the reference lies within half a cell of the true
+point on each axis: 0.036 degrees of latitude, which is 4.0 km, and 0.048 of
+longitude, 5.3 km at the equator and less elsewhere. Outside that box it returns
+a neighbouring cell's copy of the same offset, which is a plausible location 8
+or 10 km away, so a caller that cannot bound its reference should not use the
+short form. **The full ten characters are the form of record.**
+
+### Correcting a typo
+
+A hierarchical code bounds the damage a typo does, and the same structure
+locates it. Given a reference point, `SuggestCorrections` returns the codes one typo
+away that are plausible near it, best first.
+
+```csharp
+GPC.SuggestCorrections("#G3RJT-98NM9", 43.65, -79.38);
+// ["#G3RJM-98NM9"]
+```
+
+The window is three by three cells at the level you pass, so the level to choose
+is the one that comfortably exceeds the uncertainty in your reference. Level 6
+is the default: it suits a device fix or a named suburb, and returns a single
+candidate in the median case.
+
+This corrects rather than detects, and it is not a checksum. **Show the decoded
+point on a map before acting on it** -- nearly 29 % of single-character typos
+produce a location in the right region and the wrong place.
+
+### Coordinate conversions
+
+Two textual forms, for reading off a survey sheet and for writing a link.
+
+```csharp
+GPC.ToGeoURI(43.650006, -79.380004);           // "geo:43.650006,-79.380004"
+GPC.FromGeoURI("geo:43.65,-79.38");            // (43.65, -79.38)
+
+GPC.ToDMS(43.65, -79.38);                      // "43°39'00.00\"N, 79°22'48.00\"W"
+GPC.FromDMS("43°39'00.00\"N, 79°22'48.00\"W");   // (43.65, -79.38)
+```
+
+The `geo:` URI is exact: six decimal places, which is what `Decode` returns, so
+a code written out this way and read back encodes to the same code every time.
+Degrees, minutes and seconds are for a person to read, and are rounded to a
+hundredth of a second -- lossy by up to 0.155 m, though a decoded code still
+survives the trip, because a cell centre sits eight times further from the
+nearest boundary than that.
+
+### Screening
+
+The alphabet has no vowels, so no English word can appear in a code. Words that
+substitute digits for letters still can, and at ten characters there is no spare
+code space to skip them.
+
+```csharp
+(string version, var spans) = GPC.Screen("#G3RJM-98NM9");
+// ("2026.1", [])  -- the version, and nothing matched
+```
+
+`Screen` reports and never blocks: nothing in this package refuses to
+encode, decode or validate because of what it found. It returns the version of
+the list either way, so a caller can tell "clean under this list" from "never
+screened". Roughly one code in 250 matches something.
+
+### Bulk conversion
+
+```csharp
+GPC.EncodeAll([(43.65, -79.38), (0.0, 0.0)], true);
+// ["#G3RJM-98NM9", "#JPPPP-00000"]
+GPC.DecodeAll(["#G3RJM-98NM9"]);               // [(43.650006, -79.380004)]
+
+foreach (string code in GPC.EncodeStream(points, true)) {  // lazily
+}
+```
+
+The batch form throws on the first bad row rather than dropping it silently. The
+streaming form produces codes as they are asked for, so a caller that wants to
+handle failures row by row can.
 
 ### The optional check character
 
