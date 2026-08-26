@@ -182,6 +182,20 @@ the machine it was written on and fail somewhere else, because no standard
 library rounds sine, cosine or arc sine correctly; the reason is
 [18.5](../SPEC.md#185-distance).
 
+The same reasoning applies to the expected value itself, which is easy to miss.
+A full-precision haversine result differs in its last bits between one
+platform's maths library and another's — about seven nanometres over a
+fifteen-thousand kilometre pair — so writing every digit would make this file
+regenerate differently on a different machine and break the one property the
+regenerate-identically job exists to hold. `metres` is therefore **quantised to
+a millimetre**: a thousand times finer than any real implementation error, and a
+hundred thousand times coarser than the divergence between platforms.
+
+The generator refuses a pair whose true distance sits within a tenth of a
+micrometre of a rounding tie, since that is the one case where two platforms
+could round it differently. If that ever fires, replace the pair rather than
+loosening the guard.
+
 The pair `a` and `b` may be cells of different levels. Two rows are nearly
 antipodal, which is where the sum inside the arc sine can round past 1 and
 produce a NaN in a port that does not clamp it.

@@ -736,6 +736,37 @@ print(f"v2_integer.csv            {integer_rows:5} vectors")
 # The only file here compared to a tolerance rather than to equality. Section
 # 18.5 says why: no standard library rounds sine, cosine or arc sine correctly,
 # so four ports agree to about a millimetre and not exactly.
+#
+# The same reasoning applies to this file's own contents, which is easy to miss.
+# A full-precision haversine result differs in its last bits between one
+# platform's library and another's -- measured at about seven nanometres over a
+# fifteen-thousand kilometre pair -- so writing every digit would make the
+# corpus regenerate differently on a different machine and break the one
+# property the regenerate-identically job exists to hold. The value is therefore
+# quantised to a millimetre, which is a thousand times finer than any real
+# implementation error and a hundred thousand times coarser than the platform
+# divergence.
+#
+# Quantising has one edge: a true value sitting almost exactly halfway between
+# two millimetres could round up on one platform and down on another. GUARD
+# below rejects any pair within a tenth of a micrometre of that midpoint, which
+# is ten times the divergence, so the corpus fails here at authoring time rather
+# than mysteriously in CI later. If it ever fires, replace the offending pair.
+
+DISTANCE_PLACES = 3        # millimetres
+GUARD = 1e-7               # metres from a rounding tie
+
+
+def quantised_metres(a, b):
+    """The distance to a millimetre, refusing anything near a rounding tie."""
+    exact = GPC.distance(a, b)
+    scaled = exact * 10 ** DISTANCE_PLACES
+    if abs(scaled - math.floor(scaled) - 0.5) < GUARD * 10 ** DISTANCE_PLACES:
+        raise AssertionError(
+            f"distance({a}, {b}) = {exact!r} sits on a rounding tie and would "
+            f"not regenerate identically on another platform. Replace the pair.")
+    return round(exact, DISTANCE_PLACES)
+
 
 distance_pairs = [
     ("G3RJM98NM9", "G3RJM98NM9"),          # zero
@@ -767,9 +798,14 @@ lines = ["# a,b,metres",
          "# THIS FILE IS COMPARED TO A TOLERANCE, NOT TO EQUALITY. Ports must",
          "# agree within one millimetre; asserting equality passes on the machine",
          "# it was written on and fails somewhere else. Section 18.5.",
+         "#",
+         "# The expected value is itself quantised to a millimetre, for the same",
+         "# reason: a full-precision haversine result differs in its last bits",
+         "# between platform libraries, and this corpus has to regenerate",
+         "# identically anywhere.",
          ""]
 for a, b in distance_pairs:
-    lines.append(f"{a},{b},{fmt(GPC.distance(a, b))}")
+    lines.append(f"{a},{b},{fmt(quantised_metres(a, b))}")
 lines.append("")
 write("v2_distance.csv", lines)
 print(f"v2_distance.csv           {len(distance_pairs):5} vectors")
