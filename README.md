@@ -6,27 +6,35 @@
 [![npm (scoped)](https://img.shields.io/npm/v/@pranavpatel.ca/algo-gridpointcode)](https://www.npmjs.com/package/@pranavpatel.ca/algo-gridpointcode)
 [![PyPI](https://img.shields.io/pypi/v/gridpointcode-algo-pranavpatel-ca)](https://pypi.org/project/gridpointcode-algo-pranavpatel-ca/)
 
-## Overview
+**Grid Point Code** names one cell of a fixed grid over the Earth with a
+ten-character code. Conversion runs offline in both directions and is a few
+lines of integer arithmetic, with no lookup table and no network.
 
-**Grid Point Code (GPC)** names one cell of a fixed grid laid over the Earth with a compact ten-character code. Conversion runs offline in both directions, and every character is a refinement of the ones before it, so **two codes that begin with the same k characters name points in the same level-k cell.**
+```
+43.65000, -79.38000   ->   #G3RJM-98NM9
+```
 
-## Features
+## The guarantee
 
-* **Ten Characters, Fixed** – Every location, everywhere, same length
-* **Prefix Locality** – A shared prefix means a shared cell, for every pair of points
-* **Offline Support** – Works without internet or APIs
-* **Zero Dependencies** – No third-party packages in any of the four ports
-* **Formatted Output** – Easy-to-read `#XXXXX-XXXXX` format
-* **A Spatial API** – Cells, neighbours, containment, distance, the short form,
-  typo correction and the 48-bit integer form, all following from the guarantee
-* **Reads Version 1 Codes** – Every code ever issued still resolves
-* **Open Source** – Licensed under Apache 2.0
+> Two codes agree in their first **k** characters **if and only if** the two
+> points lie in the same level-**k** cell.
 
-## Code Structure
+Both directions, for every pair of points on Earth, without exception. That is
+containment rather than correlation, and it is a theorem about how the code is
+built rather than a tendency measured over samples: it is proved in
+[section 10 of the specification](SPEC.md#10-the-locality-guarantee) and
+re-checked over 1,200,000 pairs on every push.
 
-* **GPC Format**: `#XXXXX-XXXXX` (10-character alphanumeric string)
-* **Alphabet**: `0123456789CDFGHJKLMNPRTWX` (25 symbols, no vowels, digits first)
-* **Cell**: 2.56 m north to south by 3.42 m east to west at the equator
+Everything below follows from that one property.
+
+| Because a shared prefix **is** a shared cell | |
+| --- | --- |
+| A prefix is a region identifier | ten nested scales, continent down to doorway, with nothing to mint and nothing extra to store |
+| The prefix test **is** the containment test | `contains` is a string comparison — no geometry, no tolerance, no special case at a boundary |
+| The alphabet is ASCII-ascending | `ORDER BY code` is a spatial sort, and an ordinary string index is a spatial index |
+| Cells nest exactly | neighbours, cell sizes, the short form and typo correction are all integer arithmetic on the grid |
+
+### What a prefix is worth
 
 | Shared characters | Cell, north-south | Cell, east-west | Scale |
 | ---: | ---: | ---: | --- |
@@ -36,11 +44,57 @@
 | 7 | 320.1 m | 427.5 m | Street |
 | 10 | 2.6 m | 3.4 m | Doorway |
 
-## Precision and Limits
+[Section 3](SPEC.md#3-the-grid) has all ten levels.
 
-* A code names a cell, not a point. `decode` returns the centre of that cell, so a coordinate carrying more precision than the 2.56 m cell does not come back unchanged. Encoding what you decoded always returns the same code.
-* A shared prefix proves proximity. Proximity does not promise a shared prefix: level-1 boundaries lie on the equator, on 45 degrees north and south, and on every 60th meridian, and two points a few metres apart across one of those lines share nothing at all. Of random pairs 100 m apart, 91.45 % share at least six characters.
-* Nearly 29 % of single-character typos produce a location in the right region and the wrong place. Show the decoded point on a map, or check it against something the reader recognises, before acting on it.
+## Code structure
+
+* **Format**: `#XXXXX-XXXXX`, ten characters, the same length everywhere
+* **Alphabet**: `0123456789CDFGHJKLMNPRTWX` — 25 symbols, no vowels, digits
+  first so that the ASCII order is the spatial order
+* **Cell**: 2.56 m north to south by 3.42 m east to west at the equator
+* **No dependencies**: nothing third-party in any of the four ports
+* **Reads version 1 codes**: every code ever issued still resolves
+
+## Precision and limits
+
+* **A code names a cell, not a point.** `decode` returns the centre of that
+  cell, so a coordinate carrying more precision than the 2.56 m cell does not
+  come back unchanged. Encoding what you decoded always returns the same code.
+* **A shared prefix proves proximity; proximity does not promise a shared
+  prefix.** Level-1 boundaries lie on the equator, on 45 degrees north and
+  south, and on every 60th meridian, and two points a few metres apart across
+  one of those seams share nothing at all. Of random pairs 100 m apart, 91.45 %
+  share at least six characters and 0.36 % share fewer than four.
+  [Section 16](SPEC.md#16-seams) maps the seams and works through the examples.
+* **Nearly 29 % of single-character typos** produce a location in the right
+  region and the wrong place. Show the decoded point on a map, or check it
+  against something the reader recognises, before acting on it. No amount of
+  format design removes that; confirmation does.
+
+## Which form to share
+
+| Where it is going | Share | Why |
+| --- | --- | --- |
+| A share button, a message, a record, a label | `#G3RJM-98NM9` | complete on its own |
+| Voice, radio, paper, anything dictated | `#G3RJM-98NM9*T` | one character buys detection |
+| A sign in one place, two people standing in it | `98NM9` | only resolves near the point |
+| A database key, a QR or NFC payload | six bytes | not for a person to read |
+
+The ten characters are the form of record, and they are what a share button
+emits. `with_check` returns the check form in one call; its one extra character
+detects every single-character error and every adjacent transposition, which
+are the two mistakes a person makes, so it earns its place wherever a code will
+be read aloud or written down.
+
+The short form is the one to be careful with. Five characters resolve only
+against a reference near the true point — right for a sign at the entrance to a
+village, wrong behind a share button, which cannot know where the far end will
+be standing. Out of range it does not fail; it returns a plausible location 8
+or 10 km away.
+
+[Appendix D](SPEC.md#appendix-d--sharing-a-code-non-normative) covers the rest,
+including how to read a code out loud given that `C`, `D`, `G`, `P`, `T` and
+the digit `3` all rhyme.
 
 ---
 
@@ -85,7 +139,7 @@ Add the following to your `pom.xml`:
 <dependency>
     <groupId>ca.pranavpatel.algo</groupId>
     <artifactId>gridpointcode</artifactId>
-    <version>1.1.0</version>
+    <version>2.0.0</version>
 </dependency>
 ```
 
@@ -204,6 +258,7 @@ arithmetic. Every one of them is exact integer arithmetic except `distance`.
 | The last five characters | `shorten` | `shorten` | `Shorten` |
 | The full code, from those five and a reference | `recover_short` | `recoverShort` | `RecoverShort` |
 | Codes one typo away, best first | `suggest_corrections` | `suggestCorrections` | `SuggestCorrections` |
+| The code in its check form | `with_check` | `withCheck` | `WithCheck` |
 | The 48-bit integer form | `to_integer`, `from_integer` | `toInteger`, `fromInteger` | `ToInteger`, `FromInteger` |
 | An RFC 5870 `geo:` URI | `to_geo_uri`, `from_geo_uri` | `toGeoURI`, `fromGeoURI` | `ToGeoURI`, `FromGeoURI` |
 | Degrees, minutes and seconds | `to_dms`, `from_dms` | `toDMS`, `fromDMS` | `ToDMS`, `FromDMS` |
@@ -247,9 +302,41 @@ A few things worth knowing before reaching for these:
   decode or validate because of what it found, and it reports the version of the
   list it used whether or not anything matched.
 
-The optional check character of the specification is the one mechanism here that
-detects rather than corrects, and it is never present unless someone asks for
-it: `#G3RJM-98NM9*T`.
+The optional check character is the one mechanism here that detects rather than
+corrects, and it is never present unless someone asks for it:
+`with_check("#G3RJM-98NM9")` returns `#G3RJM-98NM9*T`.
+
+---
+
+## Version 1 and version 2
+
+|  | Version 1 | Version 2 |
+| --- | --- | --- |
+| Characters | eleven | ten |
+| Written | `#FN5G-CDKL-HDC` | `#G3RJM-98NM9` |
+| Groups | three, two dashes | two, one dash |
+| A shared prefix means | nothing | the same cell, always |
+
+That is the whole test: count the characters. `decode` does exactly the same
+thing — it strips the separators and dispatches on length — so a version 1 code
+reads correctly under 2.0.0 without anyone asking, and `decode_v1` is there for
+a caller that wants to be explicit. Because the dispatch is on length alone, an
+eleven-character string that happens to be a valid version 1 code decodes as
+one.
+
+Every code ever issued still resolves, and always will. A geocode is not an
+API: codes end up on signs, on labels and in records, and
+[Appendix B](SPEC.md#appendix-b--decoding-version-1-optional) of the
+specification carries everything a port needs to keep reading them.
+
+**There is no version 1 encoder in 2.0.0.** The old format is readable, not
+writable, so nobody mints a version 1 code by accident. Anyone who still needs
+to write them should pin `1.1.x`, which stays published on all four registries.
+
+There is no migration for a stored code. Version 1 codes stay valid and stay
+readable, and new codes are version 2. The same coordinates encode to a
+different, shorter code under version 2, so the two are not interchangeable as
+strings.
 
 ---
 
@@ -259,7 +346,10 @@ Every port is built and tested on every push. Each suite reads the same
 conformance vectors from [`test_data/`](test_data/), and each one reproduces the
 digest of a shared hundred-thousand-point sample, so the four implementations
 are held to byte-identical output rather than to four separate sets of
-expectations.
+expectations. [`conformance/`](conformance/) comes at the same question from the
+other side: one set of awkward inputs is put through all four ports and the
+answers are diffed against each other, which catches a divergence on a case
+nobody thought to write a vector for.
 
 | Port | From that port's directory |
 | --- | --- |
@@ -280,17 +370,8 @@ describes what runs in CI and how releases are published.
 format. It defines the format precisely enough to implement from without
 reading any source, and it carries the measurements behind every claim it
 makes. [`reference/`](reference/) is its executable companion: it checks every
-exact claim the document makes and reproduces every measured figure in it.
-
-All four ports in this repository implement version 2. **The published packages
-are still 1.1.0**, which is version 1; version 2 ships as 2.0.0 on the same four
-package names.
-
-Version 1 codes are eleven characters and version 2 codes are ten, so `decode`
-tells them apart on length and reads both. There is no version 1 encoder in
-2.0.0 -- the old format is readable, not writable -- and Appendix B of the
-specification describes what a port needs to keep reading it. Anyone who still
-needs to write version 1 codes should pin `1.1.x`, which stays published.
+exact claim the document makes and reproduces every measured figure in it, and
+it runs in CI, so the document and the code cannot drift apart quietly.
 
 ## Changelog
 
