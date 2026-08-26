@@ -110,7 +110,9 @@ Everything below follows from that one property.
 
 * **A code names a cell, not a point.** `decode` returns the centre of that
   cell, so a coordinate carrying more precision than the 2.56 m cell does not
-  come back unchanged. Encoding what you decoded always returns the same code.
+  come back unchanged. Encoding what you decoded always returns the same code,
+  and `decode_to_area` hands back the cell's four boundaries when the box
+  matters more than the centre.
 * **A shared prefix proves proximity; proximity does not promise a shared
   prefix.** Level-1 boundaries lie on the equator, on 45 degrees north and
   south, and on every 60th meridian, and two points a few metres apart across
@@ -151,14 +153,16 @@ the digit `3` all rhyme.
 
 ## Requirements
 
-| Port | Requires |
-| --- | --- |
-| Python | 3.9 or later |
-| TypeScript | Node.js 22 or later |
-| C# | .NET 9.0 or .NET 10.0 |
-| Java | Java 21 or later |
+| Port | Requires | Full API |
+| --- | --- | --- |
+| Python | 3.9 or later | [python/README.md](python/README.md) |
+| TypeScript | Node.js 22 or later | [typescript/README.md](typescript/README.md) |
+| C# | .NET 9.0 or .NET 10.0 | [csharp/README.md](csharp/README.md) |
+| Java | Java 21 or later | [java/README.md](java/README.md) |
 
-None of the four ports has a third-party dependency.
+None of the four ports has a third-party dependency. Each port's own README
+carries the complete API for that language, including the typed error and the
+reason codes a caller can branch on rather than matching on message text.
 
 ## Installation
 
