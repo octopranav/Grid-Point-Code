@@ -7,9 +7,11 @@
 // asserted by decoding, because no package encodes version 1 any more.
 
 import { expect } from 'chai';
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { GPC } from '../src/GPC';
+import * as ScreenList from '../src/ScreenList';
 
 // One cell of the version 1 grid: a hundred-thousandth of a degree on each axis.
 const V1_CELL = 1e-5;
@@ -141,6 +143,112 @@ describe('Version 2 conformance vectors', () => {
             expect(GPC.checkCharacter(code), code).to.equal(check);
             expect(GPC.classify(`${code}*${check}`), code).to.equal(GPC.classify(code));
         }
+    });
+
+    it('recovers every short form against its reference', () => {
+        const data = rows('v2_short.csv', 4);
+        expect(data.length).to.be.greaterThan(100);
+        for (const [short, latitude, longitude, expected] of data) {
+            expect(GPC.recoverShort(short, Number(latitude), Number(longitude), false), short).to.equal(expected);
+            expect(GPC.shorten(expected)).to.equal(short);
+        }
+    });
+
+    it('suggests the same corrections in the same order', () => {
+        const data = rows('v2_corrections.csv', 5);
+        expect(data.length).to.be.greaterThan(10);
+        for (const [level, latitude, longitude, typo, candidates] of data) {
+            expect(
+                GPC.suggestCorrections(typo, Number(latitude), Number(longitude), Number(level), false),
+                typo,
+            ).to.deep.equal(candidates === '' ? [] : candidates.split(' '));
+        }
+    });
+
+    it('takes the expected cell and neighbours at every level', () => {
+        const data = rows('v2_cells.csv', 4);
+        expect(data.length).to.be.greaterThan(50);
+        for (const [level, code, expectedCell, neighbours] of data) {
+            const cell = GPC.cell(code, Number(level));
+            expect(cell, `${code} at ${level}`).to.equal(expectedCell);
+            expect(GPC.neighbours(cell), cell).to.deep.equal(neighbours === '' ? [] : neighbours.split(' '));
+            expect(GPC.contains(cell, code)).to.equal(true);
+        }
+    });
+
+    it('converts to and from the integer form', () => {
+        const data = rows('v2_integer.csv', 2);
+        expect(data.length).to.be.greaterThan(50);
+        for (const [code, value] of data) {
+            expect(GPC.toInteger(code), code).to.equal(Number(value));
+            expect(GPC.fromInteger(Number(value), false), value).to.equal(code);
+        }
+    });
+
+    // The one file compared to a tolerance. See SPEC.md 18.5: no standard
+    // library rounds sine, cosine or arc sine correctly, so asserting equality
+    // here would pass on one machine and fail on the next.
+    it('measures every distance to within a millimetre', () => {
+        const data = rows('v2_distance.csv', 3);
+        expect(data.length).to.be.greaterThan(10);
+        for (const [a, b, metres] of data) {
+            expect(GPC.distance(a, b), `${a} to ${b}`).to.be.closeTo(Number(metres), 0.001);
+        }
+    });
+
+    it('writes and reads every geo URI', () => {
+        const data = rows('v2_geo.csv', 3);
+        expect(data.length).to.be.greaterThan(50);
+        for (const [latitude, longitude, uri] of data) {
+            expect(GPC.toGeoURI(Number(latitude), Number(longitude)), uri).to.equal(uri);
+            // Six decimal places, so a coordinate carrying more comes back
+            // rounded. Everything decode produces already has six, which is why
+            // the round trip through a code is exact; that is asserted in the
+            // unit suite rather than here.
+            const [backLatitude, backLongitude] = GPC.fromGeoURI(uri);
+            expect(Math.abs(backLatitude - Number(latitude))).to.be.lessThan(5e-7);
+            expect(Math.abs(backLongitude - Number(longitude))).to.be.lessThan(5e-7);
+        }
+    });
+
+    it('writes and reads every degrees-minutes-seconds form', () => {
+        const data = rows('v2_dms.csv', 3);
+        expect(data.length).to.be.greaterThan(50);
+        for (const [latitude, longitude, dms] of data) {
+            expect(GPC.toDMS(Number(latitude), Number(longitude)), dms).to.equal(dms);
+            // Lossy by a hundredth of a second, so the coordinates come back
+            // near rather than equal.
+            const [backLatitude, backLongitude] = GPC.fromDMS(dms);
+            expect(Math.abs(backLatitude - Number(latitude))).to.be.lessThan(0.5 / 360000 + 1e-12);
+            expect(Math.abs(backLongitude - Number(longitude))).to.be.lessThan(0.5 / 360000 + 1e-12);
+        }
+    });
+
+    it('carries the same advisory list as every other port', () => {
+        const data = rows('v2_screen_list.csv', 3);
+        expect(data.length).to.equal(1);
+        const [version, count, digest] = data[0];
+        const entries = [...ScreenList.ENTRIES].sort();
+        expect(entries.length).to.equal(Number(count));
+        expect(ScreenList.VERSION).to.equal(version);
+        expect(crypto.createHash('sha256').update(entries.join('\n'), 'utf8').digest('hex')).to.equal(digest);
+    });
+
+    it('screens every vector to the expected spans', () => {
+        const data = rows('v2_screen.csv', 2);
+        expect(data.length).to.be.greaterThan(10);
+        let matched = 0;
+        for (const [code, spans] of data) {
+            const expected =
+                spans === '' ? [] : spans.split(' ').map((span) => span.split(':').map(Number) as [number, number]);
+            const [version, got] = GPC.screen(code);
+            expect(got, code).to.deep.equal(expected);
+            // The version comes back either way: a caller has to be able to tell
+            // "clean under this list" from "never screened".
+            expect(version).to.equal(ScreenList.VERSION);
+            matched += expected.length > 0 ? 1 : 0;
+        }
+        expect(matched).to.be.greaterThan(0);
     });
 });
 

@@ -355,3 +355,501 @@ describe('Version 1 codes', () => {
         expect(GPC.decode('G3RJM98NM99')).to.deep.equal(GPC.decodeV1('G3RJM98NM99'));
     });
 });
+
+describe('Cells and containment', () => {
+    it('takes a cell as a prefix of the code', () => {
+        expect(GPC.cell('#G3RJM-98NM9', 3)).to.equal('G3R');
+        expect(GPC.cell('#G3RJM-98NM9', 5)).to.equal('G3RJM');
+        expect(GPC.cell('#G3RJM-98NM9', 10)).to.equal('G3RJM98NM9');
+    });
+
+    it('normalises before slicing', () => {
+        expect(GPC.cell('#g3rjm-i8nm9', 6)).to.equal('G3RJM1');
+    });
+
+    it('takes a cell of a cell', () => {
+        expect(GPC.cell('G3RJM', 2)).to.equal('G3');
+    });
+
+    it('returns a cell bare, because ten characters is what a code looks like', () => {
+        for (let level = 1; level <= 10; level++) {
+            const cell = GPC.cell('#G3RJM-98NM9', level);
+            expect(cell).to.not.contain('#');
+            expect(cell).to.not.contain('-');
+        }
+    });
+
+    it('refuses a level outside 1 to 10', () => {
+        for (const level of [0, 11, -1, 100, 2.5]) {
+            expect(
+                reasonOf(() => GPC.cell('G3RJM98NM9', level)),
+                String(level),
+            ).to.equal('GPC_LEVEL');
+        }
+    });
+
+    it('refuses a cell shorter than the level asked for', () => {
+        expect(reasonOf(() => GPC.cell('G3R', 5))).to.equal('GPC_LENGTH');
+    });
+
+    it('refuses a reserved cell and says which reason', () => {
+        for (const text of ['XG3RJ', 'XG3RJ98NM9']) {
+            expect(
+                reasonOf(() => GPC.cell(text, 3)),
+                text,
+            ).to.equal('GPC_RESERVED');
+        }
+    });
+
+    it('answers containment with the prefix test', () => {
+        expect(GPC.contains('G3RJM', 'G3RJM98NM9')).to.equal(true);
+        expect(GPC.contains('G', 'G3RJM98NM9')).to.equal(true);
+        expect(GPC.contains('G3RJD', 'G3RJM98NM9')).to.equal(false);
+    });
+
+    it('holds containment between cells, in one direction only', () => {
+        expect(GPC.contains('G3R', 'G3RJM')).to.equal(true);
+        expect(GPC.contains('G3RJM', 'G3R')).to.equal(false);
+    });
+
+    it('normalises both sides', () => {
+        expect(GPC.contains('#g3rjm', '#G3RJM-98NM9')).to.equal(true);
+    });
+});
+
+describe('Neighbours', () => {
+    it('finds eight away from the poles', () => {
+        expect(GPC.neighbours('G3RJM98NM9').length).to.equal(8);
+        expect(GPC.neighbours('G3RJM').length).to.equal(8);
+    });
+
+    it('finds five in a polar row, absent rather than empty', () => {
+        expect(GPC.neighbours('#P4444-PPPPP').length).to.equal(5);
+        expect(GPC.neighbours('#3PPPP-00000').length).to.equal(5);
+    });
+
+    it('returns cells of the same length as the argument', () => {
+        for (let level = 1; level <= 10; level++) {
+            const cell = GPC.cell('#G3RJM-98NM9', level);
+            for (const neighbour of GPC.neighbours(cell)) {
+                expect(neighbour.length, cell).to.equal(level);
+            }
+        }
+    });
+
+    it('wraps columns at the antimeridian', () => {
+        // The first column of the grid. Its western neighbour is the last
+        // column, and no amount of string arithmetic would have found it: the
+        // two share no characters at all.
+        const first = GPC.encode(0.0, -180.0, false);
+        const west = GPC.neighbours(first)[6];
+        expect(west).to.equal(GPC.encode(0.0, 179.99999, false));
+        expect(west[0]).to.not.equal(first[0]);
+    });
+
+    it('keeps the order fixed', () => {
+        const [row, col] = GPC.decodeToGrid('G3RJM98NM9');
+        const steps: [number, number][] = [
+            [1, 0],
+            [1, 1],
+            [0, 1],
+            [-1, 1],
+            [-1, 0],
+            [-1, -1],
+            [0, -1],
+            [1, -1],
+        ];
+        expect(GPC.neighbours('G3RJM98NM9')).to.deep.equal(
+            steps.map(([dRow, dCol]) => GPC.gridToCode(row + dRow, col + dCol)),
+        );
+    });
+
+    it('never includes the cell itself', () => {
+        expect(GPC.neighbours('G3RJM')).to.not.contain('G3RJM');
+    });
+});
+
+describe('Cell dimensions', () => {
+    it('reproduces the table of section 3', () => {
+        const table: [number, number, number][] = [
+            [1, 5000.9, 6679.2],
+            [2, 1000.2, 1335.8],
+            [3, 200.0, 267.2],
+            [4, 40.0, 53.4],
+            [5, 8.0, 10.7],
+        ];
+        for (const [level, northSouth, eastWest] of table) {
+            const dimensions = GPC.cellDimensions(level);
+            expect(Number((dimensions[2] / 1000).toFixed(1)), `level ${level}`).to.equal(northSouth);
+            expect(Number((dimensions[3] / 1000).toFixed(1)), `level ${level}`).to.equal(eastWest);
+        }
+    });
+
+    it('measures a doorway at level 10', () => {
+        const dimensions = GPC.cellDimensions(10);
+        expect(Number(dimensions[2].toFixed(1))).to.equal(2.6);
+        expect(Number(dimensions[3].toFixed(1))).to.equal(3.4);
+    });
+
+    it('keeps the aspect ratio at three quarters everywhere', () => {
+        for (let level = 1; level <= 10; level++) {
+            const [latitude, longitude] = GPC.cellDimensions(level);
+            expect(Number((latitude / longitude).toFixed(12)), `level ${level}`).to.equal(0.75);
+        }
+    });
+
+    it('refuses a level outside 1 to 10', () => {
+        expect(reasonOf(() => GPC.cellDimensions(0))).to.equal('GPC_LEVEL');
+    });
+});
+
+describe('Distance', () => {
+    it('is zero from a cell to itself', () => {
+        expect(GPC.distance('G3RJM98NM9', 'G3RJM98NM9')).to.equal(0);
+    });
+
+    it('is symmetric', () => {
+        expect(GPC.distance('G3RJM98NM9', '6LK4XNRP0R')).to.equal(GPC.distance('6LK4XNRP0R', 'G3RJM98NM9'));
+    });
+
+    it('makes pole to pole half the meridian', () => {
+        expect(Number((GPC.distance('#P4444-PPPPP', '#3PPPP-00000') / 1000).toFixed(1))).to.equal(20015.1);
+    });
+
+    it('does not produce a NaN for antipodal cells', () => {
+        const metres = GPC.distance(GPC.encode(0.0, 0.0, false), GPC.encode(0.0, 180.0, false));
+        expect(Number((metres / 1000).toFixed(1))).to.equal(20015.1);
+    });
+
+    it('accepts cells of different levels', () => {
+        expect(GPC.distance('G3RJM', 'G3RJM98NM9')).to.be.lessThan(7000);
+    });
+});
+
+describe('The short form', () => {
+    it('is the second printed group', () => {
+        expect(GPC.shorten('#G3RJM-98NM9')).to.equal('98NM9');
+        expect(GPC.shorten('G3RJM98NM9')).to.equal('98NM9');
+    });
+
+    it('recovers with or without the leading dash', () => {
+        for (const short of ['98NM9', '-98NM9', ' -98nm9 ']) {
+            expect(GPC.recoverShort(short, 43.66, -79.39), short).to.equal('#G3RJM-98NM9');
+        }
+    });
+
+    it('is exact within half a level-5 cell', () => {
+        const code = GPC.encode(43.65, -79.38, false);
+        const short = GPC.shorten(code);
+        for (const dLatitude of [-0.0359, 0.0, 0.0359]) {
+            for (const dLongitude of [-0.0479, 0.0, 0.0479]) {
+                expect(
+                    GPC.recoverShort(short, 43.65 + dLatitude, -79.38 + dLongitude, false),
+                    `${dLatitude},${dLongitude}`,
+                ).to.equal(code);
+            }
+        }
+    });
+
+    it('crosses the antimeridian', () => {
+        // A reference east of the line recovering a code west of it. The column
+        // arithmetic wraps; the row arithmetic must not.
+        const code = GPC.encode(0.0, -179.99, false);
+        expect(GPC.recoverShort(GPC.shorten(code), 0.0, 179.995, false)).to.equal(code);
+    });
+
+    it('refuses a short form that is not five symbols', () => {
+        for (const short of ['98NM', '98NM99']) {
+            expect(
+                reasonOf(() => GPC.recoverShort(short, 43.65, -79.38)),
+                short,
+            ).to.equal('GPC_LENGTH');
+        }
+    });
+
+    it('refuses a reference outside the domain', () => {
+        expect(reasonOf(() => GPC.recoverShort('98NM9', 91.0, 0.0))).to.equal('LATITUDE');
+    });
+});
+
+describe('Corrections', () => {
+    it('finds the true code and ranks it first, whichever character was hit', () => {
+        const code = GPC.encode(43.65, -79.38, false);
+        for (let position = 0; position < 10; position++) {
+            const wrong = code.slice(0, position) + (code[position] === '0' ? '1' : '0') + code.slice(position + 1);
+            expect(GPC.suggestCorrections(wrong, 43.65, -79.38, 6, false)[0], wrong).to.equal(code);
+        }
+    });
+
+    it('takes a code that decodes nowhere near the reference', () => {
+        // The whole point: a code with a wrong character is what this is for.
+        expect(GPC.suggestCorrections('03RJM98NM9', 43.65, -79.38, 6, false)).to.contain(
+            GPC.encode(43.65, -79.38, false),
+        );
+    });
+
+    it('never suggests a reserved code', () => {
+        for (const candidate of GPC.suggestCorrections('XG3RJ98NM9', 43.65, -79.38, 4, false)) {
+            expect(candidate[0]).to.not.equal('X');
+        }
+    });
+
+    it('returns fewer candidates at a narrower level', () => {
+        const wide = GPC.suggestCorrections('G3RJM98NM8', 43.65, -79.38, 4, false);
+        const narrow = GPC.suggestCorrections('G3RJM98NM8', 43.65, -79.38, 8, false);
+        expect(wide.length).to.be.greaterThan(narrow.length);
+    });
+
+    it('refuses a code that will not normalise to ten symbols', () => {
+        expect(reasonOf(() => GPC.suggestCorrections('G3RJM98NM', 43.65, -79.38))).to.equal('GPC_LENGTH');
+    });
+
+    it('never pads the list back with duplicates', () => {
+        // P4444PPPPP has adjacent repeats, so it yields 242 rather than 249.
+        const every = GPC.suggestCorrections('P4444PPPPP', 90.0, 0.0, 1, false);
+        expect(new Set(every).size).to.equal(every.length);
+    });
+});
+
+describe('The integer form', () => {
+    it('round-trips', () => {
+        const code = GPC.encode(43.65, -79.38, false);
+        expect(GPC.fromInteger(GPC.toInteger(code), false)).to.equal(code);
+    });
+
+    it('places the first and last codes at the ends of the range', () => {
+        expect(GPC.toInteger('0000000000')).to.equal(0);
+        expect(GPC.toInteger('XXXXXXXXXX')).to.equal(25 ** 10 - 1);
+    });
+
+    it('sorts the same way the strings do', () => {
+        const codes: string[] = [];
+        for (const latitude of [-80.0, -20.0, 0.0, 20.0, 80.0]) {
+            for (const longitude of [-170.0, -60.0, 0.0, 60.0, 170.0]) {
+                codes.push(GPC.encode(latitude, longitude, false));
+            }
+        }
+        codes.sort();
+        const values = codes.map((code) => GPC.toInteger(code));
+        expect(values).to.deep.equal([...values].sort((a, b) => a - b));
+    });
+
+    it('puts the reserved namespace at the top of the range', () => {
+        const floor = 24 * 25 ** 9;
+        expect(GPC.toInteger('X000000000')).to.be.at.least(floor);
+        expect(GPC.toInteger('W999999999')).to.be.lessThan(floor);
+    });
+
+    it('refuses a value outside the range', () => {
+        for (const value of [-1, 25 ** 10, 1.5]) {
+            expect(
+                reasonOf(() => GPC.fromInteger(value)),
+                String(value),
+            ).to.equal('GPC_RANGE');
+        }
+    });
+});
+
+describe('Screening', () => {
+    it('returns the version even when nothing matched', () => {
+        const [version, spans] = GPC.screen('G3RJM98NM9');
+        expect(version).to.not.equal('');
+        expect(spans).to.deep.equal([]);
+    });
+
+    it('reports the span of a match', () => {
+        const [version, spans] = GPC.screen('GN4T000000');
+        expect(version).to.not.equal('');
+        expect(spans).to.deep.equal([[1, 4]]);
+    });
+
+    it('screens a reserved code like any other', () => {
+        expect(GPC.screen('XGN4T00000')[1]).to.deep.equal([[2, 4]]);
+    });
+
+    it('never blocks', () => {
+        // Whatever the list says, the code still encodes, decodes and validates.
+        expect(GPC.isValid('GN4T000000')).to.equal(true);
+        expect(GPC.classify('GN4T000000')).to.equal('GEOMETRIC');
+        const [latitude, longitude] = GPC.decode('GN4T000000');
+        expect(GPC.encode(latitude, longitude, false)).to.equal('GN4T000000');
+    });
+
+    it('screens the formatted and bare forms alike', () => {
+        expect(GPC.screen('GN4T000000')).to.deep.equal(GPC.screen('#GN4T0-00000'));
+    });
+});
+
+describe('Batch and streaming', () => {
+    it('encodes a batch', () => {
+        expect(
+            GPC.encodeAll(
+                [
+                    [43.65, -79.38],
+                    [0.0, 0.0],
+                ],
+                false,
+            ),
+        ).to.deep.equal(['G3RJM98NM9', 'JPPPP00000']);
+    });
+
+    it('decodes a batch', () => {
+        expect(GPC.decodeAll(['#G3RJM-98NM9'])).to.deep.equal([[43.650006, -79.380004]]);
+    });
+
+    it('streams lazily, so a bad row throws where it is reached', () => {
+        const stream = GPC.encodeStream(
+            [
+                [43.65, -79.38],
+                [91.0, 0.0],
+            ],
+            false,
+        );
+        expect(stream.next().value).to.equal('G3RJM98NM9');
+        expect(reasonOf(() => stream.next())).to.equal('LATITUDE');
+    });
+
+    it('stops a batch at the first bad row', () => {
+        expect(
+            reasonOf(() =>
+                GPC.encodeAll([
+                    [43.65, -79.38],
+                    [0.0, 181.0],
+                ]),
+            ),
+        ).to.equal('LONGITUDE');
+    });
+
+    it('handles an empty sequence', () => {
+        expect(GPC.encodeAll([])).to.deep.equal([]);
+        expect(GPC.decodeAll([])).to.deep.equal([]);
+    });
+});
+
+describe('Grid indices', () => {
+    it('agrees with toGrid', () => {
+        expect(GPC.decodeToGrid('#G3RJM-98NM9')).to.deep.equal(GPC.toGrid(43.65, -79.38));
+    });
+
+    it('reaches the corners of the grid', () => {
+        expect(GPC.decodeToGrid(GPC.encode(-90.0, -180.0, false))).to.deep.equal([0, 0]);
+        expect(GPC.decodeToGrid(GPC.encode(90.0, 179.99999, false))).to.deep.equal([7812499, 11718749]);
+    });
+
+    it('refuses a reserved code', () => {
+        expect(reasonOf(() => GPC.decodeToGrid('XG3RJ98NM9'))).to.equal('GPC_RESERVED');
+    });
+});
+
+describe('Coordinate conversions', () => {
+    it('writes the worked example', () => {
+        expect(GPC.toDMS(43.65, -79.38)).to.equal('43°39\'00.00"N, 79°22\'48.00"W');
+    });
+
+    it('does not treat negative zero as negative', () => {
+        expect(GPC.toDMS(-0.0, -0.0)).to.equal('0°00\'00.00"N, 0°00\'00.00"E');
+    });
+
+    it('carries seconds into the next minute', () => {
+        expect(GPC.toDMS(1.0 - 1e-9, 0.0)).to.equal('1°00\'00.00"N, 0°00\'00.00"E');
+    });
+
+    it('reads its own output back', () => {
+        expect(GPC.fromDMS(GPC.toDMS(43.65, -79.38))).to.deep.equal([43.65, -79.38]);
+    });
+
+    it('accepts the wider forms', () => {
+        expect(GPC.fromDMS('43d39m0s N 79d22m48s W')).to.deep.equal([43.65, -79.38]);
+        expect(GPC.fromDMS('43°N 79°W')).to.deep.equal([43.0, -79.0]);
+        expect(GPC.fromDMS('-43°, +79°')).to.deep.equal([-43.0, 79.0]);
+    });
+
+    it('refuses what the grammar does not accept', () => {
+        const bad = [
+            '43°39\'00.00"N', // one axis only
+            '43 39', // no unit markers
+            '-43°N, 79°W', // a sign and a hemisphere
+            '43°W, 79°N', // the axes crossed
+            "43°60'N, 0°0'E", // sixty minutes
+            '43°39\'60.0"N, 0°0\'0"E', // sixty seconds
+            '43°N, 79°W extra', // trailing text
+        ];
+        for (const text of bad) {
+            expect(
+                reasonOf(() => GPC.fromDMS(text)),
+                text,
+            ).to.equal('GPC_DMS');
+        }
+    });
+
+    it('refuses a DMS value outside the domain', () => {
+        expect(reasonOf(() => GPC.fromDMS('91°N, 0°E'))).to.equal('LATITUDE');
+    });
+
+    it('lets a decoded code survive the DMS round trip', () => {
+        // decode returns a cell centre, which sits eight times further from the
+        // nearest boundary than this rounding can move it.
+        const points: [number, number][] = [
+            [43.65, -79.38],
+            [-33.8568, 151.2153],
+            [90.0, 0.0],
+            [-90.0, 0.0],
+            [0.0, -180.0],
+        ];
+        for (const [latitude, longitude] of points) {
+            const code = GPC.encode(latitude, longitude, false);
+            const [back, backLong] = GPC.fromDMS(GPC.toDMS(...GPC.decode(code)));
+            expect(GPC.encode(back, backLong, false), code).to.equal(code);
+        }
+    });
+
+    it('writes a geo URI', () => {
+        expect(GPC.toGeoURI(43.650006, -79.380004)).to.equal('geo:43.650006,-79.380004');
+    });
+
+    it('drops trailing zeros and the point with them', () => {
+        expect(GPC.toGeoURI(43.65, -79.38)).to.equal('geo:43.65,-79.38');
+        expect(GPC.toGeoURI(43.0, -79.0)).to.equal('geo:43,-79');
+        expect(GPC.toGeoURI(-0.0, -0.0)).to.equal('geo:0,0');
+    });
+
+    it('reads its own URI back', () => {
+        expect(GPC.fromGeoURI('geo:43.650006,-79.380004')).to.deep.equal([43.650006, -79.380004]);
+    });
+
+    it('drops the altitude and the parameters', () => {
+        expect(GPC.fromGeoURI('geo:43.65,-79.38,76.1')).to.deep.equal([43.65, -79.38]);
+        expect(GPC.fromGeoURI('geo:43.65,-79.38;u=35')).to.deep.equal([43.65, -79.38]);
+        expect(GPC.fromGeoURI('GEO:43.65,-79.38;crs=WGS84')).to.deep.equal([43.65, -79.38]);
+    });
+
+    it('refuses another datum rather than ignoring it', () => {
+        // Reading a code as though it were on another datum would put it in the
+        // wrong place, quietly.
+        expect(reasonOf(() => GPC.fromGeoURI('geo:43.65,-79.38;crs=nad83'))).to.equal('GPC_GEO');
+    });
+
+    it('refuses a URI the grammar does not accept', () => {
+        for (const text of ['geo:43.65', '43.65,-79.38', 'geo:+43.65,-79.38', 'geo:43.65,-79.38,1,2', 'geo:1e2,0']) {
+            expect(
+                reasonOf(() => GPC.fromGeoURI(text)),
+                text,
+            ).to.equal('GPC_GEO');
+        }
+    });
+
+    it('lets a decoded code survive the geo URI round trip', () => {
+        const points: [number, number][] = [
+            [43.65, -79.38],
+            [-33.8568, 151.2153],
+            [90.0, 0.0],
+            [-90.0, 0.0],
+            [0.0, -180.0],
+        ];
+        for (const [latitude, longitude] of points) {
+            const code = GPC.encode(latitude, longitude, false);
+            const [back, backLong] = GPC.fromGeoURI(GPC.toGeoURI(...GPC.decode(code)));
+            expect(GPC.encode(back, backLong, false), code).to.equal(code);
+        }
+    });
+});

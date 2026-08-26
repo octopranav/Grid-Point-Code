@@ -251,6 +251,138 @@ describe('Locality', () => {
 // Section 11.2. Consecutive codes are adjacent cells, everywhere except at a
 // level-5 boundary, and that is exactly where the reset of 5.3 puts the only
 // discontinuities.
+/**
+ * Sections 12, 13 and 18, over the same wide sample.
+ *
+ * The vector files pin these operations case by case. What these pin is that
+ * they hold everywhere -- including in the quadrants a case-by-case corpus
+ * might happen not to reach.
+ */
+describe('Spatial properties', () => {
+    const sample = points.slice(0, 20_000);
+    const sampleCodes = codes.slice(0, 20_000);
+
+    it('agrees with the grid about containment', () => {
+        for (let i = 0; i < 4000; i++) {
+            const code = sampleCodes[i];
+            for (const k of [1, 3, 5, 7, 10]) {
+                const cell = GPC.cell(code, k);
+                expect(cell, code).to.equal(code.slice(0, k));
+                expect(GPC.contains(cell, code), code).to.equal(true);
+                // And a cell the point is not in never claims it.
+                expect(GPC.contains(GPC.neighbours(cell)[0], code), code).to.equal(false);
+            }
+        }
+    });
+
+    it('puts every neighbour one cell away', () => {
+        for (let i = 0; i < 2000; i++) {
+            const code = sampleCodes[i];
+            for (const k of [1, 4, 7, 10]) {
+                const p = Math.pow(5, 10 - k);
+                const rowCells = 4 * Math.pow(5, k - 1);
+                const colCells = 6 * Math.pow(5, k - 1);
+                const cell = GPC.cell(code, k);
+                const [row, col] = GPC.decodeToGrid(code);
+                const cellRow = Math.floor(row / p);
+                const cellCol = Math.floor(col / p);
+                const got = GPC.neighbours(cell);
+
+                // Five in a polar row, eight everywhere else. Rows do not wrap;
+                // columns always do.
+                expect(got.length, cell).to.equal(cellRow > 0 && cellRow < rowCells - 1 ? 8 : 5);
+                expect(new Set(got).size, cell).to.equal(got.length);
+                expect(got, cell).to.not.contain(cell);
+
+                for (const neighbour of got) {
+                    const [nRow, nCol] = GPC.codeToGrid(neighbour + '0'.repeat(10 - k));
+                    let dCol = (Math.floor(nCol / p) - cellCol + colCells) % colCells;
+                    if (dCol > colCells / 2) dCol -= colCells;
+                    expect(Math.abs(Math.floor(nRow / p) - cellRow), neighbour).to.be.at.most(1);
+                    expect(Math.abs(dCol), neighbour).to.be.at.most(1);
+                }
+            }
+        }
+    });
+
+    it('recovers every short form inside half a level-5 cell', () => {
+        // Half a level-5 cell on each axis: 1562 rows and 1562 columns.
+        const halfLatitude = (1562 * 180.0) / 7812500.0;
+        const halfLongitude = (1562 * 360.0) / 11718750.0;
+        const offsets: [number, number][] = [
+            [0, 0],
+            [halfLatitude, halfLongitude],
+            [-halfLatitude, -halfLongitude],
+            [halfLatitude, -halfLongitude],
+            [-halfLatitude, halfLongitude],
+        ];
+        for (let i = 0; i < 4000; i++) {
+            const [latitude, longitude] = sample[i];
+            const code = sampleCodes[i];
+            const short = GPC.shorten(code);
+            for (const [dLatitude, dLongitude] of offsets) {
+                const referenceLatitude = latitude + dLatitude;
+                const referenceLongitude = longitude + dLongitude;
+                if (
+                    referenceLatitude < -90 ||
+                    referenceLatitude > 90 ||
+                    referenceLongitude < -180 ||
+                    referenceLongitude > 180
+                ) {
+                    continue;
+                }
+                expect(GPC.recoverShort(short, referenceLatitude, referenceLongitude, false), code).to.equal(code);
+            }
+        }
+    });
+
+    it('round-trips the integer form and keeps the order', () => {
+        const values: [string, number][] = [];
+        for (const code of sampleCodes) {
+            const value = GPC.toInteger(code);
+            expect(GPC.fromInteger(value, false), code).to.equal(code);
+            // No encoded code reaches the reserved namespace, so no integer form
+            // of one reaches the floor either.
+            expect(value, code).to.be.lessThan(24 * 25 ** 9);
+            values.push([code, value]);
+        }
+        const byString = [...values].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+        const byValue = [...values].sort((a, b) => a[1] - b[1]);
+        expect(byString).to.deep.equal(byValue);
+    });
+
+    it('measures distance symmetrically, and zero only from a cell to itself', () => {
+        for (let i = 0; i < 2000; i += 2) {
+            const a = sampleCodes[i];
+            const b = sampleCodes[i + 1];
+            expect(GPC.distance(a, b)).to.equal(GPC.distance(b, a));
+            expect(GPC.distance(a, a)).to.equal(0);
+            expect(GPC.distance(a, b) === 0, `${a} ${b}`).to.equal(a === b);
+        }
+    });
+
+    it('lets a code survive both coordinate conversions', () => {
+        // decode returns a cell centre, which sits far enough from the nearest
+        // boundary that neither rounding can push it into the next cell.
+        for (let i = 0; i < 5000; i++) {
+            const code = sampleCodes[i];
+            const [latitude, longitude] = GPC.decode(code);
+            const viaUri = GPC.fromGeoURI(GPC.toGeoURI(latitude, longitude));
+            expect(GPC.encode(viaUri[0], viaUri[1], false), code).to.equal(code);
+            const viaDms = GPC.fromDMS(GPC.toDMS(latitude, longitude));
+            expect(GPC.encode(viaDms[0], viaDms[1], false), code).to.equal(code);
+        }
+    });
+
+    it('never lets screening change what a code does', () => {
+        for (let i = 0; i < 5000; i++) {
+            const code = sampleCodes[i];
+            expect(GPC.screen(code)[0]).to.not.equal('');
+            expect(GPC.isValid(code), code).to.equal(true);
+        }
+    });
+});
+
 describe('Ordering', () => {
     it('counts the discontinuities the specification counts', () => {
         expect(24 * Math.pow(25, 4)).to.equal(LEVEL_5_CELLS);
