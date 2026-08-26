@@ -31,6 +31,13 @@ from without reading any source.
   star: `#G3RJM-98NM9*T`. A linear check over GF(25) that detects every
   single-character error and every adjacent transposition. It is not canonical
   and is never emitted unless asked for.
+* **`withCheck`**, returning a code in its check form in one call:
+  `#G3RJM-98NM9*T`. Building it by hand is three operations and two ways to be
+  quietly wrong — the star dropped, or the check character spliced inside the
+  separator rather than after it — and neither mistake is caught by anything,
+  because the result is a string nobody validated. It recomputes rather than
+  trusting, so a code arriving with a wrong check character comes back with a
+  right one.
 * **An alias table** for confusable input: `O` reads as `0`, `I` as `1`, `S` as
   `5`, `Z` as `2`, `B` as `8`, `A` as `4`, `E` as `3` and `V` as `W`. `L` is a
   real symbol and is never read as `1`. `U`, `Q` and `Y` are rejected.
@@ -95,6 +102,13 @@ from without reading any source.
   always returns the same code.
 * **`isValid` answers about version 2** and returns a plain boolean. The reason
   is available from `validate`, which returns the class alongside it.
+* **The reserved namespace makes no promises.** The specification previously
+  forbade assigning meaning to a code beginning with `X` and said doing so
+  needed a future version of it — a promise that may never be kept, attached to
+  a rule nothing can enforce. It now assigns nothing, warns that a private
+  meaning travels nowhere and must not be passed off as a location, and leaves
+  the question open. Nothing in any port changes: a reserved code still never
+  decodes, never validates, and is still `RESERVED` rather than invalid.
 
 ### Removed
 

@@ -1179,6 +1179,16 @@ A cell beginning with `X` is reserved exactly as a code is
 ([section 9](#9-classification)), and every operation in this section MUST
 reject one with `GPC_RESERVED`.
 
+**A level outside 1 to 10 MUST be rejected**, and every operation here that
+takes a level does so. How it is reported is left to the implementation, because
+a level is an argument rather than a malformed code, and the two are not the
+same kind of mistake. An implementation SHOULD raise whatever its language
+already uses for an argument out of range: the reason code `GPC_LEVEL` where the
+typed error can carry it, and the language's own argument error where it cannot.
+This is the one place in this specification where conforming implementations are
+expected to differ in the error they raise, and a caller writing against more
+than one of them should not assume `GPC_LEVEL` is available everywhere.
+
 ### 18.2 Containment
 
 `contains(cell, code)` is true when the code lies inside the cell. It is the
