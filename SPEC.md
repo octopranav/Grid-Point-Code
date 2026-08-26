@@ -10,20 +10,19 @@ skip that appendix entirely and still be fully conformant.
 
 ## Contents
 
-| | | | |
-| --- | --- | --- | --- |
-| [1. Overview](#1-overview) | [6. Decoding](#6-decoding) | [11. Ordering](#11-ordering) | [16. Seams](#16-seams) |
-| [2. The coordinate domain](#2-the-coordinate-domain) | [7. Floating-point rules](#7-floating-point-rules) | [12. The short form](#12-the-short-form) | [17. Advisory screening](#17-advisory-screening-non-normative) |
-| [3. The grid](#3-the-grid) | [8. Parsing and normalisation](#8-parsing-and-normalisation) | [13. The integer form](#13-the-integer-form) | [18. Conformance](#18-conformance) |
-| [4. The alphabet](#4-the-alphabet) | [9. Classification](#9-classification) | [14. The check character](#14-the-check-character-optional) | [A. Reference implementation](#appendix-a--reference-implementation) |
-| [5. Encoding](#5-encoding) | [10. The locality guarantee](#10-the-locality-guarantee) | [15. Typos](#15-typos) | [B. Decoding version 1](#appendix-b--decoding-version-1-optional) |
-| | | | [C. The reserved namespace](#appendix-c--the-reserved-namespace) |
+| | | | | |
+| --- | --- | --- | --- | --- |
+| [1. Overview](#1-overview) | [6. Decoding](#6-decoding) | [11. Ordering](#11-ordering) | [16. Seams](#16-seams) | [A. Reference implementation](#appendix-a--reference-implementation) |
+| [2. The coordinate domain](#2-the-coordinate-domain) | [7. Floating-point rules](#7-floating-point-rules) | [12. The short form](#12-the-short-form) | [17. Advisory screening](#17-advisory-screening-non-normative) | [B. Decoding version 1](#appendix-b--decoding-version-1-optional) |
+| [3. The grid](#3-the-grid) | [8. Parsing and normalisation](#8-parsing-and-normalisation) | [13. The integer form](#13-the-integer-form) | [18. The spatial API](#18-the-spatial-api) | [C. The reserved namespace](#appendix-c--the-reserved-namespace) |
+| [4. The alphabet](#4-the-alphabet) | [9. Classification](#9-classification) | [14. The check character](#14-the-check-character-optional) | [19. Coordinate conversions](#19-coordinate-conversions) | |
+| [5. Encoding](#5-encoding) | [10. The locality guarantee](#10-the-locality-guarantee) | [15. Typos](#15-typos) | [20. Conformance](#20-conformance) | |
 
 ## Conventions
 
 **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT** and **MAY** carry their
 usual force. A conformant implementation satisfies every MUST in the numbered
-sections below, plus the conformance vectors of [section 18](#18-conformance).
+sections below, plus the conformance vectors of [section 20](#20-conformance).
 
 Numbers are decimal. `//` is integer division that truncates toward zero; both
 operands are non-negative everywhere it appears. `%` is the remainder of that
@@ -653,7 +652,10 @@ leading dash:
 ```
 
 It is literally the second printed group. No computation is involved in
-producing it, and an implementation MUST define `shorten` as that slice.
+producing it, and an implementation MUST define `shorten` as that slice: it
+returns the five characters, and the leading dash belongs to the presentation
+form, exactly as `#` does. `recoverShort` MUST accept the short form written
+either way.
 
 A short form names a position uniquely within its level-5 cell, which is 8.0 by
 10.7 km. Because of the parity reset of
@@ -1036,22 +1038,345 @@ unfortunate string.
 
 An implementation MAY offer `screen(code)`, which reports substrings of a code
 that match a list of unwanted words and their digit-substituted variants. If it
-does:
+does, the rules below apply, so that two implementations carrying the same list
+report the same spans.
+
+### 17.1 What screening is
 
 * It MUST return matched spans and MUST NOT refuse to encode, decode or
   validate anything. Screening advises; it never blocks.
 * The list MUST be stored as hashes of the variants, expanded at build time, so
   that no plaintext word list appears in source control or in a published
-  package.
+  package. That keeps the words out of the repository. It is not a security
+  measure and MUST NOT be described as one: the variants are short strings over
+  an alphabet of twenty-five symbols, and a space that small can be searched
+  exhaustively by anyone who wants to.
 * The list MUST carry a version tag, reported alongside any match, so that a
   caller can tell a changed result from a changed list.
+
+### 17.2 Expansion
+
+A source word is a sequence of lower-case letters. Each letter expands to the
+symbols it can appear as in a code:
+
+```
+a -> 4        h -> H        o -> 0        v -> --
+b -> 8        i -> 1        p -> P        w -> W
+c -> C        j -> J        q -> --       x -> X
+d -> D        k -> K        r -> R        y -> --
+e -> 3        l -> L 1      s -> 5        z -> 2
+f -> F        m -> M        t -> T 7
+g -> G 6 9    n -> N        u -> --
+```
+
+The variants of a word are every combination of those symbols, one per letter,
+in order. A word containing a letter that expands to nothing cannot appear in a
+code at all and MUST be dropped rather than partially expanded.
+
+This table is not the alias table of [section 8](#8-parsing-and-normalisation)
+and MUST NOT be confused with it. That one says which symbol a reader who typed
+a confusable letter meant; this one says what a letter looks like once it is a
+symbol. The direction is opposite and the relation is wider. `L` expands both
+ways here, as itself and as `1`, precisely because reading is where the two
+disagree.
+
+Variants shorter than four symbols MUST NOT enter the list. Three symbols occur
+by chance often enough that a warning built on them would mean nothing.
+
+### 17.3 The list
+
+Each variant is stored as the first eight hexadecimal characters, lower case,
+of the SHA-256 of its symbols encoded as UTF-8. The list is those strings,
+deduplicated and sorted ascending, together with a version tag.
+
+### 17.4 Matching
+
+`screen(code)` normalises its argument per
+[section 8](#8-parsing-and-normalisation) and then, for each length L from 4 to
+10 and each start position from 1 to 11 - L, hashes that substring the same way
+and looks it up.
+
+It returns the version tag and the spans that matched, as (position, length),
+ordered by position and then by length. Spans may overlap, and every one that
+matched MUST be reported. A code that matches nothing returns no spans and the
+version tag all the same, because a caller has to be able to tell "clean under
+list 2026.1" from "never screened".
 
 Measured against a core list, roughly one code in 250 matches something, which
 is low enough that a warning does not become noise.
 
 ---
 
-## 18. Conformance
+## 18. The spatial API
+
+[Section 10](#10-the-locality-guarantee) is a statement about prefixes. This
+section defines the operations that let a caller act on it without re-deriving
+the arithmetic. Every one of them is exact integer arithmetic except
+[`distance`](#185-distance), which is the single exception and says so.
+
+### 18.1 Cells
+
+A **cell** is the first k characters of a code, for k from 1 to 10. It names
+the level-k cell those characters determine, which by
+[section 10](#10-the-locality-guarantee) is exactly the set of points whose
+codes begin with them.
+
+```
+#G3RJM-98NM9     the code -- a level-10 cell, 2.6 by 3.4 m
+ G3RJM           the level-5 cell holding it, 8.0 by 10.7 km
+ G3R             the level-3 cell holding that, 200 by 267 km
+```
+
+`cell(code, k)` returns that prefix. It MUST normalise its argument per
+[section 8](#8-parsing-and-normalisation) first, so that the cell of a code
+typed with confusable letters is the cell of the code spelled with the symbols
+they stand for.
+
+A cell is written without the `#` and without the separator, and MUST NOT be
+presented as a code. Ten characters is a code; anything shorter is a region,
+and the fixed length of [section 3](#3-the-grid) is what lets the two be told
+apart on sight.
+
+A cell beginning with `X` is reserved exactly as a code is
+([section 9](#9-classification)), and every operation in this section MUST
+reject one with `GPC_RESERVED`.
+
+### 18.2 Containment
+
+`contains(cell, code)` is true when the code lies inside the cell. It is the
+prefix test and nothing more:
+
+```
+contains(cell, code) = (cell == the first |cell| characters of code)
+```
+
+with both arguments normalised first. What
+[section 10](#10-the-locality-guarantee) buys is that this is a true geometric
+containment test rather than an approximation of one: no tolerance, no edge
+case at a boundary, and no pair of points anywhere on Earth for which the
+string answer and the geometric answer differ.
+
+### 18.3 Neighbours
+
+`neighbours(cell)` returns the cells sharing an edge or a corner with it, at the
+same level, in this order:
+
+```
+north, north-east, east, south-east, south, south-west, west, north-west
+```
+
+Columns wrap: a cell against the antimeridian has neighbours on the other side
+of it. Rows do not wrap, because the grid ends at the poles. A cell in the top
+or bottom row therefore has five neighbours rather than eight, and the three
+that would lie off the grid are **absent from the result** rather than present
+and empty. The order of the entries that remain MUST be preserved.
+
+With `p = 5^(10-k)`, `rowCells = 4 * 5^(k-1)` and `colCells = 6 * 5^(k-1)`, and
+`(row, col)` from [section 6.1](#61-code-to-grid):
+
+```
+cellRow = row // p ; cellCol = col // p
+
+for each (dRow, dCol) in the order above:
+    r = cellRow + dRow
+    if r < 0 or r >= rowCells: skip this one
+    c = (cellCol + dCol + colCells) mod colCells
+    emit the first k characters of the code for (r * p, c * p)
+```
+
+Crossing a seam is what this operation is for. Two cells either side of the
+prime meridian share no characters at all ([section 16](#16-seams)), so no
+amount of string arithmetic gets from one to the other. The grid indices do it
+with no special case, which is why the rule is defined on them.
+
+### 18.4 Cell dimensions
+
+`cellDimensions(k)` returns the size of a level-k cell:
+
+```
+latitudeSpan  = 45 / 5^(k-1)                degrees
+longitudeSpan = 60 / 5^(k-1)                degrees
+northSouth    = latitudeSpan  * 111132.0    metres
+eastWest      = longitudeSpan * 111319.49   metres, at the equator
+```
+
+The constants are those of [section 3](#3-the-grid). The north-south figure
+holds at every latitude. The east-west figure is the value at the equator and
+MUST be documented as such: it shrinks with the cosine of latitude, and this
+format leaves that multiplication to the caller rather than taking a position
+on which latitude is worth quoting.
+
+All four values depend only on the level, so this takes a level and not a cell.
+
+### 18.5 Distance
+
+`distance(a, b)` returns the great-circle distance in metres between the centres
+of two cells, which MAY be of different levels.
+
+The centre of a level-k cell is exact in units of 1e-8 degrees, so it is
+computed there and divided once:
+
+```
+p = 5^(10-k)
+latitudeE8  = (2 * cellRow + 1) * p * 1152
+longitudeE8 = (2 * cellCol + 1) * p * 1536
+
+latitude  = latitudeE8  / 100000000 - 90
+longitude = longitudeE8 / 100000000 - 180
+```
+
+The distance is the haversine formula on a sphere of radius 6,371,008.8 m, the
+mean radius of the WGS 84 ellipsoid, evaluated in exactly this shape:
+
+```
+phi1 = latitudeA * PI / 180
+phi2 = latitudeB * PI / 180
+dPhi = phi2 - phi1
+dLambda = (longitudeB - longitudeA) * PI / 180
+
+h = sin(dPhi / 2) * sin(dPhi / 2)
+  + cos(phi1) * cos(phi2) * sin(dLambda / 2) * sin(dLambda / 2)
+
+h = min(h, 1)
+distance = 2 * 6371008.8 * asin(sqrt(h))
+```
+
+The clamp is not cosmetic. For two points near opposite ends of the Earth the
+rounded sum can land a unit in the last place above 1, where `asin` is
+undefined and returns NaN.
+
+**This is the one operation in this document that is not bit-identical across
+implementations.** No standard library computes `sin`, `cos`, `asin` or `sqrt`
+to the correctly rounded result except by accident, and pinning the shape of the
+expression removes every source of divergence except the last unit in the last
+place of each call. The vectors for `distance` are therefore the only ones
+asserted to a tolerance rather than to equality: implementations MUST agree
+within one millimetre, which is some eleven orders of magnitude below the error
+the spherical model itself carries against the ellipsoid.
+
+A caller that needs a reproducible ordering of candidates by distance MUST rank
+on grid indices, the way [section 15.3](#153-correction) does, and not on this.
+
+### 18.6 Grid indices
+
+`decodeToGrid(code)` returns the `(row, col)` of
+[section 5.1](#51-coordinate-to-grid) for the cell a code names, validating its
+argument the way `decode` does. It is the accessor for a caller building a
+spatial structure of its own -- a tile index, a join key, a quadtree -- who
+wants the integers rather than degrees rounded to six places.
+
+For a cell of k characters the corresponding indices are those of its
+south-west corner, `cellRow * 5^(10-k)` and `cellCol * 5^(10-k)`.
+
+---
+
+## 19. Coordinate conversions
+
+Two textual forms for coordinates, so that a caller reading off a survey sheet
+or writing a link does not have to carry a parser of its own. Neither is part
+of the code format and an implementation MAY omit both. One that offers them
+MUST follow the rules here, because the vectors assert the strings exactly.
+
+### 19.1 Degrees, minutes and seconds
+
+`toDMS(latitude, longitude)` returns
+
+```
+43°39'00.02"N, 79°22'48.01"W
+```
+
+Each axis is built as follows, in integers after the first line:
+
+```
+u = floor(|value| * 360000 + 0.5)     hundredths of a second
+degrees = u // 360000
+minutes = (u // 6000) % 60
+seconds = u % 6000                    still in hundredths
+```
+
+Rounding the whole value once, before splitting it, is what carries 59.999
+seconds into the next minute with no special case anywhere.
+
+The text is the degrees, `°`, the minutes padded to two digits, `'`, the
+integer part of the seconds padded to two digits, `.`, its two fractional
+digits, `"`, and then the hemisphere: `N` when the latitude is not negative and
+`S` when it is, `E` when the longitude is not negative and `W` when it is. Only
+the degrees are unpadded. The two axes are joined by a comma and one space,
+latitude first.
+
+Negative zero is not negative here: `-0.0` gives `N` and `E`, consistent with
+[section 2](#2-the-coordinate-domain), where all four signed zeroes name the
+origin.
+
+`fromDMS(text)` accepts that form and a wider one. Each axis is
+
+```
+[ sign ] degrees ( ° | d ) [ minutes ( ' | m ) [ seconds ( " | s ) ] ] [ hemisphere ]
+```
+
+with any amount of ASCII whitespace between the pieces and none of it required.
+The two axes are separated by a comma, or by whitespace alone.
+
+The unit marker after the degrees is **required**. It is what tells one axis
+from the next when no comma separates them, and without it `43 39` has two
+readings. The marker after the minutes is required whenever minutes are
+present, and likewise for the seconds.
+
+Degrees and minutes are digits. Only the seconds may carry a decimal point, so
+that every accepted string has one reading. A hemisphere letter is `N`, `S`,
+`E` or `W` in either case, MUST NOT appear together with a sign, and MUST match
+its axis. When neither axis carries one, position decides: latitude first.
+Minutes or seconds of 60 or more are rejected, as is anything outside the
+domain of [section 2](#2-the-coordinate-domain).
+
+The value is assembled in exactly this shape, the only floating-point
+arithmetic in this section:
+
+```
+value = sign * (degrees + (minutes + seconds / 60) / 60)
+```
+
+**This form is lossy and MUST be documented as such.** A hundredth of a second
+is 0.309 m of latitude, so writing an arbitrary coordinate out and reading it
+back moves it by up to 0.155 m, which is six per cent of a cell.
+
+A code survives the trip all the same, and the reason is worth stating.
+[Section 6.2](#62-grid-to-coordinates) returns the *centre* of a cell, which
+lies 0.00001152 degrees from the nearest boundary in latitude -- eight times the
+worst this conversion can do. Encoding what `fromDMS` returns therefore gives
+back the code that was decoded, over 100,000 codes without exception. What the
+rounding costs is the sixth decimal place of a coordinate, never the cell.
+
+Degrees, minutes and seconds are for a person to read. The exact interchange
+form is [19.2](#192-geo-uris), which carries all six decimal places.
+
+### 19.2 geo: URIs
+
+`toGeoURI(latitude, longitude)` returns an RFC 5870 URI in its simplest form:
+
+```
+geo:43.650006,-79.380004
+```
+
+Each coordinate is written with at most six decimal places: multiply by
+1,000,000, round half away from zero to an integer, and write it back with a
+decimal point six digits from the right. Trailing zeros are dropped, and the
+decimal point with them when nothing follows it, so 43.65 is written `43.65`
+and not `43.650000`. Negative zero is written `0`.
+
+Six places is exactly what [section 6.2](#62-grid-to-coordinates) returns, and
+resolves 0.11 m of latitude, which is finer than a cell.
+
+`fromGeoURI(text)` accepts `geo:` in either case followed by two coordinates
+separated by a comma. A third coordinate MAY follow; it is an altitude and is
+discarded. Parameters MAY follow after `;` and are ignored, except that a `crs`
+parameter MUST be rejected unless its value is `wgs84` in either case, since
+this format is defined on WGS 84 alone. Coordinates outside the domain of
+[section 2](#2-the-coordinate-domain) are rejected.
+
+---
+
+## 20. Conformance
 
 An implementation is conformant if it satisfies every MUST above and reproduces
 the shared conformance vectors. The vectors are part of this specification, not
@@ -1074,12 +1399,25 @@ Version 2 vectors are held in files parallel to the version 1 ones:
 | `v2_short.csv` | `short,refLatitude,refLongitude,code` | Short-form recovery, including cases across the antimeridian |
 | `v2_check.csv` | `code,check` | The GF(25) check character |
 | `v2_corrections.csv` | `level,refLatitude,refLongitude,input,candidates` | The ordered candidate list, joined by spaces |
+| `v2_integer.csv` | `code,value` | The 48-bit integer form, both directions |
+| `v2_cells.csv` | `level,code,cell,neighbours` | `cell` and `neighbours`, joined by spaces, five entries at the poles |
+| `v2_distance.csv` | `a,b,metres` | `distance`, **to one millimetre** and not to equality |
+| `v2_coordinates.csv` | `latitude,longitude,uri,dms` | `toGeoURI` and `toDMS`, and both parsers reading their own output back |
+| `v2_screen_list.csv` | `version,count,digest` | Every port carries the same advisory list |
+| `v2_screen.csv` | `code,spans` | `screen`, as `position:length` joined by spaces |
 | `v2_sample.csv` | `count,seed,digest` | A generated hundred-thousand-point sample, hashed |
 
 `v2_sample.csv` follows the existing generated-sample design rather than
 committing a large corpus: every port walks the same linear congruential
 sequence, encodes every point, and compares one SHA-256 of the codes joined by
 LF. A port that reproduces the digest agrees with the others byte for byte.
+`v2_screen_list.csv` does the same job for the advisory list of
+[section 17](#17-advisory-screening-non-normative), which every port embeds a
+copy of: one row naming the version, the number of entries and their digest.
+
+Every file above asserts equality except `v2_distance.csv`, for the reason given
+in [18.5](#185-distance). A port that compares those figures for equality will
+pass on the machine it was written on and fail somewhere else.
 
 The edge-case corpus MUST include, at minimum: both poles; both ends of the
 antimeridian; negative zero in each axis independently; coordinates one unit in

@@ -22,6 +22,7 @@ one of the four ports.
 Section numbers in the comments refer to SPEC.md.
 """
 
+import hashlib
 import math
 
 ALPHABET = "0123456789CDFGHJKLMNPRTWX"          # section 4
@@ -357,3 +358,352 @@ def suggest_corrections(code, near_latitude, near_longitude, level=6):
                        to_integer(cand), cand))
     scored.sort()
     return [cand for _, _, cand in scored]
+
+
+# ---------------------------------------------------------------- section 18
+
+LEVELS = 10
+EARTH_RADIUS = 6371008.8                         # mean radius of WGS 84
+
+# North, north-east, east, south-east, south, south-west, west, north-west.
+# Rows increase northward, so north is +1.
+NEIGHBOUR_STEPS = ((1, 0), (1, 1), (0, 1), (-1, 1),
+                   (-1, 0), (-1, -1), (0, -1), (1, -1))
+
+
+def _cell(text):
+    """A normalised cell of 1 to 10 symbols, or the typed error. Section 18.1."""
+    payload, check = normalise(text)
+    if check is not None and (len(payload) != 10 or check != check_character(payload)):
+        raise GpcError("GPC_CHECK")
+    if not 1 <= len(payload) <= LEVELS:
+        raise GpcError("GPC_LENGTH")
+    if any(ch not in ALPHABET for ch in payload):
+        raise GpcError("GPC_CHAR")
+    if payload[0] == "X":
+        raise GpcError("GPC_RESERVED")
+    return payload
+
+
+def _cell_grid(cell_text):
+    """(level, p, cellRow, cellCol) for a normalised cell.
+
+    Any symbol will do as padding: by section 10 the first k characters fix the
+    level-k cell, so whatever the padding names, dividing by p lands on the
+    same cell indices."""
+    level = len(cell_text)
+    p = 5 ** (LEVELS - level)
+    row, col = code_to_grid(cell_text + ALPHABET[0] * (LEVELS - level))
+    return level, p, row // p, col // p
+
+
+def cell(text, level):
+    """The first `level` characters of a code, normalised. Section 18.1."""
+    if not 1 <= level <= LEVELS:
+        raise GpcError("GPC_LEVEL")
+    code = _cell(text)
+    if len(code) < level:
+        raise GpcError("GPC_LENGTH")
+    return code[:level]
+
+
+def contains(cell_text, code):
+    """Whether the code lies in the cell. The prefix test. Section 18.2."""
+    prefix = _cell(cell_text)
+    full = _cell(code)
+    return len(full) >= len(prefix) and full[:len(prefix)] == prefix
+
+
+def neighbours(text):
+    """The cells sharing an edge or a corner, in order. Section 18.3."""
+    level, p, cell_row, cell_col = _cell_grid(_cell(text))
+    row_cells = 4 * 5 ** (level - 1)
+    col_cells = 6 * 5 ** (level - 1)
+
+    out = []
+    for d_row, d_col in NEIGHBOUR_STEPS:
+        r = cell_row + d_row
+        if r < 0 or r >= row_cells:              # rows do not wrap
+            continue
+        c = (cell_col + d_col + col_cells) % col_cells
+        out.append(grid_to_code(r * p, c * p)[:level])
+    return out
+
+
+def cell_dimensions(level):
+    """Latitude span, longitude span, and the two in metres. Section 18.4."""
+    if not 1 <= level <= LEVELS:
+        raise GpcError("GPC_LEVEL")
+    divisor = 5 ** (level - 1)
+    lat_span = 45.0 / divisor
+    lng_span = 60.0 / divisor
+    return lat_span, lng_span, lat_span * 111132.0, lng_span * 111319.49
+
+
+def cell_centre(text):
+    """The centre of a cell of any level, exact to 1e-8 degrees. Section 18.5."""
+    _, p, cell_row, cell_col = _cell_grid(_cell(text))
+    return ((2 * cell_row + 1) * p * 1152 / 100_000_000 - 90.0,
+            (2 * cell_col + 1) * p * 1536 / 100_000_000 - 180.0)
+
+
+def distance(a, b):
+    """Great-circle metres between two cell centres. Section 18.5.
+
+    The one operation here that is not bit-identical across languages."""
+    lat_a, lng_a = cell_centre(a)
+    lat_b, lng_b = cell_centre(b)
+
+    phi1 = lat_a * math.pi / 180.0
+    phi2 = lat_b * math.pi / 180.0
+    d_phi = phi2 - phi1
+    d_lambda = (lng_b - lng_a) * math.pi / 180.0
+
+    h = (math.sin(d_phi / 2) * math.sin(d_phi / 2)
+         + math.cos(phi1) * math.cos(phi2)
+         * math.sin(d_lambda / 2) * math.sin(d_lambda / 2))
+    if h > 1.0:                                  # rounding, near antipodal
+        h = 1.0
+    return 2 * EARTH_RADIUS * math.asin(math.sqrt(h))
+
+
+def decode_to_grid(text):
+    """The row and column of the cell a code names. Section 18.6."""
+    return code_to_grid(_geometric(text))
+
+
+# ---------------------------------------------------------------- section 19
+
+DEGREE = "°"
+
+
+def _dms_axis(value, positive, negative):
+    u = math.floor(abs(value) * 360000.0 + 0.5)  # hundredths of a second
+    return "%d%s%02d'%02d.%02d\"%s" % (u // 360000, DEGREE, (u // 6000) % 60,
+                                       (u % 6000) // 100, u % 100,
+                                       negative if value < 0 else positive)
+
+
+def to_dms(latitude, longitude):
+    """Degrees, minutes and seconds, latitude first. Section 19.1."""
+    return _dms_axis(latitude, "N", "S") + ", " + _dms_axis(longitude, "E", "W")
+
+
+class _Scan:
+    """A cursor over the DMS text. Small enough to keep the grammar readable."""
+
+    def __init__(self, text):
+        self.text = text
+        self.at = 0
+
+    def spaces(self):
+        while self.at < len(self.text) and self.text[self.at] in " \t\n\v\f\r":
+            self.at += 1
+
+    def peek(self):
+        return self.text[self.at] if self.at < len(self.text) else ""
+
+    def take(self):
+        self.at += 1
+        return self.text[self.at - 1]
+
+    def digits(self):
+        start = self.at
+        while self.at < len(self.text) and self.text[self.at].isdigit():
+            self.at += 1
+        if self.at == start:
+            raise GpcError("GPC_DMS")
+        return int(self.text[start:self.at])
+
+    def marker(self, choices):
+        # peek() returns "" at the end of the text, and "" is a substring of
+        # every string, so the emptiness is tested before the membership.
+        self.spaces()
+        if not self.peek() or self.peek() not in choices:
+            raise GpcError("GPC_DMS")
+        self.take()
+
+    def axis(self, is_latitude):
+        self.spaces()
+        sign = 1
+        if self.peek() and self.peek() in "+-":
+            sign = -1 if self.take() == "-" else 1
+            signed = True
+        else:
+            signed = False
+
+        self.spaces()
+        degrees = self.digits()
+        self.marker(DEGREE + "dD")
+
+        minutes = 0
+        seconds = 0.0
+        save = self.at
+        self.spaces()
+        if self.peek().isdigit():
+            minutes = self.digits()
+            self.marker("'mM")
+            if minutes >= 60:
+                raise GpcError("GPC_DMS")
+            save = self.at
+            self.spaces()
+            if self.peek().isdigit():
+                seconds = self.number()
+                self.marker("\"sS")
+                if seconds >= 60.0:
+                    raise GpcError("GPC_DMS")
+            else:
+                self.at = save
+        else:
+            self.at = save
+
+        self.spaces()
+        letter = self.peek().upper()
+        if letter and letter in "NSEW":
+            self.take()
+            if signed:
+                raise GpcError("GPC_DMS")       # a sign and a hemisphere both
+            if (letter in "NS") != is_latitude:
+                raise GpcError("GPC_DMS")       # the wrong axis
+            if letter in "SW":
+                sign = -1
+
+        return sign * (degrees + (minutes + seconds / 60.0) / 60.0)
+
+    def number(self):
+        start = self.at
+        while self.at < len(self.text) and self.text[self.at].isdigit():
+            self.at += 1
+        if self.at < len(self.text) and self.text[self.at] == ".":
+            self.at += 1
+            while self.at < len(self.text) and self.text[self.at].isdigit():
+                self.at += 1
+        text = self.text[start:self.at]
+        if not text or text == ".":
+            raise GpcError("GPC_DMS")
+        return float(text)
+
+
+def from_dms(text):
+    """Read degrees, minutes and seconds back. Section 19.1."""
+    if text is None:
+        raise GpcError("GPC_NULL")
+    scan = _Scan(text)
+    latitude = scan.axis(True)
+    scan.spaces()
+    if scan.peek() == ",":
+        scan.take()
+    longitude = scan.axis(False)
+    scan.spaces()
+    if scan.at != len(scan.text):
+        raise GpcError("GPC_DMS")
+    if not -90.0 <= latitude <= 90.0:
+        raise GpcError("LATITUDE")
+    if not -180.0 <= longitude <= 180.0:
+        raise GpcError("LONGITUDE")
+    return latitude, longitude
+
+
+def _decimal6(value):
+    """At most six places, trailing zeros dropped. Section 19.2."""
+    u = math.floor(abs(value) * 1000000.0 + 0.5)
+    sign = "-" if value < 0 and u != 0 else ""
+    frac = ("%06d" % (u % 1000000)).rstrip("0")
+    return sign + str(u // 1000000) + ("." + frac if frac else "")
+
+
+def to_geo_uri(latitude, longitude):
+    """An RFC 5870 URI in its simplest form. Section 19.2."""
+    return "geo:" + _decimal6(latitude) + "," + _decimal6(longitude)
+
+
+def _geo_number(text):
+    body = text[1:] if text.startswith("-") else text
+    whole, dot, frac = body.partition(".")
+    if not whole.isdigit() or (dot and not frac.isdigit()):
+        raise GpcError("GPC_GEO")
+    return float(text)
+
+
+def from_geo_uri(text):
+    """Read an RFC 5870 URI back. Altitude and parameters are dropped."""
+    if text is None:
+        raise GpcError("GPC_NULL")
+    body = text.strip()
+    if body[:4].lower() != "geo:":
+        raise GpcError("GPC_GEO")
+    body = body[4:]
+
+    body, _, params = body.partition(";")
+    for param in params.split(";") if params else []:
+        name, _, value = param.partition("=")
+        if name.lower() == "crs" and value.lower() != "wgs84":
+            raise GpcError("GPC_GEO")
+
+    parts = body.split(",")
+    if len(parts) not in (2, 3):
+        raise GpcError("GPC_GEO")
+    latitude = _geo_number(parts[0])
+    longitude = _geo_number(parts[1])
+    if len(parts) == 3:
+        _geo_number(parts[2])                    # altitude, parsed and dropped
+
+    if not -90.0 <= latitude <= 90.0:
+        raise GpcError("LATITUDE")
+    if not -180.0 <= longitude <= 180.0:
+        raise GpcError("LONGITUDE")
+    return latitude, longitude
+
+
+# ---------------------------------------------------------------- section 17
+#
+# The mechanism only. The list itself is expanded at build time from a word
+# file that is deliberately not in this repository, so nothing here carries a
+# word: `screen` takes the entries it is to match against.
+
+SCREEN_MIN = 4                                   # section 17.2
+
+SCREEN_LETTERS = {
+    "a": "4", "b": "8", "c": "C", "d": "D", "e": "3", "f": "F", "g": "G69",
+    "h": "H", "i": "1", "j": "J", "k": "K", "l": "L1", "m": "M", "n": "N",
+    "o": "0", "p": "P", "q": "", "r": "R", "s": "5", "t": "T7", "u": "",
+    "v": "", "w": "W", "x": "X", "y": "", "z": "2",
+}
+
+
+def screen_hash(text):
+    """The first eight hexadecimal characters of the SHA-256. Section 17.3."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:8]
+
+
+def expand_word(word):
+    """Every way a word can be spelled in a code, in order. Section 17.2.
+
+    Every variant is as long as the word, so a word shorter than the floor
+    contributes nothing rather than contributing something too short."""
+    if len(word) < SCREEN_MIN:
+        return []
+    variants = [""]
+    for letter in word:
+        symbols = SCREEN_LETTERS.get(letter)
+        if not symbols:
+            return []                            # cannot appear at all
+        variants = [v + s for v in variants for s in symbols]
+    return variants
+
+
+def screen(text, entries):
+    """Matched spans as (position, length), position counted from 1. 17.4.
+
+    Reserved codes screen like any other: an X in position 1 does not stop the
+    remaining nine characters spelling something."""
+    code, _ = normalise(text)
+    if len(code) != 10 or any(ch not in ALPHABET for ch in code):
+        raise GpcError("GPC_LENGTH" if len(code) != 10 else "GPC_CHAR")
+    spans = []
+    for length in range(SCREEN_MIN, len(code) + 1):
+        for start in range(0, len(code) - length + 1):
+            if screen_hash(code[start:start + length]) in entries:
+                spans.append((start + 1, length))
+    spans.sort()
+    return spans

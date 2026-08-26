@@ -9,7 +9,7 @@ The rest are version 1, which is frozen: the ports still decode it, so they are
 asserted from the decoding side, and the two files that describe the version 1
 *encoder* are kept as a record rather than a port assertion, because no
 published package encodes version 1 any more.
-[Section 18 of SPEC.md](../SPEC.md#18-conformance) specifies the version 2
+[Section 20 of SPEC.md](../SPEC.md#20-conformance) specifies the version 2
 fields.
 
 Each port has three runners that read these files directly:

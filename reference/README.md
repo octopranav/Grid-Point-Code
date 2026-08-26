@@ -16,8 +16,8 @@ Python 3.9 or later. No dependencies.
 
 | File | What it is |
 | --- | --- |
-| `gpc2.py` | The whole of version 2: encode, decode, area, parsing, classification, short form, integer form, the GF(25) check character, and typo correction |
-| `geodesy.py` | Spherical helpers used only by the harness. The format itself needs no trigonometry |
+| `gpc2.py` | The whole of version 2: encode, decode, area, parsing, classification, short form, integer form, the GF(25) check character, typo correction, the spatial operations, and the two coordinate conversions |
+| `geodesy.py` | Spherical helpers used only by the harness, and the second opinion `distance` is held against |
 | `from_spec.py` | A second opinion, transcribed from Appendix A of the specification and nothing else |
 | `verify.py` | Checks every exact claim the specification makes |
 | `measure.py` | Reproduces every table of measured figures in the specification |
@@ -29,8 +29,9 @@ python reference/verify.py
 ```
 
 Checks the constants, the worked examples, the structural properties, the
-round-trips, and the containment and ordering guarantees, then exits non-zero on
-the first failure. Takes about a minute.
+round-trips, the containment and ordering guarantees, the spatial operations
+and the coordinate conversions, then exits non-zero on the first failure. Takes
+about a minute.
 
 ```bash
 python reference/measure.py
@@ -67,3 +68,11 @@ Work from `SPEC.md`. This directory is for checking your reading of it, not for
 translating. A port written by translating this code inherits whatever this code
 gets wrong, and the whole point of the specification is that it should not need
 to exist for a port to be written.
+
+## What is deliberately absent
+
+The advisory word list of specification section 17. `gpc2.py` implements the
+mechanism -- the expansion table, the hash, the matching -- and `screen` takes
+the entries it is to match against, so nothing in this directory carries a
+word. The list is expanded from a private source file by
+[`screening/expand.py`](../screening/) and embedded in the four ports.
