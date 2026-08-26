@@ -42,17 +42,19 @@ a named workflow file, and issue a short-lived credential for a single upload.
 A leaked publishing secret is not a risk that has to be managed if there is no
 secret to leak.
 
-Each release job also declares a deployment environment, `pypi` and `npm`, so
-the upload can carry its own protection rules and appears in the repository's
-deployment history.
+Each release job also declares the `release` deployment environment, so the
+upload can carry protection rules and appears in the repository's deployment
+history. Both jobs name the same environment: PyPI and npm are two halves of
+one release and never move apart, so there is nothing a second name would let
+you say.
 
 Setting this up is done once, outside the repository:
 
 * **PyPI** — add a trusted publisher to the project: owner `octopranav`,
   repository `Grid-Point-Code`, workflow `release-python.yml`, environment
-  `pypi`.
+  `release`.
 * **npm** — add a trusted publisher to the package: the same repository, with
-  workflow `release-npm.yml` and environment `npm`.
+  workflow `release-npm.yml` and environment `release`.
 
 Both names must match exactly, including the environment, or the exchange is
 refused and the release fails without publishing anything.
