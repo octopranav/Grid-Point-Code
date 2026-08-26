@@ -83,7 +83,9 @@ cd java && mvn -q compile
 ```
 
 `compare.py` checks for both and for the four tools before it starts, and says
-which is missing.
+which is missing. It checks that the built output is *there*, not that it is
+current, so rebuild after changing a port or the harness will faithfully report
+a divergence between your new source and yesterday's `dist/`.
 
 ## In CI
 

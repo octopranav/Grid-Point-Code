@@ -2,7 +2,7 @@
 
 | File | Trigger | What it does |
 | --- | --- | --- |
-| `ci.yml` | every push, every pull request | Builds and tests all four ports, checks that the shared vectors still regenerate byte for byte, and checks every claim the specification makes |
+| `ci.yml` | every push, every pull request | Builds and tests all four ports, checks that the shared vectors and the advisory list still regenerate byte for byte, runs the four ports against each other case by case, and checks every claim the specification makes |
 | `release-python.yml` | a `v*` tag | Builds and publishes the Python package to PyPI |
 | `release-npm.yml` | a `v*` tag | Builds and publishes the TypeScript package to npm |
 
@@ -21,11 +21,21 @@ The `vectors` job closes the other half of that loop by regenerating the corpus
 and failing on any diff, so the committed expectations are always exactly what
 the reference generator produces rather than something edited by hand.
 
+The `screening` job does the same for the advisory list: it re-expands
+`screening/words.zip` and fails if any of the four generated files moves, which
+catches one edited by hand and an archive changed without rebuilding them.
+
 The `reference` job runs `reference/verify.py`, which checks every exact claim
 `SPEC.md` makes and holds the transcription of its Appendix A against the
 working implementation over 200,000 coordinates. Nothing it touches ships. It
 is there because the ports are meant to be implementable from the document
 alone, and this is the job that fails when they stop being so.
+
+The `differential` job runs [`conformance/`](../../conformance/), which puts one
+battery of awkward inputs through all four ports and diffs the answers against
+each other. It catches what a vector cannot: a vector records an answer somebody
+already worked out, so it only pins cases the ports were already known to agree
+on. This is the only job needing all four toolchains at once.
 
 ## Actions are pinned to commits
 

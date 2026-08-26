@@ -1151,7 +1151,7 @@ It returns the version tag and the spans that matched, as (position, length),
 ordered by position and then by length. Spans may overlap, and every one that
 matched MUST be reported. A code that matches nothing returns no spans and the
 version tag all the same, because a caller has to be able to tell "clean under
-list 2026.1" from "never screened".
+the list it was screened against" from "never screened".
 
 How often a warning fires is set by the shortest entries and by almost nothing
 else. A four-symbol variant occupies seven of those twenty-eight windows

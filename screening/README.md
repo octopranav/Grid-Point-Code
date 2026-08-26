@@ -58,9 +58,14 @@ alphabet and therefore cannot appear in a code at all.
 ```bash
 unzip -P gridpointcode screening/words.zip     # then edit words.txt
 zip -q -j -X -P gridpointcode screening/words.zip screening/words.txt
+                                               # then bump screening/VERSION
 python screening/expand.py
 python test_data/generate.py
 ```
+
+The version bump is the step with nothing to catch it: the other four fail
+loudly when they are skipped, and a stale version tag just quietly tells every
+caller that a changed list is the one they already saw.
 
 Every word expands to each way it could be spelled in a code — `o` as `0`, `t`
 as `T` or `7`, and so on down the table in section 17.2 — and each variant is
