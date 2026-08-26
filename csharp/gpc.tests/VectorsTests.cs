@@ -16,6 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Xunit;
@@ -329,6 +330,22 @@ namespace Ca.Pranavpatel.Algo.GridPointCode.Tests {
                 matched += expected.Count > 0 ? 1 : 0;
             }
             Assert.True(matched > 0, "expected at least one code to match");
+        }
+
+        /// <summary>The formatted and bare forms screen alike.</summary>
+        /// <remarks>
+        /// The probe comes from the corpus rather than from a literal, so that
+        /// replacing the advisory list never means editing four test suites --
+        /// and so that no code known to spell something sits in the source.
+        /// </remarks>
+        [Fact]
+        public void ScreensTheFormattedAndBareFormsAlike() {
+            List<string[]> matching = [.. Rows("v2_screen.csv", 2).Where(r => r[1].Length > 0)];
+            Assert.NotEmpty(matching);
+            string code = matching[0][0];
+            string formatted = "#" + code[..5] + "-" + code[5..];
+            Assert.NotEmpty(GPC.Screen(code).Spans);
+            Assert.Equal(GPC.Screen(code).Spans, GPC.Screen(formatted).Spans);
         }
 
         /*  Version 1  */

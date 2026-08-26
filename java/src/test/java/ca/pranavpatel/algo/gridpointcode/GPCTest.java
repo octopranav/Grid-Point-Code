@@ -789,30 +789,19 @@ class GPCTest {
         assertTrue(screening.Spans.isEmpty());
     }
 
-    @Test
-    void reportsTheSpanOfAMatch() {
-        assertEquals(List.of(new Span(1, 4)), GPC.Screen("GN4T000000").Spans);
-    }
-
-    /** An X in position 1 does not stop the other nine spelling something. */
-    @Test
-    void screensAReservedCodeLikeAnyOther() {
-        assertEquals(List.of(new Span(2, 4)), GPC.Screen("XGN4T00000").Spans);
-    }
-
     /** Whatever the list says, the code still encodes, decodes and validates. */
     @Test
     void screeningNeverBlocks() {
-        assertTrue(GPC.IsValid("GN4T000000"));
-        assertEquals(CodeClass.GEOMETRIC, GPC.Classify("GN4T000000"));
-        Coordinates point = GPC.Decode("GN4T000000");
-        assertEquals("GN4T000000", GPC.Encode(point.Latitude, point.Longitude, false));
+        assertTrue(GPC.IsValid("G3RJM98NM9"));
+        assertEquals(CodeClass.GEOMETRIC, GPC.Classify("G3RJM98NM9"));
+        Coordinates point = GPC.Decode("G3RJM98NM9");
+        assertEquals("G3RJM98NM9", GPC.Encode(point.Latitude, point.Longitude, false));
     }
 
-    @Test
-    void screensTheFormattedAndBareFormsAlike() {
-        assertEquals(GPC.Screen("GN4T000000"), GPC.Screen("#GN4T0-00000"));
-    }
+    // What a match looks like, what a reserved code does with one, and the
+    // order of the spans are asserted in VectorsTest against
+    // test_data/v2_screen.csv. A code that matches is a code that spells
+    // something, and writing one here would put it in the source.
 
     /*  Batch and streaming, for dataset work.  */
 

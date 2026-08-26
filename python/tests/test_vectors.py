@@ -243,6 +243,18 @@ class TestVersion2Vectors(unittest.TestCase):
                 matched += 1 if expected else 0
         self.assertGreater(matched, 0)
 
+    def test_the_formatted_and_bare_forms_screen_alike(self):
+        # The probe comes from the corpus rather than from a literal, so that
+        # replacing the advisory list never means editing four test suites --
+        # and so that no code known to spell something sits in the source.
+        matching = [(code, spans)
+                    for code, spans in _rows("v2_screen.csv", 2) if spans]
+        self.assertGreater(len(matching), 0)
+        code, _ = matching[0]
+        formatted = "#" + code[:5] + "-" + code[5:]
+        self.assertNotEqual([], GPC.screen(code)[1])
+        self.assertEqual(GPC.screen(code), GPC.screen(formatted))
+
 
 class TestVersion1Vectors(unittest.TestCase):
     """Version 1, asserted from the decoding side only."""

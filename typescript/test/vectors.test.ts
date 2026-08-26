@@ -250,6 +250,18 @@ describe('Version 2 conformance vectors', () => {
         }
         expect(matched).to.be.greaterThan(0);
     });
+
+    it('screens the formatted and bare forms alike', () => {
+        // The probe comes from the corpus rather than from a literal, so that
+        // replacing the advisory list never means editing four test suites --
+        // and so that no code known to spell something sits in the source.
+        const matching = rows('v2_screen.csv', 2).filter(([, spans]) => spans !== '');
+        expect(matching.length).to.be.greaterThan(0);
+        const code = matching[0][0];
+        const formatted = '#' + code.slice(0, 5) + '-' + code.slice(5);
+        expect(GPC.screen(code)[1]).to.not.deep.equal([]);
+        expect(GPC.screen(code)).to.deep.equal(GPC.screen(formatted));
+    });
 });
 
 describe('Version 1 conformance vectors', () => {

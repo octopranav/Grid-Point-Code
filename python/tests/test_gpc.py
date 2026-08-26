@@ -600,28 +600,17 @@ class TestScreening(unittest.TestCase):
         self.assertNotEqual("", version)
         self.assertEqual([], spans)
 
-    def test_a_match_reports_its_span(self):
-        version, spans = GPC.screen("GN4T000000")
-        self.assertNotEqual("", version)
-        self.assertEqual([(1, 4)], spans)
-
-    def test_spans_are_ordered_by_position_then_length(self):
-        _, spans = GPC.screen("0GN4T00000")
-        self.assertEqual(sorted(spans), spans)
-
-    def test_a_reserved_code_screens_like_any_other(self):
-        _, spans = GPC.screen("XGN4T00000")
-        self.assertEqual([(2, 4)], spans)
-
     def test_screening_never_blocks(self):
         # Whatever the list says, the code still encodes, decodes and validates.
-        self.assertTrue(GPC.is_valid("GN4T000000"))
-        self.assertEqual("GEOMETRIC", GPC.classify("GN4T000000"))
-        latitude, longitude = GPC.decode("GN4T000000")
-        self.assertEqual("GN4T000000", GPC.encode(latitude, longitude, False))
+        self.assertTrue(GPC.is_valid("G3RJM98NM9"))
+        self.assertEqual("GEOMETRIC", GPC.classify("G3RJM98NM9"))
+        latitude, longitude = GPC.decode("G3RJM98NM9")
+        self.assertEqual("G3RJM98NM9", GPC.encode(latitude, longitude, False))
 
-    def test_the_formatted_and_bare_forms_screen_alike(self):
-        self.assertEqual(GPC.screen("GN4T000000"), GPC.screen("#GN4T0-00000"))
+    # What a match looks like, what a reserved code does with one, and the
+    # order of the spans are asserted in test_vectors.py against
+    # test_data/v2_screen.csv. A code that matches is a code that spells
+    # something, and writing one here would put it in the source.
 
 
 class TestBulk(unittest.TestCase):
