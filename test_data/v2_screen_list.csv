@@ -1,0 +1,8 @@
+# version,count,digest
+# Version 2. Not a vector so much as an identity: every port embeds its
+# own copy of the advisory list, and this is how they are held to being
+# the same list. digest is the SHA-256 of the sorted entries joined by
+# LF. CI cannot rebuild the list -- it has no word file -- so this row is
+# what catches a port whose copy drifted.
+
+2026.1,35,8c89f3a477164cac0a079db8229a6e7523638c5ce6e866b763245ed50b5c9362

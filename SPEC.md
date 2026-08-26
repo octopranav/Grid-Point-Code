@@ -1402,7 +1402,8 @@ Version 2 vectors are held in files parallel to the version 1 ones:
 | `v2_integer.csv` | `code,value` | The 48-bit integer form, both directions |
 | `v2_cells.csv` | `level,code,cell,neighbours` | `cell` and `neighbours`, joined by spaces, five entries at the poles |
 | `v2_distance.csv` | `a,b,metres` | `distance`, **to one millimetre** and not to equality |
-| `v2_coordinates.csv` | `latitude,longitude,uri,dms` | `toGeoURI` and `toDMS`, and both parsers reading their own output back |
+| `v2_geo.csv` | `latitude,longitude,uri` | `toGeoURI`, and `fromGeoURI` reading it back |
+| `v2_dms.csv` | `latitude,longitude,dms` | `toDMS`, and `fromDMS` reading it back |
 | `v2_screen_list.csv` | `version,count,digest` | Every port carries the same advisory list |
 | `v2_screen.csv` | `code,spans` | `screen`, as `position:length` joined by spaces |
 | `v2_sample.csv` | `count,seed,digest` | A generated hundred-thousand-point sample, hashed |

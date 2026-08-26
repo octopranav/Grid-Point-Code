@@ -1,0 +1,47 @@
+# code,spans
+# Version 2. screen: the matched substrings of a code, as
+# position:length joined by single spaces, ordered by position and then
+# by length. Positions count from 1. The field is empty when nothing
+# matched, which is a result and not an absence -- section 17.4.
+# These rows depend on the list identified in v2_screen_list.csv.
+
+# --- Codes that match nothing
+L10XCP8MJ6,
+3655L4H988,
+41NH4H88X4,
+1XFC3F87FM,
+J8NFFL600C,
+264MH7P01P,
+L6DX8MR152,
+L7H98RL5H6,
+47T5N3XCCT,
+GFKWJ2GDTM,
+0WGK4T5F69,
+5TDCFLKJ40,
+4H14G353CL,
+LR4RN409LK,
+K38WWC2DMM,
+DJ2M5D63C2,
+1WL515RPF7,
+N1TTPMR970,
+C2M0G6LN13,
+7L4HRWN8WP,
+
+# --- Codes that match
+849N47358H,3:4
+JH5LCP9N4T,7:4
+MMC9N47TR0,4:4
+0CWXX29N47,7:4
+9N4TJCW7MT,1:4
+8GN4TNKFPD,2:4
+GXCL4GN473,6:4
+9219N4T2HG,4:4
+W9N47WD12J,2:4
+18PGN4T5D1,4:4
+
+# --- A reserved code screens like any other
+X49N47358H,3:4
+XH5LCP9N4T,7:4
+XMC9N47TR0,4:4
+XCWXX29N47,7:4
+XGN4TNKFPD,2:4

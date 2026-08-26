@@ -5,6 +5,8 @@ implementations read the same bytes and must produce the same results, so a
 divergence between languages fails a test instead of reaching a release.
 
 The `v2_*.csv` files hold version 2 and are what the four ports are held to.
+Every one of them asserts equality except `v2_distance.csv`, which asserts
+agreement to a millimetre and says why.
 The rest are version 1, which is frozen: the ports still decode it, so they are
 asserted from the decoding side, and the two files that describe the version 1
 *encoder* are kept as a record rather than a port assertion, because no
@@ -105,6 +107,139 @@ code,check
 The optional GF(25) check character of specification section 14, written after
 a star: `#G3RJM-98NM9*T`. It is not canonical and is never emitted unless asked
 for.
+
+### v2_short.csv
+
+```
+short,refLatitude,refLongitude,code
+```
+
+The last five characters of a code, recovered against a reference point.
+Recovery is exact whenever the reference lies within half a level-5 cell of the
+true point on each axis — 0.03598848 degrees of latitude and 0.04798464 of
+longitude — and the corpus walks that box to all nine of its corners.
+
+Two sections exist to catch a specific mistake. The antimeridian rows fail for a
+port whose column arithmetic does not wrap, and the polar rows fail for one
+whose row arithmetic does. The whole file fails for a port that truncates toward
+zero where [12.2](../SPEC.md#122-recovery) requires floor division: truncation
+is correct only when the reference lies north and east of the point, so a
+careless port passes about a quarter of these rows.
+
+### v2_corrections.csv
+
+```
+level,refLatitude,refLongitude,input,candidates
+```
+
+`candidates` is the last field: the unformatted codes joined by single spaces,
+empty when nothing survived the filter.
+
+What this pins is not that the true code is among the candidates — that is a
+statistical claim, and it lives in `reference/measure.py`. It is that all four
+ports generate the same candidates in the same order, down to the tie-break on
+the integer form. `input` is the code as typed and need not decode to anywhere
+near the reference; one row carries no typo at all, and one is
+`P4444PPPPP`, whose adjacent repeats yield 242 candidates rather than 249 and
+which must not be padded back with duplicates.
+
+### v2_cells.csv
+
+```
+level,code,cell,neighbours
+```
+
+`cell` is the first `level` characters, bare — no `#` and no separator.
+`neighbours` is the last field: the cells sharing an edge or a corner, joined by
+single spaces, in the order north, north-east, east, south-east, south,
+south-west, west, north-west.
+
+Columns wrap at the antimeridian and rows do not, so a cell in the top or bottom
+row has **five** entries rather than eight, and the three that would lie off the
+grid are absent rather than present and empty. Every code in the corpus is
+expanded at all ten levels, so a port that gets the polar case right at level 10
+and wrong at level 3 fails here.
+
+### v2_integer.csv
+
+```
+code,value
+```
+
+The base-25 integer form of [section 13](../SPEC.md#13-the-integer-form), read
+in both directions. The first and last codes of the range are here, along with
+the two either side of the reserved floor at 91,552,734,375,000.
+
+### v2_distance.csv
+
+```
+a,b,metres
+```
+
+**This is the only file compared to a tolerance rather than to equality.** Ports
+must agree within one millimetre. A port that asserts equality here will pass on
+the machine it was written on and fail somewhere else, because no standard
+library rounds sine, cosine or arc sine correctly; the reason is
+[18.5](../SPEC.md#185-distance).
+
+The pair `a` and `b` may be cells of different levels. Two rows are nearly
+antipodal, which is where the sum inside the arc sine can round past 1 and
+produce a NaN in a port that does not clamp it.
+
+### v2_geo.csv
+
+```
+latitude,longitude,uri
+```
+
+`uri` is the last field, because it contains a comma of its own. Six decimal
+places with trailing zeros dropped, which is exactly the precision `decode`
+produces, so a code written out this way and read back encodes to the same code
+every time. A port asserts the string and then reads it back.
+
+### v2_dms.csv
+
+```
+latitude,longitude,dms
+```
+
+`dms` is the last field, for the same reason. Rounded to a hundredth of a
+second, and therefore lossy: reading it back gives a coordinate within 0.155 m,
+not the one written. What survives the trip is the *code*, because `decode`
+returns a cell centre and that sits eight times further from the nearest cell
+boundary than this rounding can move it.
+
+### v2_screen_list.csv
+
+```
+version,count,digest
+```
+
+Not a vector so much as an identity. Every port embeds its own copy of the
+advisory word list of [section 17](../SPEC.md#17-advisory-screening-non-normative),
+and this row is how the four are held to being the same list: `digest` is the
+SHA-256 of the sorted entries joined by LF.
+
+CI cannot rebuild the list, because the words it is expanded from are
+deliberately not in this repository — see [`screening/`](../screening/). This
+row is what catches a port whose copy drifted.
+
+### v2_screen.csv
+
+```
+code,spans
+```
+
+`spans` is the matched substrings as `position:length` joined by single spaces,
+ordered by position and then by length, with positions counted from 1. It is
+**empty when nothing matched**, which is a result rather than an absence: a
+caller has to be able to tell "clean under this list" from "never screened".
+
+The rows are found by search rather than by construction. This generator holds
+only the hashes and cannot work out what would match, so it walks the wide
+sample and keeps what flags — deterministic, because the sample is. Changing the
+word list changes this file and `v2_screen_list.csv` with it, which is why
+`screening/expand.py` says to regenerate afterwards.
 
 ### v2_sample.csv
 
@@ -233,7 +368,7 @@ values.
 
 ## Regenerating
 
-`generate.py` rebuilds all eleven files. Run it from anywhere:
+`generate.py` rebuilds all 20 files. Run it from anywhere:
 
 ```
 python test_data/generate.py

@@ -20,10 +20,12 @@ version 1, and are asserted by decoding, because no package encodes version 1
 any more.
 """
 
+import hashlib
 import unittest
 from pathlib import Path
 
 from src.gridpointcode_algo_pranavpatel_ca import GPC
+from src.gridpointcode_algo_pranavpatel_ca import screen_list
 
 # One cell of the version 1 grid: a hundred-thousandth of a degree on each axis.
 V1_CELL = 1e-5
@@ -139,6 +141,107 @@ class TestVersion2Vectors(unittest.TestCase):
                 self.assertEqual(check, GPC.check_character(code))
                 self.assertEqual(GPC.classify(code),
                                  GPC.classify(code + "*" + check))
+
+
+    def test_short_form_recovery(self):
+        rows = _rows("v2_short.csv", 4)
+        self.assertGreater(len(rows), 100)
+        for short, latitude, longitude, expected in rows:
+            with self.subTest(short=short, latitude=latitude):
+                self.assertEqual(expected, GPC.recover_short(
+                    short, float(latitude), float(longitude), False))
+                self.assertEqual(short, GPC.shorten(expected))
+
+    def test_corrections(self):
+        rows = _rows("v2_corrections.csv", 5)
+        self.assertGreater(len(rows), 10)
+        for level, latitude, longitude, typo, candidates in rows:
+            with self.subTest(input=typo, level=level):
+                expected = candidates.split(" ") if candidates else []
+                self.assertEqual(expected, GPC.suggest_corrections(
+                    typo, float(latitude), float(longitude), int(level), False))
+
+    def test_cells_and_neighbours(self):
+        rows = _rows("v2_cells.csv", 4)
+        self.assertGreater(len(rows), 50)
+        for level, code, expected_cell, neighbours in rows:
+            with self.subTest(code=code, level=level):
+                cell = GPC.cell(code, int(level))
+                self.assertEqual(expected_cell, cell)
+                self.assertEqual(neighbours.split(" ") if neighbours else [],
+                                 GPC.neighbours(cell))
+                self.assertTrue(GPC.contains(cell, code))
+
+    def test_the_integer_form(self):
+        rows = _rows("v2_integer.csv", 2)
+        self.assertGreater(len(rows), 50)
+        for code, value in rows:
+            with self.subTest(code=code):
+                self.assertEqual(int(value), GPC.to_integer(code))
+                self.assertEqual(code, GPC.from_integer(int(value), False))
+
+    def test_distance_within_a_millimetre(self):
+        """The one file compared to a tolerance. See SPEC.md 18.5: no standard
+        library rounds sine, cosine or arc sine correctly, so asserting
+        equality here would pass on one machine and fail on the next."""
+        rows = _rows("v2_distance.csv", 3)
+        self.assertGreater(len(rows), 10)
+        for a, b, metres in rows:
+            with self.subTest(a=a, b=b):
+                self.assertAlmostEqual(float(metres), GPC.distance(a, b), delta=0.001)
+
+    def test_geo_uris(self):
+        rows = _rows("v2_geo.csv", 3)
+        self.assertGreater(len(rows), 50)
+        for latitude, longitude, uri in rows:
+            with self.subTest(uri=uri):
+                self.assertEqual(uri, GPC.to_geo_uri(float(latitude),
+                                                     float(longitude)))
+                # Six decimal places, so a coordinate carrying more comes back
+                # rounded. Everything decode produces already has six, which is
+                # why the round trip through a code is exact; that is asserted
+                # in the unit suite rather than here.
+                back_lat, back_long = GPC.from_geo_uri(uri)
+                self.assertLess(abs(back_lat - float(latitude)), 5e-7)
+                self.assertLess(abs(back_long - float(longitude)), 5e-7)
+
+    def test_degrees_minutes_and_seconds(self):
+        rows = _rows("v2_dms.csv", 3)
+        self.assertGreater(len(rows), 50)
+        for latitude, longitude, dms in rows:
+            with self.subTest(dms=dms):
+                self.assertEqual(dms, GPC.to_dms(float(latitude),
+                                                 float(longitude)))
+                # Lossy by a hundredth of a second, so the coordinates come
+                # back near rather than equal. Half of 1/360000 of a degree.
+                back_lat, back_long = GPC.from_dms(dms)
+                self.assertLess(abs(back_lat - float(latitude)), 0.5 / 360000 + 1e-12)
+                self.assertLess(abs(back_long - float(longitude)), 0.5 / 360000 + 1e-12)
+
+    def test_the_screening_list_is_the_same_list_in_every_port(self):
+        rows = _rows("v2_screen_list.csv", 3)
+        self.assertEqual(1, len(rows))
+        version, count, digest = rows[0]
+        self.assertEqual(int(count), len(screen_list.ENTRIES))
+        self.assertEqual(version, screen_list.VERSION)
+        self.assertEqual(digest, hashlib.sha256(
+            "\n".join(sorted(screen_list.ENTRIES)).encode("utf-8")).hexdigest())
+
+    def test_screening(self):
+        rows = _rows("v2_screen.csv", 2)
+        self.assertGreater(len(rows), 10)
+        matched = 0
+        for code, spans in rows:
+            with self.subTest(code=code):
+                expected = [tuple(int(part) for part in span.split(":"))
+                            for span in spans.split(" ")] if spans else []
+                version, got = GPC.screen(code)
+                self.assertEqual(expected, got)
+                # The version comes back either way: a caller has to be able to
+                # tell "clean under this list" from "never screened".
+                self.assertEqual(screen_list.VERSION, version)
+                matched += 1 if expected else 0
+        self.assertGreater(matched, 0)
 
 
 class TestVersion1Vectors(unittest.TestCase):

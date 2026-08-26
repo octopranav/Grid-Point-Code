@@ -234,6 +234,116 @@ class TestLocality(unittest.TestCase):
                     self.assertLessEqual(east, cell_east)
 
 
+class TestSpatialProperties(unittest.TestCase):
+    """Sections 12, 13 and 18, over the same wide sample.
+
+    The vector files pin these operations case by case. What these pin is that
+    they hold everywhere -- including in the quadrants a case-by-case corpus
+    might happen not to reach.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        count, seed, _ = _sample_spec()
+        cls.points = list(_sample_points(min(count, 20_000), seed))
+        cls.codes = [GPC.encode(latitude, longitude, False)
+                     for latitude, longitude in cls.points]
+
+    def test_containment_agrees_with_the_grid(self):
+        for (latitude, longitude), code in zip(self.points[:4000], self.codes[:4000]):
+            row, col = _grid(latitude, longitude)
+            for k in (1, 3, 5, 7, 10):
+                cell = GPC.cell(code, k)
+                with self.subTest(code=code, k=k):
+                    self.assertEqual(code[:k], cell)
+                    self.assertTrue(GPC.contains(cell, code))
+                    # And a cell the point is not in never claims it.
+                    neighbour = GPC.neighbours(cell)[0]
+                    self.assertFalse(GPC.contains(neighbour, code))
+
+    def test_every_neighbour_is_one_cell_away(self):
+        for code in self.codes[:2000]:
+            for k in (1, 4, 7, 10):
+                p = 5 ** (10 - k)
+                row_cells = 4 * 5 ** (k - 1)
+                col_cells = 6 * 5 ** (k - 1)
+                cell = GPC.cell(code, k)
+                row, col = GPC.decode_to_grid(code)
+                cell_row, cell_col = row // p, col // p
+                got = GPC.neighbours(cell)
+                with self.subTest(cell=cell):
+                    # Five in a polar row, eight everywhere else. Rows do not
+                    # wrap; columns always do.
+                    expected = 8 if 0 < cell_row < row_cells - 1 else 5
+                    self.assertEqual(expected, len(got))
+                    self.assertEqual(len(set(got)), len(got))
+                    self.assertNotIn(cell, got)
+                for neighbour in got:
+                    padded = neighbour + "0" * (10 - k)
+                    n_row, n_col = GPC.code_to_grid(padded)
+                    d_col = (n_col // p - cell_col + col_cells) % col_cells
+                    if d_col > col_cells // 2:
+                        d_col -= col_cells
+                    with self.subTest(cell=cell, neighbour=neighbour):
+                        self.assertLessEqual(abs(n_row // p - cell_row), 1)
+                        self.assertLessEqual(abs(d_col), 1)
+
+    def test_the_short_form_recovers_inside_half_a_cell(self):
+        # Half a level-5 cell on each axis: 1562 rows and 1562 columns.
+        half_lat = 1562 * 180.0 / 7812500.0
+        half_long = 1562 * 360.0 / 11718750.0
+        for (latitude, longitude), code in zip(self.points[:4000], self.codes[:4000]):
+            for d_lat, d_long in ((0.0, 0.0), (half_lat, half_long),
+                                  (-half_lat, -half_long),
+                                  (half_lat, -half_long), (-half_lat, half_long)):
+                reference = (latitude + d_lat, longitude + d_long)
+                if not (-90.0 <= reference[0] <= 90.0
+                        and -180.0 <= reference[1] <= 180.0):
+                    continue
+                with self.subTest(code=code, reference=reference):
+                    self.assertEqual(code, GPC.recover_short(
+                        GPC.shorten(code), reference[0], reference[1], False))
+
+    def test_the_integer_form_round_trips_and_keeps_the_order(self):
+        values = []
+        for code in self.codes[:20_000]:
+            value = GPC.to_integer(code)
+            self.assertEqual(code, GPC.from_integer(value, False))
+            # No encoded code reaches the reserved namespace, so no integer
+            # form of one reaches the floor either.
+            self.assertLess(value, 24 * 25 ** 9)
+            values.append((code, value))
+        by_string = sorted(values, key=lambda pair: pair[0])
+        by_value = sorted(values, key=lambda pair: pair[1])
+        self.assertEqual(by_string, by_value)
+
+    def test_distance_is_symmetric_and_zero_only_on_itself(self):
+        for i in range(0, 2000, 2):
+            a, b = self.codes[i], self.codes[i + 1]
+            with self.subTest(a=a, b=b):
+                self.assertEqual(GPC.distance(a, b), GPC.distance(b, a))
+                self.assertEqual(0.0, GPC.distance(a, a))
+                self.assertEqual(a == b, GPC.distance(a, b) == 0.0)
+
+    def test_a_code_survives_both_coordinate_conversions(self):
+        # decode returns a cell centre, which sits far enough from the nearest
+        # boundary that neither rounding can push it into the next cell.
+        for code in self.codes[:5000]:
+            latitude, longitude = GPC.decode(code)
+            with self.subTest(code=code):
+                back = GPC.from_geo_uri(GPC.to_geo_uri(latitude, longitude))
+                self.assertEqual(code, GPC.encode(back[0], back[1], False))
+                back = GPC.from_dms(GPC.to_dms(latitude, longitude))
+                self.assertEqual(code, GPC.encode(back[0], back[1], False))
+
+    def test_screening_never_changes_what_a_code_does(self):
+        for code in self.codes[:5000]:
+            version, _ = GPC.screen(code)
+            with self.subTest(code=code):
+                self.assertNotEqual("", version)
+                self.assertTrue(GPC.is_valid(code))
+
+
 class TestOrdering(unittest.TestCase):
     """Section 11.2. Consecutive codes are adjacent cells, everywhere except
     at a level-5 boundary, and that is exactly where the reset of 5.3 puts the
