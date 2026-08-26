@@ -545,6 +545,8 @@ def main():
     check("a word with an unrepresentable letter is dropped",
           g.expand_word("quart"), [])
     check("a word below the floor is dropped", g.expand_word("cat"), [])
+    check("windows a screen considers",
+          sum(10 - length + 1 for length in range(g.SCREEN_MIN, 11)), 28)
     check("the hash is eight lower-case hexadecimal characters",
           len(g.screen_hash("GN4T")) == 8
           and all(c in "0123456789abcdef" for c in g.screen_hash("GN4T")), True)

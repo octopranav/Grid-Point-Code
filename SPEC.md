@@ -1145,7 +1145,7 @@ library to agree with.
 `screen(code)` normalises its argument per
 [section 8](#8-parsing-and-normalisation) and then, for each length L from 4 to
 10 and each start position from 1 to 11 - L, hashes that substring the same way
-and looks it up. Thirty-six lookups, no allocation worth the name.
+and looks it up. Twenty-eight lookups, no allocation worth the name.
 
 It returns the version tag and the spans that matched, as (position, length),
 ordered by position and then by length. Spans may overlap, and every one that
