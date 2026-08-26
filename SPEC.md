@@ -769,6 +769,17 @@ payload, or any place where six bytes is worth more than twelve characters. It
 is a re-encoding of the code, not a second format: conversion in both
 directions is exact and lossless.
 
+Six bytes do not fill a 64-bit column, and the sixteen bits left over are
+spare. This specification assigns them no meaning: they are not a version
+marker, they are not a flags field, and they are not a place to record
+something a latitude and a longitude do not determine. That is said here rather
+than left unsaid, because a field nobody has defined is read by the next
+implementer as a field that is free, and two parties who each decide
+differently find out only once the rows are written. An implementation that
+stores the integer form in a 64-bit integer MUST zero the top sixteen bits, and
+MUST reject a value that arrives with any of them set rather than masking them
+away.
+
 ---
 
 ## 14. The check character (optional)

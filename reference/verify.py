@@ -231,7 +231,7 @@ def main():
 
     section("round-trips and bijection, 200,000 cells")
     rng = random.Random(20260825)
-    bad_grid = bad_trip = bad_int = bad_spec = 0
+    bad_grid = bad_trip = bad_int = bad_spare = bad_spec = 0
     for _ in range(200_000):
         row = rng.randrange(g.ROWS)
         col = rng.randrange(g.COLS)
@@ -243,9 +243,12 @@ def main():
             bad_trip += 1
         if g.from_integer(g.to_integer(code)) != code:
             bad_int += 1
+        if g.to_integer(code) >> 48:
+            bad_spare += 1
     check("grid -> code -> grid", bad_grid, 0)
     check("decode -> encode returns the code", bad_trip, 0)
     check("integer form round-trips", bad_int, 0)
+    check("the top sixteen bits of a 64-bit column stay clear", bad_spare, 0)
 
     section("the specification stands alone, Appendix A")
     rng = random.Random(424242)
