@@ -44,7 +44,9 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 sys.path.insert(0, str(REPO / "python" / "src"))
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(REPO / "screening"))
 
+import expand  # noqa: E402
 import v1_encoder  # noqa: E402
 from gridpointcode_algo_pranavpatel_ca import GPC, screen_list  # noqa: E402
 
@@ -972,6 +974,71 @@ for code in v2_sample_codes:
     if len(clean) >= 20:
         break
 
+# The rows above are whatever the sample happened to contain, which leaves the
+# coverage to luck: it produced no span longer than four symbols and only one
+# starting at position 6. A port could drop the last window of its loop, or stop
+# short of the longest length, and every row above would still pass.
+#
+# So the rows below are built rather than found. One variant of each length the
+# list contains is placed at every position it can occupy, with the rest of the
+# code filled by a symbol chosen so that nothing else matches. The variants come
+# from the archive, since a hash cannot be put anywhere; the expected spans still
+# come from GPC.screen, so what is asserted remains what the compiled list says
+# and not what this script believes.
+ALPHABET = "0123456789CDFGHJKLMNPRTWX"
+all_variants, _ = expand.variants()
+by_length = {}
+for variant in all_variants:
+    by_length.setdefault(len(variant), []).append(variant)
+
+
+def plant(variant, start):
+    """`variant` at 1-based `start`, padded to ten symbols and nothing else hit.
+
+    Tries each symbol of the alphabet as the padding and keeps the first that
+    leaves exactly the one span, so the row says what it is there to say. A
+    padding symbol is never X in position 1: a reserved code is the subject of
+    its own section below.
+    """
+    length = len(variant)
+    want = [(start, length)]
+    fallback = None
+    for filler in ALPHABET:
+        head = filler * (start - 1)
+        tail = filler * (10 - length - (start - 1))
+        code = head + variant + tail
+        if code[0] == "X":
+            continue
+        _, spans = GPC.screen(code)
+        if spans == want:
+            return code, spans
+        if fallback is None and want[0] in spans:
+            fallback = (code, spans)
+    if fallback is None:
+        raise SystemExit(
+            "no padding leaves %s findable at position %d" % (length, start))
+    return fallback
+
+
+planted = []
+for length in sorted(by_length):
+    variant = by_length[length][0]
+    for start in range(1, 10 - length + 2):
+        planted.append(plant(variant, start))
+
+# Two variants in one code, so that a port returning only the first match fails.
+pair = None
+if len(by_length.get(4, [])) >= 2:
+    first, second = by_length[4][0], by_length[4][1]
+    for filler in ALPHABET:
+        code = first + filler + second + filler
+        if code[0] == "X":
+            continue
+        _, spans = GPC.screen(code)
+        if spans == [(1, 4), (6, 4)]:
+            pair = (code, spans)
+            break
+
 lines = ["# code,spans",
          "# Version 2. screen: the matched substrings of a code, as",
          "# position:length joined by single spaces, ordered by position and then",
@@ -991,9 +1058,15 @@ def screen_rows(title, rows):
 screen_rows("Codes that match nothing", clean)
 screen_rows("Codes that match", flagged)
 screen_rows("A reserved code screens like any other", reserved)
+screen_rows("One variant of each length, at every position it can occupy", planted)
+if pair is not None:
+    screen_rows("Two variants in one code", [pair])
 write("v2_screen.csv", lines)
-print(f"v2_screen.csv             {len(clean) + len(flagged) + len(reserved):5} "
-      f"vectors, {len(flagged)} of them matching")
+_screen_total = (len(clean) + len(flagged) + len(reserved) + len(planted)
+                 + (1 if pair else 0))
+print(f"v2_screen.csv             {_screen_total:5} "
+      f"vectors, {len(flagged) + len(reserved) + len(planted) + (1 if pair else 0)}"
+      f" of them matching")
 
 # Nothing above writes the sample itself. When a port disagrees about the
 # digest, `python test_data/generate.py --dump codes.csv` writes every point and

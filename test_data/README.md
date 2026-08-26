@@ -234,9 +234,10 @@ advisory word list of [section 17](../SPEC.md#17-advisory-screening-non-normativ
 and this row is how the four are held to being the same list: `digest` is the
 SHA-256 of the sorted entries joined by LF.
 
-CI cannot rebuild the list, because the words it is expanded from are
-deliberately not in this repository — see [`screening/`](../screening/). This
-row is what catches a port whose copy drifted.
+CI does rebuild the list, from the encrypted archive in
+[`screening/`](../screening/), and fails if any of the four generated files
+moves. This row catches the other half: a port whose committed copy drifted from
+the other three.
 
 ### v2_screen.csv
 
@@ -249,11 +250,31 @@ ordered by position and then by length, with positions counted from 1. It is
 **empty when nothing matched**, which is a result rather than an absence: a
 caller has to be able to tell "clean under this list" from "never screened".
 
-The rows are found by search rather than by construction. This generator holds
-only the hashes and cannot work out what would match, so it walks the wide
-sample and keeps what flags — deterministic, because the sample is. Changing the
-word list changes this file and `v2_screen_list.csv` with it, which is why
-`screening/expand.py` says to regenerate afterwards.
+The rows come from two directions, because either one alone leaves a gap.
+
+The first group is **found**: the generator walks the wide sample and keeps what
+flags, plus twenty codes that flag nothing so that a port cannot pass by
+reporting every span it can think of, plus reserved codes built by putting an
+`X` in front of a matching tail. Deterministic, because the sample is. But what
+the sample happens to contain is luck, and it contained no span longer than four
+symbols and only one starting at position 6 — so a port that dropped the last
+window of its loop, or stopped short of the longest length, would have passed
+every row of it.
+
+The second group is **built**: one variant of each length the list contains,
+placed at every position it can occupy, padded with a symbol chosen so that
+nothing else matches. Those variants come from the archive, since a hash cannot
+be placed anywhere, but the expected spans still come from `screen` itself, so
+what is asserted is what the compiled list says rather than what the generator
+believes. A final row carries two variants in one code, which fails a port that
+returns only its first match.
+
+Between them every window from length 4 to length 9 is exercised at every start
+position. Length 10 is not, and cannot be until the list holds a ten-letter
+word; `reference/verify.py` covers that window with a planted hash instead.
+
+Changing the word list changes this file and `v2_screen_list.csv` with it, which
+is why `screening/expand.py` says to regenerate afterwards.
 
 ### v2_sample.csv
 

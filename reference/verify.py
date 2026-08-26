@@ -569,6 +569,10 @@ def main():
     check("overlapping spans are both reported",
           g.screen("CDFG000000", {g.screen_hash("CDFG"), g.screen_hash("DFG0")}),
           [(1, 4), (2, 4)])
+    check("a variant filling the whole code is found",
+          g.screen("CDFGHJKLMN", {g.screen_hash("CDFGHJKLMN")}), [(1, 10)])
+    check("a variant in the last window is found",
+          g.screen("000000CDFG", {g.screen_hash("CDFG")}), [(7, 4)])
     check("spans below the floor are never reported",
           g.screen("CDF0000000", {g.screen_hash("CDF")}), [])
 
