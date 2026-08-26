@@ -430,6 +430,37 @@ class GPC:
             raise GPCError("GPC_CHAR")
         return GPC._check_symbol(code)
 
+    @staticmethod
+    def with_check(grid_point_code: str, formatted: bool = True) -> str:
+        """A code in its check form, `#G3RJM-98NM9*T`. Section 14.6.
+
+        The form to use for voice, radio and paper, and the one an application
+        should share when the code may be read aloud or written down. Building
+        it by hand is three operations and two chances to be wrong: the star can
+        be dropped, or the check character spliced inside the separator instead
+        of after it. Neither mistake is caught by anything.
+
+        The check character is computed for the payload given. Any check
+        character the input already carried is ignored, so a code already in
+        check form comes back with a correct one.
+
+        Args:
+            grid_point_code (str): Formatted or unformatted, with or without a
+                check character.
+            formatted (bool): True for `#XXXXX-XXXXX*K`, False for
+                `XXXXXXXXXX*K`.
+
+        Returns:
+            str: The check form.
+
+        Raises:
+            GPCError: If the input is not ten symbols of the alphabet. A
+                reserved code has a check form like any other.
+        """
+        code, _ = GPC.normalise(grid_point_code)
+        check = GPC.check_character(code)
+        return (GPC.format_gpc(code) if formatted else code) + CHECK_MARK + check
+
     #  PART 4 : THE LOCALITY API
 
     @staticmethod

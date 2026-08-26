@@ -198,6 +198,31 @@ def main():
     check("every single-symbol error detected (%d tested)" % n_sub, missed_sub, 0)
     check("every adjacent transposition detected (%d tested)" % n_tr, missed_tr, 0)
 
+    section("the check form, section 14.6")
+    for code, form in [("#G3RJM-98NM9", "#G3RJM-98NM9*T"),
+                       ("#KDC8X-JM49X", "#KDC8X-JM49X*D"),
+                       ("#P4444-PPPPP", "#P4444-PPPPP*2"),
+                       ("#JPPPP-00000", "#JPPPP-00000*M")]:
+        check("with_check %s" % code, g.with_check(code), form)
+    check("with_check unformatted",
+          g.with_check("#G3RJM-98NM9", False), "G3RJM98NM9*T")
+    # A check character on the input is ignored, right or wrong.
+    check("with_check recomputes rather than trusting the input",
+          [g.with_check(t) for t in ("#G3RJM-98NM9*T", "#G3RJM-98NM9*5",
+                                     "#G3RJM-98NM9*")],
+          ["#G3RJM-98NM9*T"] * 3)
+    check("with_check output validates", g.is_valid(g.with_check("#G3RJM-98NM9")), True)
+    check("a reserved code has a check form",
+          g.with_check("XG3RJ98NM9"), "#XG3RJ-98NM9*6")
+    rng = random.Random(1406)
+    bad_form = 0
+    for _ in range(20_000):
+        code = g.encode(rng.uniform(-90, 90), rng.uniform(-180, 180), False)
+        form = g.with_check(code)
+        if not g.is_valid(form) or g.decode(form) != g.decode(code):
+            bad_form += 1
+    check("the check form validates and decodes the same, 20,000 codes", bad_form, 0)
+
     section("candidate generation, section 15.3")
     check("candidates, no repeats", len(g.candidates("G3RJM98NM9")), 249)
     check("candidates with repeats", len(g.candidates("P4444PPPPP")), 242)

@@ -879,6 +879,21 @@ symbol `T`. The check form is `#G3RJM-98NM9*T`.
 | `#P4444-PPPPP` | `#P4444-PPPPP*2` |
 | `#JPPPP-00000` | `#JPPPP-00000*M` |
 
+### 14.6 Emitting it
+
+An implementation SHOULD provide `withCheck(code)`, returning the check form as
+a single string.
+
+Composing it from parts is three operations and two chances to be wrong: the
+star can be dropped, or the check character can be spliced inside the group
+separator rather than after it. Neither mistake is caught by anything, because
+the result is a string nobody validated. A single operation removes both.
+
+`withCheck` computes the check character for the payload it is given and
+ignores any check character that payload already carried, so applying it to a
+code that is already in check form returns the same string with a correct
+check.
+
 ---
 
 ## 15. Typos
@@ -1656,8 +1671,11 @@ added later without breaking callers:
 * `decode` MUST raise a typed `GPC_RESERVED` error, distinct from every invalid
   reason.
 * `isValid` MUST return false, since a reserved code names no cell.
-* An implementation MUST NOT assign any meaning to a reserved code. Doing so
-  requires a future version of this specification.
+* No meaning is assigned to a reserved code by this specification, and none
+  will be assigned by accident. An implementation that gives a reserved code a
+  private meaning does so at its own risk: it MUST NOT expect any other party to
+  understand that meaning, and it MUST NOT present such a code as though it
+  named a location.
 
 In the integer form of [section 13](#13-the-integer-form), reserved codes are
 exactly the values at or above 24 × 25⁹ = 91,552,734,375,000, so a single
@@ -1666,3 +1684,11 @@ comparison separates them without parsing.
 A reserved code is well-formed and merely unassigned. Treating it as a typing
 error would be wrong, and a caller that cannot tell the two apart today cannot
 be taught the difference tomorrow.
+
+This is deliberately neither a grant nor a prohibition. Saying that anyone may
+use the space would be a promise that cannot be withdrawn once made, and saying
+that nobody may would be a rule with no way to enforce it and no reason behind
+it. What the space is for is a question this specification leaves open, and the
+rules above are what keep it answerable later: a reserved code never decodes,
+never validates, and never passes for a location, whoever is using it and
+whatever they have decided it means.

@@ -281,6 +281,47 @@ class TestCheckCharacter(unittest.TestCase):
             self.assertEqual((INVALID, "GPC_CHECK"),
                              GPC.validate(swapped + "*" + check))
 
+    def test_with_check_builds_the_check_form(self):
+        for code, form in [("#G3RJM-98NM9", "#G3RJM-98NM9*T"),
+                           ("#KDC8X-JM49X", "#KDC8X-JM49X*D"),
+                           ("#P4444-PPPPP", "#P4444-PPPPP*2"),
+                           ("#JPPPP-00000", "#JPPPP-00000*M")]:
+            with self.subTest(code=code):
+                self.assertEqual(form, GPC.with_check(code))
+
+    def test_with_check_honours_the_formatted_flag(self):
+        self.assertEqual("G3RJM98NM9*T", GPC.with_check("#G3RJM-98NM9", False))
+
+    def test_with_check_accepts_every_form_the_parser_does(self):
+        for text in ("#G3RJM-98NM9", "G3RJM98NM9", "g3rjm98nm9", "  G3RJM 98NM9  "):
+            with self.subTest(text=text):
+                self.assertEqual("#G3RJM-98NM9*T", GPC.with_check(text))
+
+    def test_with_check_recomputes_rather_than_trusting_the_input(self):
+        # A check character already on the input is ignored, right or wrong, so
+        # the result always carries one that holds.
+        for text in ("#G3RJM-98NM9*T", "#G3RJM-98NM9*5", "#G3RJM-98NM9*"):
+            with self.subTest(text=text):
+                self.assertEqual("#G3RJM-98NM9*T", GPC.with_check(text))
+
+    def test_with_check_output_validates(self):
+        code = GPC.encode(43.65, -79.38, False)
+        self.assertTrue(GPC.is_valid(GPC.with_check(code)))
+        self.assertEqual(GPC.decode(code), GPC.decode(GPC.with_check(code)))
+
+    def test_with_check_gives_a_reserved_code_a_check_form(self):
+        self.assertEqual("#XG3RJ-98NM9*6", GPC.with_check("XG3RJ98NM9"))
+
+    def test_with_check_rejects_what_is_not_a_code(self):
+        for text, reason in [("G3RJM98NM", "GPC_LENGTH"),
+                             ("G3RJM98NM99", "GPC_LENGTH"),
+                             ("G3RJM98NMQ", "GPC_CHAR"),
+                             ("", "GPC_NULL")]:
+            with self.subTest(text=text):
+                with self.assertRaises(GPCError) as caught:
+                    GPC.with_check(text)
+                self.assertEqual(reason, caught.exception.reason)
+
     def test_a_reserved_code_has_a_check_character_like_any_other(self):
         self.assertEqual(RESERVED, GPC.classify("XG3RJ98NM9*"
                                                 + GPC.check_character("XG3RJ98NM9")))

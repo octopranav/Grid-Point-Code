@@ -339,6 +339,69 @@ namespace Ca.Pranavpatel.Algo.GridPointCode.Tests {
             }
         }
 
+        /// <summary>withCheck builds the check form.</summary>
+        [Fact]
+        public void BuildsTheCheckForm() {
+            Assert.Equal("#G3RJM-98NM9*T", GPC.WithCheck("#G3RJM-98NM9"));
+            Assert.Equal("#KDC8X-JM49X*D", GPC.WithCheck("#KDC8X-JM49X"));
+            Assert.Equal("#P4444-PPPPP*2", GPC.WithCheck("#P4444-PPPPP"));
+            Assert.Equal("#JPPPP-00000*M", GPC.WithCheck("#JPPPP-00000"));
+        }
+
+        /// <summary>The formatted flag drops the prefix and separator.</summary>
+        [Fact]
+        public void HonoursTheFormattedFlagOnWithCheck() {
+            Assert.Equal("G3RJM98NM9*T", GPC.WithCheck("#G3RJM-98NM9", false));
+        }
+
+        /// <summary>Every form the parser accepts reaches the same check form.</summary>
+        [Fact]
+        public void WithCheckAcceptsEveryFormTheParserDoes() {
+            foreach (string text in new[] {
+                    "#G3RJM-98NM9", "G3RJM98NM9", "g3rjm98nm9", "  G3RJM 98NM9  " }) {
+                Assert.Equal("#G3RJM-98NM9*T", GPC.WithCheck(text));
+            }
+        }
+
+        /// <summary>
+        /// A check character on the input is ignored, right or wrong, so the
+        /// result always carries one that holds.
+        /// </summary>
+        [Fact]
+        public void WithCheckRecomputesRatherThanTrustingTheInput() {
+            foreach (string text in new[] {
+                    "#G3RJM-98NM9*T", "#G3RJM-98NM9*5", "#G3RJM-98NM9*" }) {
+                Assert.Equal("#G3RJM-98NM9*T", GPC.WithCheck(text));
+            }
+        }
+
+        /// <summary>The check form validates and decodes identically.</summary>
+        [Fact]
+        public void WithCheckOutputValidates() {
+            string code = GPC.Encode(43.65, -79.38, false);
+            Assert.True(GPC.IsValid(GPC.WithCheck(code)));
+            Assert.Equal(GPC.Decode(code), GPC.Decode(GPC.WithCheck(code)));
+        }
+
+        /// <summary>A reserved code has a check form like any other.</summary>
+        [Fact]
+        public void WithCheckGivesAReservedCodeACheckForm() {
+            Assert.Equal("#XG3RJ-98NM9*6", GPC.WithCheck("XG3RJ98NM9"));
+        }
+
+        /// <summary>What is not a code is rejected with its reason.</summary>
+        [Fact]
+        public void WithCheckRejectsWhatIsNotACode() {
+            Assert.Equal("GPC_LENGTH",
+                Assert.Throws<GPCException>(() => GPC.WithCheck("G3RJM98NM")).Reason);
+            Assert.Equal("GPC_LENGTH",
+                Assert.Throws<GPCException>(() => GPC.WithCheck("G3RJM98NM99")).Reason);
+            Assert.Equal("GPC_CHAR",
+                Assert.Throws<GPCException>(() => GPC.WithCheck("G3RJM98NMQ")).Reason);
+            Assert.Equal("GPC_NULL",
+                Assert.Throws<GPCException>(() => GPC.WithCheck("")).Reason);
+        }
+
         /// <summary>A reserved code has a check character like any other.</summary>
         [Fact]
         public void GivesAReservedCodeACheckCharacterLikeAnyOther() {

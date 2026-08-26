@@ -320,6 +320,59 @@ class GPCTest {
                 GPC.Classify("XG3RJ98NM9*" + GPC.CheckCharacter("XG3RJ98NM9")));
     }
 
+    @Test
+    void buildsTheCheckForm() {
+        assertEquals("#G3RJM-98NM9*T", GPC.WithCheck("#G3RJM-98NM9"));
+        assertEquals("#KDC8X-JM49X*D", GPC.WithCheck("#KDC8X-JM49X"));
+        assertEquals("#P4444-PPPPP*2", GPC.WithCheck("#P4444-PPPPP"));
+        assertEquals("#JPPPP-00000*M", GPC.WithCheck("#JPPPP-00000"));
+    }
+
+    @Test
+    void honoursTheFormattedFlagOnWithCheck() {
+        assertEquals("G3RJM98NM9*T", GPC.WithCheck("#G3RJM-98NM9", false));
+    }
+
+    @Test
+    void withCheckAcceptsEveryFormTheParserDoes() {
+        for (String text : new String[] {
+                "#G3RJM-98NM9", "G3RJM98NM9", "g3rjm98nm9", "  G3RJM 98NM9  " }) {
+            assertEquals("#G3RJM-98NM9*T", GPC.WithCheck(text), text);
+        }
+    }
+
+    @Test
+    void withCheckRecomputesRatherThanTrustingTheInput() {
+        for (String text : new String[] {
+                "#G3RJM-98NM9*T", "#G3RJM-98NM9*5", "#G3RJM-98NM9*" }) {
+            assertEquals("#G3RJM-98NM9*T", GPC.WithCheck(text), text);
+        }
+    }
+
+    @Test
+    void withCheckOutputValidates() {
+        String code = GPC.Encode(43.65, -79.38, false);
+        assertTrue(GPC.IsValid(GPC.WithCheck(code)));
+        assertEquals(GPC.Decode(code), GPC.Decode(GPC.WithCheck(code)));
+    }
+
+    @Test
+    void withCheckGivesAReservedCodeACheckForm() {
+        assertEquals("#XG3RJ-98NM9*6", GPC.WithCheck("XG3RJ98NM9"));
+    }
+
+    @Test
+    void withCheckRejectsWhatIsNotACode() {
+        assertEquals("GPC_LENGTH",
+                assertThrows(GPCException.class, () -> GPC.WithCheck("G3RJM98NM")).getReason());
+        assertEquals("GPC_LENGTH",
+                assertThrows(GPCException.class, () -> GPC.WithCheck("G3RJM98NM99")).getReason());
+        assertEquals("GPC_CHAR",
+                assertThrows(GPCException.class, () -> GPC.WithCheck("G3RJM98NMQ")).getReason());
+        assertEquals("GPC_NULL",
+                assertThrows(GPCException.class, () -> GPC.WithCheck("")).getReason());
+    }
+
     /*  Version 1 codes  */
 
     @Test

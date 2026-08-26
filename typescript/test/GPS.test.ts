@@ -294,6 +294,58 @@ describe('The check character', () => {
         }
     });
 
+    it('builds the check form with withCheck', () => {
+        const examples: [string, string][] = [
+            ['#G3RJM-98NM9', '#G3RJM-98NM9*T'],
+            ['#KDC8X-JM49X', '#KDC8X-JM49X*D'],
+            ['#P4444-PPPPP', '#P4444-PPPPP*2'],
+            ['#JPPPP-00000', '#JPPPP-00000*M'],
+        ];
+        for (const [code, form] of examples) {
+            expect(GPC.withCheck(code), code).to.equal(form);
+        }
+    });
+
+    it('honours the formatted flag on withCheck', () => {
+        expect(GPC.withCheck('#G3RJM-98NM9', false)).to.equal('G3RJM98NM9*T');
+    });
+
+    it('accepts every form the parser does', () => {
+        for (const text of ['#G3RJM-98NM9', 'G3RJM98NM9', 'g3rjm98nm9', '  G3RJM 98NM9  ']) {
+            expect(GPC.withCheck(text), text).to.equal('#G3RJM-98NM9*T');
+        }
+    });
+
+    it('recomputes rather than trusting a check character on the input', () => {
+        for (const text of ['#G3RJM-98NM9*T', '#G3RJM-98NM9*5', '#G3RJM-98NM9*']) {
+            expect(GPC.withCheck(text), text).to.equal('#G3RJM-98NM9*T');
+        }
+    });
+
+    it('produces something that validates and decodes the same', () => {
+        const code = GPC.encode(43.65, -79.38, false);
+        expect(GPC.isValid(GPC.withCheck(code))).to.equal(true);
+        expect(GPC.decode(GPC.withCheck(code))).to.deep.equal(GPC.decode(code));
+    });
+
+    it('gives a reserved code a check form', () => {
+        expect(GPC.withCheck('XG3RJ98NM9')).to.equal('#XG3RJ-98NM9*6');
+    });
+
+    it('rejects what is not a code', () => {
+        const cases: [string, string][] = [
+            ['G3RJM98NM', 'GPC_LENGTH'],
+            ['G3RJM98NM99', 'GPC_LENGTH'],
+            ['G3RJM98NMQ', 'GPC_CHAR'],
+            ['', 'GPC_NULL'],
+        ];
+        for (const [text, reason] of cases) {
+            expect(() => GPC.withCheck(text), text)
+                .to.throw(GPCError)
+                .with.property('reason', reason);
+        }
+    });
+
     it('gives a reserved code a check character like any other', () => {
         expect(GPC.classify('XG3RJ98NM9*' + GPC.checkCharacter('XG3RJ98NM9'))).to.equal(CodeClass.RESERVED);
     });

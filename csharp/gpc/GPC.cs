@@ -480,6 +480,55 @@ namespace Ca.Pranavpatel.Algo.GridPointCode {
             return CheckSymbol(code);
         }
 
+        /// <summary>
+        /// A code in its check form, <c>#G3RJM-98NM9*T</c>. Section 14.6.
+        /// <para>
+        /// The form to use for voice, radio and paper, and the one an
+        /// application should share when the code may be read aloud or written
+        /// down. Building it by hand is three operations and two chances to be
+        /// wrong: the star can be dropped, or the check character spliced inside
+        /// the separator instead of after it. Neither mistake is caught by
+        /// anything.
+        /// </para>
+        /// <para>
+        /// The check character is computed for the payload given. Any check
+        /// character the input already carried is ignored, so a code already in
+        /// check form comes back with a correct one.
+        /// </para>
+        /// </summary>
+        /// <param name="gridPointCode">
+        /// Formatted or unformatted, with or without a check character.
+        /// </param>
+        /// <returns>The check form, as <c>#XXXXX-XXXXX*K</c>.</returns>
+        /// <exception cref="GPCException">
+        /// if the input is not ten symbols of the alphabet. A reserved code has
+        /// a check form like any other.
+        /// </exception>
+        public static string WithCheck(string gridPointCode) {
+            return WithCheck(gridPointCode, true);
+        }
+
+        /// <summary>
+        /// A code in its check form, <c>#G3RJM-98NM9*T</c>. Section 14.6.
+        /// </summary>
+        /// <param name="gridPointCode">
+        /// Formatted or unformatted, with or without a check character.
+        /// </param>
+        /// <param name="formatted">
+        /// <c>true</c> for <c>#XXXXX-XXXXX*K</c>, <c>false</c> for
+        /// <c>XXXXXXXXXX*K</c>.
+        /// </param>
+        /// <returns>The check form.</returns>
+        /// <exception cref="GPCException">
+        /// if the input is not ten symbols of the alphabet. A reserved code has
+        /// a check form like any other.
+        /// </exception>
+        public static string WithCheck(string gridPointCode, bool formatted) {
+            (string code, _) = Normalise(gridPointCode);
+            string check = CheckCharacter(code);
+            return (formatted ? FormatGPC(code) : code) + CHECK_MARK + check;
+        }
+
         /*  PART 4 : THE LOCALITY API */
 
         /// <summary>

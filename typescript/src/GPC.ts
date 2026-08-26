@@ -423,6 +423,31 @@ export class GPC {
         return this.checkSymbol(code);
     }
 
+    /**
+     * A code in its check form, `#G3RJM-98NM9*T`. Section 14.6.
+     *
+     * The form to use for voice, radio and paper, and the one an application
+     * should share when the code may be read aloud or written down. Building it
+     * by hand is three operations and two chances to be wrong: the star can be
+     * dropped, or the check character spliced inside the separator instead of
+     * after it. Neither mistake is caught by anything.
+     *
+     * The check character is computed for the payload given. Any check character
+     * the input already carried is ignored, so a code already in check form
+     * comes back with a correct one.
+     * @param gridPointCode Formatted or unformatted, with or without a check
+     * character.
+     * @param formatted True for `#XXXXX-XXXXX*K`, false for `XXXXXXXXXX*K`.
+     * @returns The check form.
+     * @throws GPCError if the input is not ten symbols of the alphabet. A
+     * reserved code has a check form like any other.
+     */
+    public static withCheck(gridPointCode: string, formatted: boolean = true): string {
+        const [code] = this.normalise(gridPointCode);
+        const check = this.checkCharacter(code);
+        return (formatted ? this.formatGPC(code) : code) + this.CHECK_MARK + check;
+    }
+
     /*  PART 4 : THE LOCALITY API */
 
     /**

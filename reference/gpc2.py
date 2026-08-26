@@ -306,6 +306,20 @@ def check_character(code):
     return ALPHABET[gf_mul(T, syndrome(code))]   # c = t * S
 
 
+def with_check(text, formatted=True):
+    """The check form, #G3RJM-98NM9*T. Section 14.6.
+
+    Any check character already on the input is ignored and recomputed, so the
+    result always carries one that holds."""
+    code, _ = normalise(text)
+    if len(code) != 10:
+        raise GpcError("GPC_LENGTH")
+    if any(ch not in ALPHABET for ch in code):
+        raise GpcError("GPC_CHAR")
+    body = "#" + code[:5] + "-" + code[5:] if formatted else code
+    return body + "*" + check_character(code)
+
+
 def check_holds(code, check):
     return gf_add(syndrome(code),
                   gf_mul(WEIGHTS[10], ALPHABET.index(check))) == 0

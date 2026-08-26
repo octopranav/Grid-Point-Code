@@ -460,6 +460,48 @@ public final class GPC {
         return CheckSymbol(code);
     }
 
+    /**
+     * A code in its check form, {@code #G3RJM-98NM9*T}. Section 14.6.
+     *
+     * <p>The form to use for voice, radio and paper, and the one an application
+     * should share when the code may be read aloud or written down. Building it
+     * by hand is three operations and two chances to be wrong: the star can be
+     * dropped, or the check character spliced inside the separator instead of
+     * after it. Neither mistake is caught by anything.
+     *
+     * <p>The check character is computed for the payload given. Any check
+     * character the input already carried is ignored, so a code already in check
+     * form comes back with a correct one.
+     *
+     * @param gridPointCode Formatted or unformatted, with or without a check
+     *  character.
+     * @return the check form, as {@code #XXXXX-XXXXX*K}.
+     * @throws ca.pranavpatel.algo.gridpointcode.GPCException if the input is not
+     *  ten symbols of the alphabet. A reserved code has a check form like any
+     *  other.
+     */
+    public static String WithCheck(String gridPointCode) {
+        return WithCheck(gridPointCode, true);
+    }
+
+    /**
+     * A code in its check form, {@code #G3RJM-98NM9*T}. Section 14.6.
+     *
+     * @param gridPointCode Formatted or unformatted, with or without a check
+     *  character.
+     * @param formatted {@code true} for {@code #XXXXX-XXXXX*K}, {@code false}
+     *  for {@code XXXXXXXXXX*K}.
+     * @return the check form.
+     * @throws ca.pranavpatel.algo.gridpointcode.GPCException if the input is not
+     *  ten symbols of the alphabet. A reserved code has a check form like any
+     *  other.
+     */
+    public static String WithCheck(String gridPointCode, Boolean formatted) {
+        String code = Normalise(gridPointCode)[0];
+        String check = CheckCharacter(code);
+        return (formatted ? FormatGPC(code) : code) + CHECK_MARK + check;
+    }
+
     /*  PART 4 : THE LOCALITY API  */
 
     /**
