@@ -659,6 +659,23 @@ for level, latitude, longitude, position, replacement in [
 correction_cases.append((2, 90.0, 0.0, "P4444PPPPP"))
 correction_cases.append((6, 43.65, -79.38, "G3RJM98NM9"))   # no typo at all
 
+# The ends of the level range, which the corpus otherwise never reached. Level 1
+# is the whole 45-by-60 degree block and its eight neighbours, so almost every
+# candidate survives; levels 9 and 10 are a few hundred metres across, so almost
+# none does.
+correction_cases.append((1, 43.65, -79.38, "G3RJM98N09"))
+correction_cases.append((9, 43.65, -79.38, "G3RJM98N09"))
+correction_cases.append((10, 43.65, -79.38, "G3RJM98N09"))
+
+# Nothing survives the filter. The header promises an empty candidate list is
+# possible and nothing demonstrated it: a reserved code yields only candidates
+# that change position 1, and changing position 1 moves the point into another
+# level-1 block, which no window at level 6 can contain. A port that returned a
+# candidate here, or that refused rather than returning nothing, would pass every
+# other row in this file.
+correction_cases.append((6, 43.65, -79.38, "XG3RJ98NM9"))
+correction_cases.append((10, 0.0, 0.0, "G3RJM98NM9"))       # reference far away
+
 lines = ["# level,refLatitude,refLongitude,input,candidates",
          "# Version 2. suggestCorrections: at most 249 candidates -- 240",
          "# substitutions then the adjacent transpositions that change the code --",

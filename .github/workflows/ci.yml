@@ -201,10 +201,47 @@ jobs:
       - name: Check every claim the specification makes
         run: python reference/verify.py
 
+  differential:
+    name: The four ports agree case by case
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.x'
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+      # The drivers link against built output rather than source.
+      - name: Build the TypeScript package
+        run: npm ci && npm run build
+        working-directory: typescript
+      - name: Compile the Java classes
+        run: mvn -B -ntp -q compile
+        working-directory: java
+      # The shared vectors pin what the ports were already known to agree on.
+      # This pins the rest: one battery of awkward inputs, compiled against all
+      # four, diffed. It does not assert what any answer is, only that the four
+      # produce the same one. See conformance/README.md.
+      - name: The four ports must agree case by case
+        run: python conformance/compare.py
+
   conformance:
     name: All four ports agree
     runs-on: ubuntu-latest
-    needs: [csharp, java, python, typescript, vectors, screening, reference]
+    needs: [csharp, java, python, typescript, vectors, screening, reference, differential]
     if: always()
     steps:
       - name: Require every port to have passed
@@ -220,4 +257,7 @@ jobs:
             echo "C#, Java, Python and TypeScript each encoded the shared 100,000 point"
             echo "sample and reproduced the SHA-256 pinned in \`test_data/v2_sample.csv\`."
             echo "All four ports emit byte-identical codes."
+            echo
+            echo "The four also agree case by case on the differential battery in"
+            echo "\`conformance/\`, which covers the awkward inputs no vector records."
           } >> "$GITHUB_STEP_SUMMARY"
