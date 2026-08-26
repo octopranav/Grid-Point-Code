@@ -15,7 +15,7 @@ skip that appendix entirely and still be fully conformant.
 | [1. Overview](#1-overview) | [6. Decoding](#6-decoding) | [11. Ordering](#11-ordering) | [16. Seams](#16-seams) | [A. Reference implementation](#appendix-a--reference-implementation) |
 | [2. The coordinate domain](#2-the-coordinate-domain) | [7. Floating-point rules](#7-floating-point-rules) | [12. The short form](#12-the-short-form) | [17. Advisory screening](#17-advisory-screening-non-normative) | [B. Decoding version 1](#appendix-b--decoding-version-1-optional) |
 | [3. The grid](#3-the-grid) | [8. Parsing and normalisation](#8-parsing-and-normalisation) | [13. The integer form](#13-the-integer-form) | [18. The spatial API](#18-the-spatial-api) | [C. The reserved namespace](#appendix-c--the-reserved-namespace) |
-| [4. The alphabet](#4-the-alphabet) | [9. Classification](#9-classification) | [14. The check character](#14-the-check-character-optional) | [19. Coordinate conversions](#19-coordinate-conversions) | |
+| [4. The alphabet](#4-the-alphabet) | [9. Classification](#9-classification) | [14. The check character](#14-the-check-character-optional) | [19. Coordinate conversions](#19-coordinate-conversions) | [D. Sharing a code](#appendix-d--sharing-a-code-non-normative) |
 | [5. Encoding](#5-encoding) | [10. The locality guarantee](#10-the-locality-guarantee) | [15. Typos](#15-typos) | [20. Conformance](#20-conformance) | |
 
 ## Conventions
@@ -1716,3 +1716,120 @@ it. What the space is for is a question this specification leaves open, and the
 rules above are what keep it answerable later: a reserved code never decodes,
 never validates, and never passes for a location, whoever is using it and
 whatever they have decided it means.
+
+---
+
+## Appendix D — Sharing a code (non-normative)
+
+Nothing here is required for conformance and none of it constrains an
+implementation. The sections above define four ways to write a location down;
+this one is about what happens after a code leaves the software — which form to
+hand to somebody, and how to say one out loud.
+
+### D.1 Which form to share
+
+**The ten characters are the form of record.** `#G3RJM-98NM9` is what a share
+button emits, what a record stores and what a label prints. It is the same
+length everywhere, it resolves on its own, and it needs nothing at the far end.
+Share it formatted: the group separator is what stops a reader losing their
+place in the middle of ten symbols.
+
+**Add the check character wherever a person is in the path.** A code that will
+be read aloud, written by hand, dictated down a telephone or typed from a
+printed sign should be shared in the check form,
+`#G3RJM-98NM9*T` ([section 14](#14-the-check-character-optional)). It costs one
+character and detects every single-symbol error and every adjacent
+transposition, which are the two things a person does.
+[14.6](#146-emitting-it) produces it in one call, and
+[section 8](#8-parsing-and-normalisation) means a reader who omits the check
+character loses nothing but the detection.
+
+**The short form is for two people in the same place.** The five characters of
+[section 12](#12-the-short-form) resolve only against a reference near the true
+point: a sign at the entrance to a village, a notice on a door, one person
+telling another where to meet while both are standing in the same district. It
+is the wrong thing to put behind a share button, in a message or in a stored
+record, because none of those knows where the far end will be when it reads
+them — and a short form resolved against a distant reference does not fail. It
+returns a plausible location 8 or 10 km away
+([12.3](#123-what-recovery-guarantees)).
+
+**The integer form is for machines.** [Section 13](#13-the-integer-form) is a
+database key, a QR or NFC payload, a sort key. It is not a thing to show a
+person and not a thing to have one retype.
+
+| Where it is going | Form | |
+| --- | --- | --- |
+| A share button, a message, a record, a label | `#G3RJM-98NM9` | complete on its own |
+| Voice, radio, paper, anything dictated | `#G3RJM-98NM9*T` | one character buys detection |
+| A sign in one place, two people in that place | `98NM9` | only resolves near the point |
+| A key, a payload, a sort | six bytes | not for a person |
+
+Whichever form is shared, [15.2](#152-normative-guidance) still applies at the
+far end: nearly 29 % of single-character typos produce a code that is valid and
+somewhere else, so a decoded point has to be shown on a map or checked against
+something the reader recognises before it is acted on.
+
+### D.2 Phonetic callouts
+
+The alphabet of [section 4](#4-the-alphabet) was chosen to exclude vowels, so
+that a code cannot spell a word, and to exclude the shapes a reader confuses on
+paper. It was not chosen for phonetic distinctness, and it cannot be now
+without changing the format: read out in English, `C`, `D`, `G`, `P`, `T` and
+the digit `3` all rhyme.
+
+The alias table of [section 8](#8-parsing-and-normalisation) is no help here.
+That table repairs a reader who typed a letter the alphabet does not contain —
+`O` for `0`, `S` for `5` — and every symbol in the rhyming set above is a real
+symbol. A listener who hears `D` where `T` was said writes down a code that
+parses, validates and decodes to somewhere else. The check character is what
+detects that. Callouts are what avoid it.
+
+**The rule is one line: a callout for a symbol is any word beginning with that
+symbol.** The listener keeps the first character and discards the rest. Nothing
+has to be memorised or agreed in advance, and a speaker who cannot remember the
+word can invent one mid-sentence and still be understood.
+
+**Digits are spoken as the number**, not as a callout word, because no word
+begins with a seven.
+
+**An application supplies the words.** The table below is a reference, not a
+requirement, and it is English. Words that are unmistakable in one region are
+not in another, and an application serving a particular place should replace
+them with words its users already say. Replacing one word does not break
+anything, because the rule is the first character and not the word.
+
+| Symbol | Callout | Symbol | Callout | Symbol | Callout |
+| --- | --- | --- | --- | --- | --- |
+| `C` | Charlie | `J` | Juliett | `P` | Papa |
+| `D` | Delta | `K` | Kilo | `R` | Romeo |
+| `F` | Foxtrot | `L` | Lima | `T` | Tango |
+| `G` | Golf | `M` | Mike | `W` | Whiskey |
+| `H` | Hotel | `N` | November | `X` | X-ray |
+
+Those are the words of the international radiotelephony spelling alphabet,
+which has the longest record of any set of being understood over a bad
+connection. `0` to `9` are spoken as themselves.
+
+So `#G3RJM-98NM9*T` is:
+
+```
+Golf, three, Romeo, Juliett, Mike — nine, eight, November, Mike, nine — check Tango
+```
+
+The group boundary is worth a pause, and the check character is worth naming as
+one rather than reading it as an eleventh symbol, so that a listener who is
+writing knows where it goes.
+
+**Outside the Latin script the rule does not hold.** A listener reading a
+language written in another script has no first letter to take, so an
+application serving one has to supply an explicit table pairing each symbol
+with a word, and the listener learns the pairing instead of deriving it. The
+same is true of any language whose words do not begin with these letters often
+enough to give a speaker a choice.
+
+**No port provides this.** An emitter would have to carry words, and words are
+a language: the table above is English, and shipping it as an API would make
+every caller's spoken procedure English whether or not anybody in the room
+speaks it. The rule is one line and the table is fifteen rows, which is small
+enough to be an application's own.
