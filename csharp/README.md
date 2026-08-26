@@ -212,13 +212,13 @@ code space to skip them.
 
 ```csharp
 (string version, var spans) = GPC.Screen("#G3RJM-98NM9");
-// ("2026.1", [])  -- the version, and nothing matched
+// ("2026.2", [])  -- the version, and nothing matched
 ```
 
 `Screen` reports and never blocks: nothing in this package refuses to
 encode, decode or validate because of what it found. It returns the version of
 the list either way, so a caller can tell "clean under this list" from "never
-screened". Roughly one code in 250 matches something.
+screened". Roughly one code in a thousand matches something.
 
 ### Bulk conversion
 
@@ -241,10 +241,18 @@ For voice, radio and paper, a code may carry an eleventh character after a star.
 It detects every single-character error and every adjacent transposition.
 
 ```csharp
-GPC.CheckCharacter("#G3RJM-98NM9");  // "T"
+GPC.WithCheck("#G3RJM-98NM9");       // "#G3RJM-98NM9*T", the whole form
+GPC.CheckCharacter("#G3RJM-98NM9");  // "T", the character alone
 GPC.Decode("#G3RJM-98NM9*T");        // (43.650006, -79.380004)
 GPC.IsValid("#G3RJM-98NM9*Z");       // false, the check does not hold
 ```
+
+Reach for `WithCheck` rather than composing the string yourself. Building it by
+hand is three operations and two ways to be quietly wrong -- the star dropped,
+or the character spliced inside the group separator rather than after it -- and
+neither mistake is caught by anything, because the result is a string nobody
+validated. It recomputes rather than trusting, so a code arriving with a wrong
+check character comes back with a right one.
 
 The check form is not canonical and is never emitted unless asked for. Storage
 and interchange use the ten characters.
