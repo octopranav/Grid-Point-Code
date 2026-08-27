@@ -33,7 +33,7 @@ ten characters is version 2, eleven is version 1 -- and `encode` emits version
 """
 
 import math
-from typing import Tuple
+from typing import Optional, Tuple
 
 from . import screen_list, v1
 from .errors import GPCError
@@ -337,7 +337,7 @@ class GPC:
     #  PART 3 : PARSE, CLASSIFY, CHECK
 
     @staticmethod
-    def normalise(grid_point_code: str) -> Tuple[str, str]:
+    def normalise(grid_point_code: str) -> Tuple[str, Optional[str]]:
         """Case-fold, strip separators, apply the alias table. Section 8.
 
         Returns:
@@ -883,7 +883,7 @@ class GPC:
     #  PART 6 : INTERNALS
 
     @staticmethod
-    def _split(grid_point_code: str) -> Tuple[str, str]:
+    def _split(grid_point_code: str) -> Tuple[str, Optional[str]]:
         """Payload and check character, cleaned but not yet aliased.
 
         The dispatch in `decode` needs to see the characters as typed, because
