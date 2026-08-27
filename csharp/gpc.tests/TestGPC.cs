@@ -879,35 +879,19 @@ namespace Ca.Pranavpatel.Algo.GridPointCode.Tests {
             Assert.Empty(spans);
         }
 
-        /// <summary>A match reports its span.</summary>
-        [Fact]
-        public void ReportsTheSpanOfAMatch() {
-            (_, IReadOnlyList<(int Position, int Length)> spans) = GPC.Screen("GN4T000000");
-            (int Position, int Length) span = Assert.Single(spans);
-            Assert.Equal((1, 4), span);
-        }
-
-        /// <summary>An X in position 1 does not stop the other nine spelling something.</summary>
-        [Fact]
-        public void ScreensAReservedCodeLikeAnyOther() {
-            (_, IReadOnlyList<(int Position, int Length)> spans) = GPC.Screen("XGN4T00000");
-            Assert.Equal((2, 4), Assert.Single(spans));
-        }
-
         /// <summary>Whatever the list says, the code still encodes, decodes and validates.</summary>
         [Fact]
         public void NeverBlocks() {
-            Assert.True(GPC.IsValid("GN4T000000"));
-            Assert.Equal(CodeClass.Geometric, GPC.Classify("GN4T000000"));
-            (double latitude, double longitude) = GPC.Decode("GN4T000000");
-            Assert.Equal("GN4T000000", GPC.Encode(latitude, longitude, false));
+            Assert.True(GPC.IsValid("G3RJM98NM9"));
+            Assert.Equal(CodeClass.Geometric, GPC.Classify("G3RJM98NM9"));
+            (double latitude, double longitude) = GPC.Decode("G3RJM98NM9");
+            Assert.Equal("G3RJM98NM9", GPC.Encode(latitude, longitude, false));
         }
 
-        /// <summary>The formatted and bare forms screen alike.</summary>
-        [Fact]
-        public void ScreensTheFormattedAndBareFormsAlike() {
-            Assert.Equal(GPC.Screen("GN4T000000").Spans, GPC.Screen("#GN4T0-00000").Spans);
-        }
+        // What a match looks like, what a reserved code does with one, and the
+        // order of the spans are asserted in VectorsTests against
+        // test_data/v2_screen.csv. A code that matches is a code that spells
+        // something, and writing one here would put it in the source.
     }
 
     /// <summary>Batch and streaming, for dataset work.</summary>

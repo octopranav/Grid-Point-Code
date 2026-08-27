@@ -2,7 +2,7 @@
 
 | File | Trigger | What it does |
 | --- | --- | --- |
-| `ci.yml` | every push, every pull request | Builds and tests all four ports, checks that the shared vectors still regenerate byte for byte, and checks every claim the specification makes |
+| `ci.yml` | every push, every pull request | Builds and tests all four ports, checks that the shared vectors and the advisory list still regenerate byte for byte, runs the four ports against each other case by case, and checks every claim the specification makes |
 | `release-python.yml` | a `v*` tag | Builds and publishes the Python package to PyPI |
 | `release-npm.yml` | a `v*` tag | Builds and publishes the TypeScript package to npm |
 
@@ -21,11 +21,21 @@ The `vectors` job closes the other half of that loop by regenerating the corpus
 and failing on any diff, so the committed expectations are always exactly what
 the reference generator produces rather than something edited by hand.
 
+The `screening` job does the same for the advisory list: it re-expands
+`screening/words.zip` and fails if any of the four generated files moves, which
+catches one edited by hand and an archive changed without rebuilding them.
+
 The `reference` job runs `reference/verify.py`, which checks every exact claim
 `SPEC.md` makes and holds the transcription of its Appendix A against the
 working implementation over 200,000 coordinates. Nothing it touches ships. It
 is there because the ports are meant to be implementable from the document
 alone, and this is the job that fails when they stop being so.
+
+The `differential` job runs [`conformance/`](../../conformance/), which puts one
+battery of awkward inputs through all four ports and diffs the answers against
+each other. It catches what a vector cannot: a vector records an answer somebody
+already worked out, so it only pins cases the ports were already known to agree
+on. This is the only job needing all four toolchains at once.
 
 ## Actions are pinned to commits
 
@@ -42,17 +52,19 @@ a named workflow file, and issue a short-lived credential for a single upload.
 A leaked publishing secret is not a risk that has to be managed if there is no
 secret to leak.
 
-Each release job also declares a deployment environment, `pypi` and `npm`, so
-the upload can carry its own protection rules and appears in the repository's
-deployment history.
+Each release job also declares the `release` deployment environment, so the
+upload can carry protection rules and appears in the repository's deployment
+history. Both jobs name the same environment: PyPI and npm are two halves of
+one release and never move apart, so there is nothing a second name would let
+you say.
 
 Setting this up is done once, outside the repository:
 
 * **PyPI** — add a trusted publisher to the project: owner `octopranav`,
   repository `Grid-Point-Code`, workflow `release-python.yml`, environment
-  `pypi`.
+  `release`.
 * **npm** — add a trusted publisher to the package: the same repository, with
-  workflow `release-npm.yml` and environment `npm`.
+  workflow `release-npm.yml` and environment `release`.
 
 Both names must match exactly, including the environment, or the exchange is
 refused and the release fails without publishing anything.
@@ -74,3 +86,26 @@ Maven Central additionally needs the signing key inside the runner.
 CI still builds and tests both ports on every push, so a release is never cut
 from code that has not been through the same conformance run as the other two.
 Only the upload itself is manual.
+
+## Cutting a release
+
+All four packages carry the same version number, so the manifests move together
+and the tag is what starts everything.
+
+| Port | The version lives in |
+| --- | --- |
+| Python | `python/pyproject.toml` |
+| TypeScript | `typescript/package.json` and `typescript/package-lock.json` |
+| C# | `csharp/gpc/gpc.csproj` |
+| Java | `java/pom.xml` |
+
+1. On a branch, set all five files to the new version, write the release into
+   [`CHANGELOG.md`](../../CHANGELOG.md), and merge once CI is green.
+2. Tag the merge commit `vX.Y.Z` and push the tag. Each workflow checks the tag
+   against its own manifest and fails before uploading anything if the two
+   disagree, so a mistyped tag costs a failed run rather than a wrong release.
+3. PyPI and npm publish themselves. Watch both runs to the end.
+4. Publish NuGet and Maven Central by hand from that same commit.
+
+The failure worth avoiding is a version that reaches two registries and not the
+other two, so do not push the tag until whatever step 4 needs is to hand.

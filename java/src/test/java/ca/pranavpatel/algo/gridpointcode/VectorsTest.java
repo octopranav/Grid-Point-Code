@@ -324,6 +324,28 @@ class VectorsTest {
         assertTrue(matched > 0, "expected at least one code to match");
     }
 
+    /**
+     * The formatted and bare forms screen alike.
+     *
+     * <p>The probe comes from the corpus rather than from a literal, so that
+     * replacing the advisory list never means editing four test suites -- and so
+     * that no code known to spell something sits in the source.
+     */
+    @Test
+    void screensTheFormattedAndBareFormsAlike() {
+        List<String[]> matching = new ArrayList<>();
+        for (String[] r : rows("v2_screen.csv", 2)) {
+            if (!r[1].isEmpty()) {
+                matching.add(r);
+            }
+        }
+        assertTrue(!matching.isEmpty(), "expected at least one matching vector");
+        String code = matching.get(0)[0];
+        String formatted = "#" + code.substring(0, 5) + "-" + code.substring(5);
+        assertTrue(!GPC.Screen(code).Spans.isEmpty(), code);
+        assertEquals(GPC.Screen(code), GPC.Screen(formatted));
+    }
+
     /*  Version 1  */
 
     @Test

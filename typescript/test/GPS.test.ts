@@ -709,27 +709,18 @@ describe('Screening', () => {
         expect(spans).to.deep.equal([]);
     });
 
-    it('reports the span of a match', () => {
-        const [version, spans] = GPC.screen('GN4T000000');
-        expect(version).to.not.equal('');
-        expect(spans).to.deep.equal([[1, 4]]);
-    });
-
-    it('screens a reserved code like any other', () => {
-        expect(GPC.screen('XGN4T00000')[1]).to.deep.equal([[2, 4]]);
-    });
-
     it('never blocks', () => {
         // Whatever the list says, the code still encodes, decodes and validates.
-        expect(GPC.isValid('GN4T000000')).to.equal(true);
-        expect(GPC.classify('GN4T000000')).to.equal('GEOMETRIC');
-        const [latitude, longitude] = GPC.decode('GN4T000000');
-        expect(GPC.encode(latitude, longitude, false)).to.equal('GN4T000000');
+        expect(GPC.isValid('G3RJM98NM9')).to.equal(true);
+        expect(GPC.classify('G3RJM98NM9')).to.equal('GEOMETRIC');
+        const [latitude, longitude] = GPC.decode('G3RJM98NM9');
+        expect(GPC.encode(latitude, longitude, false)).to.equal('G3RJM98NM9');
     });
 
-    it('screens the formatted and bare forms alike', () => {
-        expect(GPC.screen('GN4T000000')).to.deep.equal(GPC.screen('#GN4T0-00000'));
-    });
+    // What a match looks like, what a reserved code does with one, and the
+    // order of the spans are asserted in vectors.test.ts against
+    // test_data/v2_screen.csv. A code that matches is a code that spells
+    // something, and writing one here would put it in the source.
 });
 
 describe('Batch and streaming', () => {

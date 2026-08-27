@@ -5,4 +5,4 @@
 # LF. CI cannot rebuild the list -- it has no word file -- so this row is
 # what catches a port whose copy drifted.
 
-2026.1,35,1d572ae13fac6e0164c6259e2c0f988736b0ed7cd379714b856dac51846e0912
+2026.2,193,e7acd861e9f3a082cb11862b414b17df320e245aad77bb95dda12f35f71930d7

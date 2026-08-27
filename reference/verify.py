@@ -231,7 +231,7 @@ def main():
 
     section("round-trips and bijection, 200,000 cells")
     rng = random.Random(20260825)
-    bad_grid = bad_trip = bad_int = bad_spec = 0
+    bad_grid = bad_trip = bad_int = bad_spare = bad_spec = 0
     for _ in range(200_000):
         row = rng.randrange(g.ROWS)
         col = rng.randrange(g.COLS)
@@ -243,9 +243,12 @@ def main():
             bad_trip += 1
         if g.from_integer(g.to_integer(code)) != code:
             bad_int += 1
+        if g.to_integer(code) >> 48:
+            bad_spare += 1
     check("grid -> code -> grid", bad_grid, 0)
     check("decode -> encode returns the code", bad_trip, 0)
     check("integer form round-trips", bad_int, 0)
+    check("the top sixteen bits of a 64-bit column stay clear", bad_spare, 0)
 
     section("the specification stands alone, Appendix A")
     rng = random.Random(424242)
@@ -542,6 +545,12 @@ def main():
     check("a word with an unrepresentable letter is dropped",
           g.expand_word("quart"), [])
     check("a word below the floor is dropped", g.expand_word("cat"), [])
+    check("a four-symbol variant matches about one code in 55,800",
+          round(25 ** 4 / (10 - 4 + 1)), 55_804)
+    check("a six-symbol variant matches about one code in 49 million",
+          round(25 ** 6 / (10 - 6 + 1)), 48_828_125)
+    check("windows a screen considers",
+          sum(10 - length + 1 for length in range(g.SCREEN_MIN, 11)), 28)
     check("the hash is eight lower-case hexadecimal characters",
           len(g.screen_hash("GN4T")) == 8
           and all(c in "0123456789abcdef" for c in g.screen_hash("GN4T")), True)
@@ -560,6 +569,10 @@ def main():
     check("overlapping spans are both reported",
           g.screen("CDFG000000", {g.screen_hash("CDFG"), g.screen_hash("DFG0")}),
           [(1, 4), (2, 4)])
+    check("a variant filling the whole code is found",
+          g.screen("CDFGHJKLMN", {g.screen_hash("CDFGHJKLMN")}), [(1, 10)])
+    check("a variant in the last window is found",
+          g.screen("000000CDFG", {g.screen_hash("CDFG")}), [(7, 4)])
     check("spans below the floor are never reported",
           g.screen("CDF0000000", {g.screen_hash("CDF")}), [])
 

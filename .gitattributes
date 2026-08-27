@@ -72,6 +72,10 @@ test_data/*.csv text eol=lf
 # and normalising line endings inside it would corrupt it.
 screening/words.zip binary
 
+# The artwork of docs/. Binary: a PNG is bytes, and `* text=auto` above must
+# never be given the chance to guess otherwise.
+*.png binary
+
 ###############################################################################
 # The TypeScript lint runs prettier with endOfLine: lf. A CRLF checkout makes
 # it report a stray carriage return on every line of every file, so pin the

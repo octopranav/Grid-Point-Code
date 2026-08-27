@@ -114,26 +114,37 @@ def words():
     return archived
 
 
+def variants():
+    """Every variant the archive expands to, sorted, and the words with none.
+
+    Separate from `load` because `test_data/generate.py` needs the variants
+    themselves rather than their hashes: a vector that proves a match is found
+    at a given position has to be a code with a variant sitting at that
+    position, and a hash cannot be put anywhere.
+    """
+    expanded = set()
+    dropped = []
+    for line in words().splitlines():
+        word = line.strip().lower()
+        if not word or word.startswith("#"):
+            continue
+        forms = gpc2.expand_word(word)
+        if not forms:
+            dropped.append(word)
+            continue
+        expanded.update(forms)
+    return sorted(expanded), dropped
+
+
 def load():
     """The version tag and every variant, sorted and deduplicated."""
     version = VERSION.read_text(encoding="utf-8").strip()
     if not version:
         raise SystemExit("screening/VERSION is empty.")
 
-    variants = set()
-    dropped = []
-    for line in words().splitlines():
-        word = line.strip().lower()
-        if not word or word.startswith("#"):
-            continue
-        expanded = gpc2.expand_word(word)
-        if not expanded:
-            dropped.append(word)
-            continue
-        variants.update(expanded)
-
-    entries = sorted(gpc2.screen_hash(v) for v in variants)
-    return version, entries, len(variants), dropped
+    expanded, dropped = variants()
+    entries = sorted(gpc2.screen_hash(v) for v in expanded)
+    return version, entries, len(expanded), dropped
 
 
 def digest(entries):

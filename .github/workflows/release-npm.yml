@@ -34,8 +34,10 @@ jobs:
   publish:
     name: Publish to npm
     runs-on: ubuntu-latest
+    # The same deployment environment the Python release uses, and the same
+    # name registered on the trusted publisher at npm. One release, one name.
     environment:
-      name: npm
+      name: release
       url: https://www.npmjs.com/package/@pranavpatel.ca/algo-gridpointcode
     permissions:
       contents: read

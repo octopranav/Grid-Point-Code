@@ -79,9 +79,10 @@ jobs:
     needs: build
     # A deployment environment, so the upload can be given its own protection
     # rules and shows up in the repository's deployment history. The same name
-    # must be set on the trusted publisher at PyPI.
+    # must be set on the trusted publisher at PyPI. Both releases use the one
+    # name, because they are one release and always move together.
     environment:
-      name: pypi
+      name: release
       url: https://pypi.org/project/gridpointcode_algo_pranavpatel_ca/
     permissions:
       contents: read
