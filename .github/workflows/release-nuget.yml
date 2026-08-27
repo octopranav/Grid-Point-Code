@@ -1,0 +1,104 @@
+#  Copyright 2017 Pranavkumar Patel
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Publishes the C# package to NuGet when a version tag is pushed.
+#
+# There is no API key in this file or in the repository secrets. nuget.org is
+# configured to trust this repository, this workflow file and the release
+# environment, and trades a short-lived OIDC token for a key that lives one
+# hour. That key is requested in the step before the push and never written
+# anywhere, which is why the two steps sit next to each other.
+#
+# The `user` below is the nuget.org profile name that owns the package, and it
+# is deliberately not a secret: it is printed on the package's public page. A
+# repository secret holding a public name would be a secret to rotate, leak and
+# forget for no gain.
+#
+# Unlike the Python release this does not attest build provenance. NuGet does
+# not surface attestations, and the package already carries its origin: the
+# nuspec records the repository URL and the exact commit it was packed from.
+
+name: Release NuGet
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+
+  publish:
+    name: Publish to NuGet
+    runs-on: ubuntu-latest
+    # The same deployment environment the other two releases use, and the same
+    # name registered on the trusted publishing policy at nuget.org.
+    environment:
+      name: release
+      url: https://www.nuget.org/packages/Ca.Pranavpatel.Algo.GridPointCode
+    permissions:
+      contents: read
+      id-token: write  # the OIDC token nuget.org trades for a publishing key
+    defaults:
+      run:
+        working-directory: csharp
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      # A tag that disagrees with the manifest publishes a version nobody asked
+      # for, under a name that already means something else.
+      - name: The tag must match the version in gpc.csproj
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version=$(python3 -c "import xml.etree.ElementTree as ET; print(ET.parse('gpc/gpc.csproj').find('.//PackageVersion').text)")
+          if [ "$tag" != "$version" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match gpc.csproj version ${version}"
+            exit 1
+          fi
+
+      - name: Build the library
+        run: dotnet build gpc/gpc.csproj --configuration Release
+
+      # Both frameworks, because both are shipped in the package. The suite is
+      # run with dotnet run, not dotnet test; csharp/README.md explains why.
+      - name: Run the suite
+        run: |
+          dotnet run --project gpc.tests/gpc.tests.csproj -f net9.0
+          dotnet run --project gpc.tests/gpc.tests.csproj -f net10.0
+
+      - name: Pack
+        run: dotnet pack gpc/gpc.csproj --configuration Release
+
+      - name: NuGet login (OIDC for a key that lives one hour)
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        id: login
+        with:
+          user: pranavpatel.ca
+
+      # The symbols package rides along: dotnet nuget push sends the .snupkg
+      # sitting beside the .nupkg without being told to.
+      - name: Push
+        run: >
+          dotnet nuget push gpc/bin/Release/*.nupkg
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
