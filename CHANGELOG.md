@@ -104,6 +104,13 @@ from without reading any source.
   table an application is meant to replace with words that suit its region. No
   port emits callouts: an emitter would carry words, words are a language, and
   the table is English whether or not anybody in the room is.
+* **The Python package declares itself typed.** Every function in it is
+  annotated and, without the `py.typed` marker PEP 561 requires, none of that
+  reached a caller: `pip install` followed by mypy reported the module as
+  installed but untyped. The marker now ships. `normalise` was also declared to
+  return `Tuple[str, str]` and returns `None` for the check character whenever
+  the code carried no `*`, which is most codes; it is `Optional[str]`, matching
+  TypeScript's `[string, string | null]` and what C# and Java already return.
 * **A typed error carrying a reason code** in every port, alongside the
   existing exception types, so a caller can branch on the reason rather than on
   message text. `GPC_LEVEL`, `GPC_DMS` and `GPC_GEO` join the reasons the
