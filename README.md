@@ -87,15 +87,30 @@ Everything below follows from that one property.
 
 ### What a prefix is worth
 
-| Shared characters | Cell, north-south | Cell, east-west | Scale |
-| ---: | ---: | ---: | --- |
-| 1 | 5,000.9 km | 6,679.2 km | Continent |
-| 3 | 200.0 km | 267.2 km | Region |
-| 5 | 8.0 km | 10.7 km | District |
-| 7 | 320.1 m | 427.5 m | Street |
-| 10 | 2.6 m | 3.4 m | Doorway |
+Every character narrows the cell by a factor of five on each axis. All ten
+levels, with the cell each prefix length names:
 
-[Section 3](SPEC.md#3-the-grid) has all ten levels.
+| Shared characters | Cell, north-south | Cell, east-west | Roughly | You could say |
+| ---: | ---: | ---: | --- | --- |
+| 1 | 5,000.9 km | 6,679.2 km | Continent | "the same continent" |
+| 2 | 1,000.2 km | 1,335.8 km | Country | "the same country, or one next to it" |
+| 3 | 200.0 km | 267.2 km | Region | "the same region" |
+| 4 | 40.0 km | 53.4 km | Metropolitan area | "the same city and its surroundings" |
+| 5 | 8.0 km | 10.7 km | District | "the same part of town" |
+| 6 | 1.6 km | 2.1 km | Suburb | "walking distance" |
+| 7 | 320.1 m | 427.5 m | Street | "the same street" |
+| 8 | 64.0 m | 85.5 m | City block | "the same block" |
+| 9 | 12.8 m | 17.1 m | Building | "the same building" |
+| 10 | 2.6 m | 3.4 m | Doorway | "the same doorway" |
+
+Read it either way. Downward, it is how much precision each character buys.
+Upward, it is what you may safely tell somebody from a shared prefix alone: four
+characters in common already means one metropolitan area, and no pair of points
+on Earth can share four characters and be further apart than that cell.
+
+North-south figures hold everywhere. East-west figures shrink with the cosine of
+latitude, so a cell is squarer at 41.5 degrees and narrower towards the poles.
+[Section 3](SPEC.md#3-the-grid) has the degree spans behind each row.
 
 ## Code structure
 
@@ -296,11 +311,123 @@ Coordinates old = GPC.Decode("#FN5G-CDKL-HDC");
 
 ---
 
-## The Locality API
+## The optional check character
+
+A code is ten characters and carries no checksum, because eleven characters
+everywhere would be a high price for a problem that only exists once a person is
+involved. So the eleventh character is optional, written after a star, and you
+add it exactly where the people are:
+
+```python
+GPC.with_check("#G3RJM-98NM9")       # '#G3RJM-98NM9*T'
+```
+
+**What it buys.** It detects **every single-character error** and **every
+transposition of two adjacent characters** — the two mistakes people actually
+make when they hear a code, write it down, and type it in later. Verified
+exhaustively: over 4,000 random codes, all 1,056,000 possible single-symbol
+errors and all 38,389 adjacent transpositions were caught.
+
+**Why that matters here.** Without it, a mistyped code is usually still a valid
+code. Nearly 29 % of single-character typos land somewhere plausible in the
+right region — the wrong door, the wrong block, sometimes 20 km away — and
+nothing in the format objects, because very nearly every ten-character string
+over the alphabet names some real cell. The check character is the one mechanism
+that says "this is not what was sent" instead of quietly naming the wrong place.
+
+**When to use it.**
+
+| Situation | Add the check character? |
+| --- | --- |
+| Read aloud, over a radio or a telephone | **Yes** |
+| Written by hand, printed on a sign or a delivery note | **Yes** |
+| Typed in by a person from anywhere | **Yes** |
+| Machine to machine, stored in a record, put in a URL | No — it is not canonical |
+
+**It is never in the way.** The check form is **not canonical**: no port emits
+it unless asked, `#G3RJM-98NM9` and `#G3RJM-98NM9*T` denote the same place, and
+a reader who drops the star and the character loses only the detection. A code
+that arrives with a *wrong* check character is rejected with the reason
+`GPC_CHECK` rather than decoded to the wrong place.
+
+```python
+GPC.with_check("#G3RJM-98NM9")        # '#G3RJM-98NM9*T', the whole form
+GPC.check_character("#G3RJM-98NM9")   # 'T', the character alone
+GPC.decode("#G3RJM-98NM9*T")          # (43.650006, -79.380004), check confirmed
+GPC.is_valid("#G3RJM-98NM9*Z")        # False -- the check does not hold
+```
+
+Reach for `with_check` rather than building the string yourself. By hand it is
+three operations and two ways to be quietly wrong — the star dropped, or the
+character spliced inside the group separator instead of after it — and neither
+mistake is caught by anything, because the result is a string nobody validated.
+It recomputes rather than trusting, so a code arriving with a wrong check comes
+back with a right one.
+
+[Section 14](SPEC.md#14-the-check-character-optional) specifies it, and
+[Appendix D](SPEC.md#appendix-d--sharing-a-code-non-normative) covers saying one
+out loud.
+
+---
+
+## Every feature
+
+All of it is in all four ports, under the names below. None of it needs a
+network, an account, a key or a data file.
+
+### Converting
+
+| What it does | Python | TypeScript | C# and Java |
+| --- | --- | --- | --- |
+| Coordinates to a code | `encode` | `encode` | `Encode` |
+| A code to the cell's centre | `decode` | `decode` | `Decode` |
+| A code to the cell's four boundaries | `decode_to_area` | `decodeToArea` | `DecodeToArea` |
+| The presentation form, `#XXXXX-XXXXX` | `format_gpc` | `formatGPC` | `FormatGPC` |
+
+```python
+GPC.encode(43.65, -79.38)              # '#G3RJM-98NM9'
+GPC.encode(43.65, -79.38, False)       # 'G3RJM98NM9', unformatted
+GPC.decode("#G3RJM-98NM9")             # (43.650006, -79.380004)
+GPC.decode_to_area("#G3RJM-98NM9")     # south, west, north, east
+```
+
+Latitude runs from -90 to 90 and longitude from -180 to 180, both ends included.
+The poles encode, and both ends of the antimeridian give the one code.
+
+### Accepting what people type
+
+A code that has been through a person is rarely the string you emitted.
+
+| What it does | Python | TypeScript | C# and Java |
+| --- | --- | --- | --- |
+| Case-fold, strip separators, fix confusables | `normalise` | `normalise` | `Normalise` |
+| Is this a usable code? | `is_valid` | `isValid` | `IsValid` |
+| Usable, and if not, why | `validate` | `validate` | `Validate` |
+| Geometric, reserved or invalid | `classify` | `classify` | `Classify` |
+
+```python
+GPC.normalise("  g3rjm-98nm9  ")   # ('G3RJM98NM9', None) -- case and spacing
+GPC.normalise("#G3RJM-9BNM9")      # ('G3RJM98NM9', None) -- B read as 8
+GPC.validate("G3RJM98NMQ")         # ('INVALID', 'GPC_CHAR')
+```
+
+Python and TypeScript also carry `is_valid_coordinates` / `isValidCoordinates`,
+which answers whether a latitude and longitude are inside the domain without
+raising, and names the axis at fault. C# and Java leave that to catching the
+argument exception their languages already raise.
+
+Case and separators never matter. Confusable letters are read as the symbols
+they stand for — `O` as `0`, `I` as `1`, `S` as `5`, `Z` as `2`, `B` as `8`,
+`A` as `4`, `E` as `3`, `V` as `W` — while `L` is a real symbol and is never
+read as `1`. Every failure carries a reason code (`GPC_NULL`, `GPC_LENGTH`,
+`GPC_CHAR`, `GPC_CHECK`, `GPC_RESERVED`, `GPC_RANGE`) so a caller can branch on
+the reason instead of matching on message text.
+
+### Working with areas
 
 The guarantee is only useful if a caller can act on it, so each port carries the
 operations that follow from it rather than leaving everyone to re-derive the
-arithmetic. Every one of them is exact integer arithmetic except `distance`.
+arithmetic. All of these are exact integer arithmetic except `distance`.
 
 | What it does | Python | TypeScript | C# and Java |
 | --- | --- | --- | --- |
@@ -309,57 +436,108 @@ arithmetic. Every one of them is exact integer arithmetic except `distance`.
 | The eight cells around one | `neighbours` | `neighbours` | `Neighbours` |
 | How big a cell is at a level | `cell_dimensions` | `cellDimensions` | `CellDimensions` |
 | Great-circle metres between two cells | `distance` | `distance` | `Distance` |
-| The grid row and column | `decode_to_grid` | `decodeToGrid` | `DecodeToGrid` |
-| The last five characters | `shorten` | `shorten` | `Shorten` |
-| The full code, from those five and a reference | `recover_short` | `recoverShort` | `RecoverShort` |
-| Codes one typo away, best first | `suggest_corrections` | `suggestCorrections` | `SuggestCorrections` |
-| The code in its check form | `with_check` | `withCheck` | `WithCheck` |
-| The 48-bit integer form | `to_integer`, `from_integer` | `toInteger`, `fromInteger` | `ToInteger`, `FromInteger` |
-| An RFC 5870 `geo:` URI | `to_geo_uri`, `from_geo_uri` | `toGeoURI`, `fromGeoURI` | `ToGeoURI`, `FromGeoURI` |
-| Degrees, minutes and seconds | `to_dms`, `from_dms` | `toDMS`, `fromDMS` | `ToDMS`, `FromDMS` |
-| Advisory word screening | `screen` | `screen` | `Screen` |
-| Batch and streaming conversion | `encode_all`, `encode_stream` | `encodeAll`, `encodeStream` | `EncodeAll`, `EncodeStream` |
+| A code's row and column on the grid | `decode_to_grid` | `decodeToGrid` | `DecodeToGrid` |
+| Coordinates to a row and column | `to_grid` | `toGrid` | `ToGrid` |
+| A row and column to a code, and back | `grid_to_code`, `code_to_grid` | `gridToCode`, `codeToGrid` | `GridToCode`, `CodeToGrid` |
 
 ```python
-GPC.cell("#G3RJM-98NM9", 5)                    # 'G3RJM', the 8.0 by 10.7 km cell
-GPC.contains("G3RJM", "G3RJM98NM9")            # True -- the prefix test, exactly
-GPC.neighbours("G3RJM")                        # the eight cells around it
-
-GPC.shorten("#G3RJM-98NM9")                    # '98NM9', the second printed group
-GPC.recover_short("-98NM9", 43.66, -79.39)     # '#G3RJM-98NM9', near a reference
-
-GPC.suggest_corrections("#G3RJT-98NM9", 43.65, -79.38)
-# ['#G3RJM-98NM9'] -- the geography does the work a check digit would
+GPC.cell("#G3RJM-98NM9", 5)          # 'G3RJM', the 8.0 by 10.7 km cell
+GPC.contains("G3RJM", "G3RJM98NM9")  # True -- the prefix test, exactly
+GPC.neighbours("G3RJM")              # the eight cells around it
+GPC.cell_dimensions(5)               # degrees then metres, north-south and east-west
+GPC.distance("#G3RJM-98NM9", "#6LK4X-NRP0R")   # 15566716.58 metres
+GPC.decode_to_grid("#G3RJM-98NM9")   # (5800781, 3275390)
 ```
 
-A few things worth knowing before reaching for these:
-
-* **`contains` is the prefix test and nothing else.** There is no tolerance and
-  no edge case at a boundary, because the guarantee makes the string answer and
+* **`contains` is the prefix test and nothing else.** No tolerance, and no
+  special case at a boundary, because the guarantee makes the string answer and
   the geometric answer the same answer.
 * **Columns wrap at the antimeridian and rows do not**, so a cell in the top or
   bottom row has five neighbours rather than eight. The three that would lie off
   the grid are absent from the result rather than present and empty.
 * **`distance` is the one operation that is not bit-identical across the four
   ports.** No standard library rounds sine, cosine or arc sine correctly, so the
-  ports agree to about a millimetre rather than exactly, and its conformance
-  vectors are the only ones in the corpus asserted to a tolerance. Anything that
-  needs a reproducible ordering should rank on the grid indices instead.
+  ports agree to about a millimetre rather than exactly. Anything needing a
+  reproducible ordering should rank on the grid indices instead.
+
+### Getting a code from one person to another
+
+| What it does | Python | TypeScript | C# and Java |
+| --- | --- | --- | --- |
+| The code in its check form | `with_check` | `withCheck` | `WithCheck` |
+| The check character alone | `check_character` | `checkCharacter` | `CheckCharacter` |
+| The last five characters | `shorten` | `shorten` | `Shorten` |
+| The full code, from those five and a reference | `recover_short` | `recoverShort` | `RecoverShort` |
+| Codes one typo away, best first | `suggest_corrections` | `suggestCorrections` | `SuggestCorrections` |
+| Words a code may accidentally spell | `screen` | `screen` | `Screen` |
+
+```python
+GPC.shorten("#G3RJM-98NM9")                 # '98NM9', the second printed group
+GPC.recover_short("-98NM9", 43.66, -79.39)  # '#G3RJM-98NM9', near a reference
+
+GPC.suggest_corrections("#G3RJT-98NM9", 43.65, -79.38)
+# ['#G3RJM-98NM9'] -- the geography does the work a check digit would
+
+GPC.screen("#G3RJM-98NM9")                  # ('2026.2', []) -- clean
+```
+
 * **The short form is a convenience and the ten characters are the form of
   record.** Recovery is exact whenever the reference is within half a level-5
-  cell of the true point on each axis -- 4.0 km of latitude, 5.3 km of longitude
-  at the equator -- and outside that box it returns a plausible location 8 or
-  10 km away.
-* **`suggest_corrections` corrects, it does not detect.** It is not a checksum,
-  and the advice above about confirming on a map applies to its output as much
-  as to anything else.
-* **`screen` advises and never blocks.** Nothing in any port refuses to encode,
-  decode or validate because of what it found, and it reports the version of the
-  list it used whether or not anything matched.
+  cell of the true point on each axis — 4.0 km of latitude, 5.3 km of longitude
+  at the equator — and outside that box it returns a plausible location 8 or
+  10 km away rather than failing.
+* **`suggest_corrections` corrects, it does not detect.** Give it a code and a
+  rough idea of where the point should be, and it returns the codes one typo
+  away that are plausible there, best first; at the default level the true code
+  is usually the only candidate. It is not a checksum — that is what the check
+  character above is for.
+* **`screen` advises and never blocks.** The alphabet has no vowels, so no word
+  can be spelled outright, but digit substitutions still can, and a code about to
+  go on a sign or a shopfront is worth checking first. It returns the matched
+  spans and the version of the list it used, whether or not anything matched, so
+  a caller can tell "clean under this list" from "never screened". Nothing in any
+  port refuses to encode, decode or validate because of what it found.
 
-The optional check character is the one mechanism here that detects rather than
-corrects, and it is never present unless someone asks for it:
-`with_check("#G3RJM-98NM9")` returns `#G3RJM-98NM9*T`.
+### Storing, sorting and moving codes
+
+| What it does | Python | TypeScript | C# and Java |
+| --- | --- | --- | --- |
+| The 48-bit integer form | `to_integer`, `from_integer` | `toInteger`, `fromInteger` | `ToInteger`, `FromInteger` |
+| An RFC 5870 `geo:` URI | `to_geo_uri`, `from_geo_uri` | `toGeoURI`, `fromGeoURI` | `ToGeoURI`, `FromGeoURI` |
+| Degrees, minutes and seconds | `to_dms`, `from_dms` | `toDMS`, `fromDMS` | `ToDMS`, `FromDMS` |
+| A whole list at once | `encode_all`, `decode_all` | `encodeAll`, `decodeAll` | `EncodeAll`, `DecodeAll` |
+| Lazily, one at a time | `encode_stream`, `decode_stream` | `encodeStream`, `decodeStream` | `EncodeStream`, `DecodeStream` |
+
+```python
+GPC.to_integer("G3RJM98NM9")             # 50180843496709 -- six bytes, big-endian
+GPC.to_geo_uri(43.650006, -79.380004)    # 'geo:43.650006,-79.380004'
+GPC.to_dms(43.65, -79.38)                # '43°39\'00.00"N, 79°22\'48.00"W'
+
+GPC.encode_all([(43.65, -79.38), (0.0, 0.0)])
+for code in GPC.encode_stream(points):   # lazily, one at a time
+    ...
+```
+
+* **The integer form sorts the way the string does**, so a six-byte binary key
+  is still a spatial key, and one comparison separates a geometric code from a
+  reserved one without parsing.
+* **`geo:` URIs are exact.** Six decimal places is what `decode` returns, so a
+  code written out this way and read back encodes to the same code every time.
+  Degrees, minutes and seconds are for a person to read and are rounded to a
+  hundredth of a second — lossy by up to 0.155 m, though a decoded code still
+  survives the round trip.
+* **The batch form throws on the first bad row; the streaming form does not.**
+  Take the stream when you would rather handle a bad row than lose the rest.
+
+### Reading version 1 codes
+
+| What it does | Python | TypeScript | C# and Java |
+| --- | --- | --- | --- |
+| Decode an old code explicitly | `decode_v1` | `decodeV1` | `DecodeV1` |
+| Check an old code | `is_valid_v1` | `isValidV1` | `IsValidV1` |
+
+`decode` already reads them without being asked; the section below says how the
+two formats are told apart.
 
 ---
 
