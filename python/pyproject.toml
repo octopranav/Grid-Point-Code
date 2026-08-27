@@ -26,3 +26,10 @@ classifiers = [
 [project.urls]
 "Homepage" = "https://github.com/octopranav/Grid-Point-Code"
 "Bug Tracker" = "https://github.com/octopranav/Grid-Point-Code/issues"
+
+# The suite reads the shared conformance vectors, which live above this
+# directory because all four ports read the same ones. Without them the sdist
+# ships a test suite that cannot run, which is what a distribution packager
+# building from source finds first. The wheel carries neither tests nor vectors.
+[tool.hatch.build.targets.sdist.force-include]
+"../test_data" = "test_data"
