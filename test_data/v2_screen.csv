@@ -104,5 +104,6 @@ XH31LHG0FK,2:4
 70W31H34D0,1:9
 070W31H34D,2:9
 
-# --- Two variants in one code
+# --- Two matches in one code, different and identical
 4N4104N4L0,1:4 6:4
+4N4104N410,1:4 6:4

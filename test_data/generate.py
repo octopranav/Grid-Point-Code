@@ -1026,18 +1026,22 @@ for length in sorted(by_length):
     for start in range(1, 10 - length + 2):
         planted.append(plant(variant, start))
 
-# Two variants in one code, so that a port returning only the first match fails.
-pair = None
+# Two matches in one code, twice over. Different variants first, which fails a
+# port that stops at its first match. Then the same variant twice, which fails a
+# port that collects matched hashes in a set: it has two spans to report and one
+# hash to report them from, and returning one span is the easy mistake.
+pairs = []
 if len(by_length.get(4, [])) >= 2:
     first, second = by_length[4][0], by_length[4][1]
-    for filler in ALPHABET:
-        code = first + filler + second + filler
-        if code[0] == "X":
-            continue
-        _, spans = GPC.screen(code)
-        if spans == [(1, 4), (6, 4)]:
-            pair = (code, spans)
-            break
+    for a, b in ((first, second), (first, first)):
+        for filler in ALPHABET:
+            code = a + filler + b + filler
+            if code[0] == "X":
+                continue
+            _, spans = GPC.screen(code)
+            if spans == [(1, 4), (6, 4)]:
+                pairs.append((code, spans))
+                break
 
 lines = ["# code,spans",
          "# Version 2. screen: the matched substrings of a code, as",
@@ -1059,13 +1063,12 @@ screen_rows("Codes that match nothing", clean)
 screen_rows("Codes that match", flagged)
 screen_rows("A reserved code screens like any other", reserved)
 screen_rows("One variant of each length, at every position it can occupy", planted)
-if pair is not None:
-    screen_rows("Two variants in one code", [pair])
+screen_rows("Two matches in one code, different and identical", pairs)
 write("v2_screen.csv", lines)
 _screen_total = (len(clean) + len(flagged) + len(reserved) + len(planted)
-                 + (1 if pair else 0))
+                 + len(pairs))
 print(f"v2_screen.csv             {_screen_total:5} "
-      f"vectors, {len(flagged) + len(reserved) + len(planted) + (1 if pair else 0)}"
+      f"vectors, {len(flagged) + len(reserved) + len(planted) + len(pairs)}"
       f" of them matching")
 
 # Nothing above writes the sample itself. When a port disagrees about the
