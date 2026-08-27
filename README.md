@@ -6,6 +6,11 @@
 [![npm (scoped)](https://img.shields.io/npm/v/@pranavpatel.ca/algo-gridpointcode)](https://www.npmjs.com/package/@pranavpatel.ca/algo-gridpointcode)
 [![PyPI](https://img.shields.io/pypi/v/gridpointcode-algo-pranavpatel-ca)](https://pypi.org/project/gridpointcode-algo-pranavpatel-ca/)
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.png">
+  <img src="docs/hero-light.png" alt="The code #G3RJM-98NM9 with all ten of its levels drawn: each character narrows the cell by five on each axis, from 5000 km at the continent to 2.6 m at the doorway.">
+</picture>
+
 **Grid Point Code** names one cell of a fixed grid over the Earth with a
 ten-character code. Conversion runs offline in both directions and is a few
 lines of integer arithmetic, with no lookup table and no network.
