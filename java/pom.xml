@@ -9,7 +9,7 @@
   <version>2.0.0</version>
   <packaging>jar</packaging>
 
-  <name>ca.pranavpatel.algo:gridpointcode</name>
+  <name>Grid Point Code (GPC)</name>
   <description>Grid Point Code (GPC) names any location on Earth with a compact ten-character alphanumeric code. Encoding and decoding run offline, with no network and no lookup table, and two codes share their first k characters exactly when the two points lie in the same level-k cell, so a shared prefix is a shared region.</description>
   <url>https://github.com/octopranav/Grid-Point-Code</url>
 

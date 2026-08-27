@@ -11,6 +11,30 @@ authors = [
 description = "Grid Point Code (GPC) names any location on Earth with a compact ten-character alphanumeric code. Encoding and decoding run offline, with no network and no lookup table, and two codes share their first k characters exactly when the two points lie in the same level-k cell, so a shared prefix is a shared region."
 readme = "README.md"
 requires-python = ">=3.9"
+keywords = [
+    "encoding",
+    "offline",
+    "geocoding",
+    "mapping",
+    "location",
+    "geospatial",
+    "address",
+    "gis",
+    "decoding",
+    "latitude",
+    "longitude",
+    "coordinates",
+    "unique-identifier",
+    "precision",
+    "gpc",
+    "geographic",
+    "grid-point-code",
+    "global-code",
+    "geocode",
+    "hierarchical",
+    "spatial-index",
+    "prefix-search",
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
@@ -25,6 +49,9 @@ classifiers = [
 
 [project.urls]
 "Homepage" = "https://github.com/octopranav/Grid-Point-Code"
+"Repository" = "https://github.com/octopranav/Grid-Point-Code"
+"Documentation" = "https://github.com/octopranav/Grid-Point-Code/blob/main/SPEC.md"
+"Changelog" = "https://github.com/octopranav/Grid-Point-Code/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/octopranav/Grid-Point-Code/issues"
 
 # The suite reads the shared conformance vectors, which live above this

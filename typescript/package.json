@@ -27,7 +27,11 @@
     "gpc",
     "geographic",
     "grid-point-code",
-    "global-code"
+    "global-code",
+    "geocode",
+    "hierarchical",
+    "spatial-index",
+    "prefix-search"
   ],
   "author": "Pranavkumar Patel",
   "license": "Apache-2.0",
