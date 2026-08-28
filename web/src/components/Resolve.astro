@@ -63,12 +63,15 @@ const cellHeight = PLATE / first.rows;
                 Code my location
             </button>
             <button type="button" class="secondary" data-next-sample>Somewhere else</button>
-            <button type="button" class="quiet" data-replay>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button type="button" class="quiet" data-replay data-state="idle">
+                <svg class="when-idle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path>
                     <path d="M3 3v5h5"></path>
                 </svg>
-                Replay
+                <svg class="when-playing" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <rect x="6" y="6" width="12" height="12" rx="1"></rect>
+                </svg>
+                <span data-replay-label>Replay</span>
             </button>
         </div>
 
@@ -116,8 +119,9 @@ const cellHeight = PLATE / first.rows;
 </section>
 
 <script>
-    // The library itself is loaded on demand below and is a 966 KB chunk that
-    // never reaches a reader who does not get a map. Its stylesheet is not
+    // The library itself is loaded on demand below and is a 264 KB chunk
+    // (compressed) that never reaches a reader who does not get a map. Its
+    // stylesheet is not
     // split with it: Astro gathers every stylesheet a page's module graph
     // touches and links them all up front, so importing it dynamically moved
     // nothing. At 10 KB compressed it is not worth hand-trimming, and the
@@ -146,14 +150,78 @@ const cellHeight = PLATE / first.rows;
         const plateSize = section.querySelector<HTMLElement>('[data-plate-size]')!;
         const mapHolder = section.querySelector<HTMLElement>('[data-map]')!;
 
-        const still = matchMedia('(prefers-reduced-motion: reduce)');
         const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
         let current: Resolution = resolve(SAMPLES[0].latitude, SAMPLES[0].longitude);
         let showing: LevelCell = current.levels[0];
         let sample = 0;
         let generation = 0;
+        let playing = false;
+        let settleHere: () => void = () => {};
         let map: MapLibreMap | null = null;
+
+        // Mercator gives up near the poles, so the whole world is this box.
+        const WORLD = { west: -180, south: -85, east: 180, north: 85 };
+
+        // The descent runs for everybody, including readers whose system asks
+        // for less movement, and it is stoppable at any moment: the control
+        // beside it turns into Stop while it runs, and touching the map halts
+        // it too. That is the accommodation this particular motion needs. The
+        // sequence is not decoration -- it is the explanation the page exists
+        // to give, in the way a video is the point of a video -- and the
+        // accepted answer for content that moves is a means of stopping it,
+        // not its removal. Earlier versions honoured the preference by cutting
+        // between levels or by skipping to the answer; both read as a fault
+        // rather than a decision, and both withheld the one thing worth seeing.
+        //
+        // The descent is one continuous fall from the world to a doorway.
+        // DESCENT is the whole of it; there is deliberately no per-level pause,
+        // because a pause is a stop and a sequence of stops is a slideshow
+        // however short the gaps are. Ten levels across ten seconds gives each
+        // about a second of screen time, which is also long enough for tiles to
+        // arrive at each scale before the next is wanted.
+        const DESCENT = 10000;
+
+        // What a cut-between-levels version waits instead, when a reader has
+        // asked for less movement.
+        const HOLD = 620;
+
+        interface Box { west: number; south: number; east: number; north: number }
+
+        // How much wider than the cell the view is. Sixteen puts the cell at
+        // about a sixteenth of the frame -- a bullet, with enough ground round
+        // it to answer the only question the picture exists to answer, which is
+        // *where*. It is also the largest factor at which a level-two cell
+        // still fits the world without being clipped, which is what keeps the
+        // opening descent moving instead of stalling.
+        const SURROUNDINGS = 16;
+
+        /**
+         * What the map looks at while a level is being shown.
+         *
+         * The cell, stood back from by a constant factor -- not an ancestor
+         * cell. Framing ancestors was the obvious construction and it was
+         * wrong: the first two levels have no grandparent to frame, so the
+         * camera had nowhere to travel between them and the descent began with
+         * a stutter. Standing back by a fixed amount is uniform all the way
+         * down, and every step is the same size of move.
+         */
+        function viewFor(cell: Box): Box {
+            const midLatitude = (cell.north + cell.south) / 2;
+            const midLongitude = (cell.east + cell.west) / 2;
+            const reachLatitude = ((cell.north - cell.south) * SURROUNDINGS) / 2;
+            const reachLongitude = ((cell.east - cell.west) * SURROUNDINGS) / 2;
+
+            // Mercator gives up near the poles, and there is no world past the
+            // antimeridian; a cell near either simply gets a lopsided view
+            // rather than one running off the edge.
+            return {
+                south: Math.max(WORLD.south, midLatitude - reachLatitude),
+                north: Math.min(WORLD.north, midLatitude + reachLatitude),
+                west: Math.max(WORLD.west, midLongitude - reachLongitude),
+                east: Math.min(WORLD.east, midLongitude + reachLongitude),
+            };
+        }
 
         function drawPlate(cell: LevelCell) {
             const width = PLATE / cell.columns;
@@ -179,7 +247,7 @@ const cellHeight = PLATE / first.rows;
             plateSize.textContent = cell.size;
         }
 
-        function shape(cell: LevelCell) {
+        function shape(cell: Box) {
             return {
                 type: 'Feature' as const,
                 properties: {},
@@ -196,23 +264,115 @@ const cellHeight = PLATE / first.rows;
             };
         }
 
-        function frame(cell: LevelCell, animate: boolean) {
+        interface Camera { lng: number; lat: number; zoom: number }
+
+        /** Where the camera has to sit for `view` to fill the panel. */
+        function cameraFor(view: Box): Camera | null {
+            if (!map) return null;
+            const found = map.cameraForBounds(
+                [[view.west, view.south], [view.east, view.north]],
+                { padding: 24 },
+            );
+            if (!found || !found.center || found.zoom === undefined) return null;
+            const centre = found.center as { lng: number; lat: number };
+            return { lng: centre.lng, lat: centre.lat, zoom: found.zoom };
+        }
+
+        /** A box part-way between two others. */
+        const between = (from: Box, to: Box, k: number): Box => ({
+            west: from.west + (to.west - from.west) * k,
+            south: from.south + (to.south - from.south) * k,
+            east: from.east + (to.east - from.east) * k,
+            north: from.north + (to.north - from.north) * k,
+        });
+
+        /**
+         * Fly the camera from one framing to the next, a frame at a time.
+         *
+         * Deliberately hand-driven rather than a chain of `fitBounds` calls.
+         * Each of those is a separate move with its own acceleration and stop,
+         * which is why a sequence of them reads as a slideshow however short
+         * the gaps are. Interpolating zoom linearly is what makes this look
+         * like a push-in: zoom is logarithmic in scale, so even steps in zoom
+         * are even steps in apparent speed.
+         */
+        /**
+         * Fall from the world to a doorway without ever stopping.
+         *
+         * The ten framings are treated as one path rather than ten
+         * destinations. Time maps onto the path, the camera is placed on it
+         * every frame, and the highlight contracts along it in step -- so a
+         * level is a moment passed through rather than a place landed on. An
+         * earlier version eased into and out of each level separately, which is
+         * structurally a slideshow: every landing is a full stop, and no amount
+         * of shortening the gaps hides it.
+         *
+         * Easing is applied once, to the whole descent, and gently: sine in and
+         * out leaves the middle close to constant speed, so the fall does not
+         * whip through the levels a reader most wants to see.
+         */
+        function track(
+            cameras: Camera[],
+            cells: Box[],
+            alive: () => boolean,
+            onLevel: (index: number) => void,
+        ) {
+            return new Promise<void>((done) => {
+                const segments = cameras.length - 1;
+                const begun = performance.now();
+                const source = map?.getSource('cell') as GeoJSONSource | undefined;
+                let shown = -1;
+
+                const tick = (now: number) => {
+                    if (!map || !alive()) return done();
+
+                    const elapsed = Math.min(1, (now - begun) / DESCENT);
+                    const travelled = -(Math.cos(Math.PI * elapsed) - 1) / 2;
+
+                    const along = travelled * segments;
+                    const leg = Math.min(segments - 1, Math.floor(along));
+                    const k = along - leg;
+
+                    const from = cameras[leg];
+                    const to = cameras[leg + 1];
+                    map.jumpTo({
+                        center: [
+                            from.lng + (to.lng - from.lng) * k,
+                            from.lat + (to.lat - from.lat) * k,
+                        ],
+                        zoom: from.zoom + (to.zoom - from.zoom) * k,
+                    });
+
+                    source?.setData(shape(between(cells[leg], cells[leg + 1], k)));
+
+                    // A character lights the moment the box finishes becoming
+                    // its cell, so the code and the map say the same thing at
+                    // the same instant.
+                    const reached = Math.min(cells.length - 1, Math.floor(along));
+                    if (reached !== shown) {
+                        shown = reached;
+                        onLevel(reached);
+                    }
+
+                    if (elapsed < 1) requestAnimationFrame(tick);
+                    else {
+                        onLevel(cells.length - 1);
+                        done();
+                    }
+                };
+
+                requestAnimationFrame(tick);
+            });
+        }
+
+        function frame(cell: LevelCell, view: Box, animate: boolean) {
             if (!map) return;
             const source = map.getSource('cell') as GeoJSONSource | undefined;
             source?.setData(shape(cell));
             map.fitBounds(
-                [[cell.west, cell.south], [cell.east, cell.north]],
-                { padding: 28, duration: animate ? 360 : 0, essential: true },
+                [[view.west, view.south], [view.east, view.north]],
+                { padding: 24, duration: animate ? 600 : 0, essential: true },
             );
-        }
-
-        function paint(cell: LevelCell, animate: boolean) {
-            showing = cell;
-            boxes.forEach((box, index) => {
-                box.dataset.filled = String(index < cell.level);
-            });
-            drawPlate(cell);
-            frame(cell, animate);
         }
 
         function setCode(resolution: Resolution) {
@@ -225,37 +385,123 @@ const cellHeight = PLATE / first.rows;
                 resolution.centre[0].toFixed(6) + ', ' + resolution.centre[1].toFixed(6);
         }
 
-        async function play(resolution: Resolution, label: string) {
+        /**
+         * Descend through the ten levels.
+         *
+         * `asked` marks a run the reader started by pressing something. That
+         * distinction is the whole of the reduced-motion handling: a preference
+         * for less movement governs what a page does uninvited, not what it
+         * does when somebody presses Replay. Uninvited, the descent cuts
+         * between levels instead of travelling between them -- every level is
+         * still shown and still held, and only the motion goes.
+         */
+        async function play(resolution: Resolution, label: string, asked = false) {
             const mine = (generation += 1);
+            const alive = () => mine === generation;
+
             current = resolution;
             place.textContent = label;
             setCode(resolution);
 
-            // A stated preference for less movement gets the answer, not the show.
-            if (still.matches) {
-                paint(resolution.levels[9], false);
-                return;
-            }
+            const levels = resolution.levels;
+            const views = levels.map(viewFor);
+
+            const arrive = (index: number) => {
+                const cell = levels[index];
+                showing = cell;
+                boxes.forEach((box, at) => {
+                    box.dataset.filled = String(at <= index);
+                });
+                drawPlate(cell);
+            };
 
             boxes.forEach((box) => {
                 box.dataset.filled = 'false';
             });
 
-            for (const cell of resolution.levels) {
-                // A newer run has started; abandon this one rather than fight it.
-                if (mine !== generation) return;
-                paint(cell, true);
-                await wait(cell.level === 1 ? 540 : 380);
+            const seats = map ? views.map(cameraFor) : [];
+            const flying =
+                map !== null &&
+                seats.length === views.length &&
+                seats.every((seat): seat is Camera => seat !== null);
+
+            const last = levels.length - 1;
+
+            const settleAt = (index: number) => {
+                arrive(index);
+                const source = map?.getSource('cell') as GeoJSONSource | undefined;
+                source?.setData(shape(levels[index]));
+                if (flying) {
+                    const seat = seats[index] as Camera;
+                    map!.jumpTo({ center: [seat.lng, seat.lat], zoom: seat.zoom });
+                }
+            };
+
+            settleHere = () => settleAt(last);
+
+            playing = true;
+            control('playing');
+
+            try {
+                if (flying) {
+                    const first = seats[0] as Camera;
+                    map!.jumpTo({
+                        center: [first.lng, first.lat],
+                        zoom: first.zoom,
+                        // The camera stays level and square to north. Reset
+                        // anyway, so a reader who has tilted or turned the map
+                        // by other means still gets the descent from straight
+                        // above rather than from wherever they left it.
+                        pitch: 0,
+                        bearing: 0,
+                    });
+                    await track(seats as Camera[], levels, alive, arrive);
+                    return;
+                }
+
+                // No map to fly: the plate and the code carry the descent alone.
+                for (let index = 0; index <= last; index += 1) {
+                    if (!alive()) return;
+                    settleAt(index);
+                    await wait(HOLD);
+                }
+            } finally {
+                if (alive()) {
+                    playing = false;
+                    control('idle');
+                }
             }
         }
 
+        /** Swap the control between starting the descent and stopping it. */
+        function control(state: 'idle' | 'playing') {
+            const button = section.querySelector<HTMLElement>('[data-replay]');
+            const label = section.querySelector<HTMLElement>('[data-replay-label]');
+            if (button) button.dataset.state = state;
+            if (label) label.textContent = state === 'playing' ? 'Stop' : 'Replay';
+        }
+
+        // Settled once the map is either usable or known not to be coming, so
+        // the first descent never waits on something that will not arrive.
+        let mapIsHere: () => void = () => {};
+        const mapArrived = new Promise<void>((settle) => {
+            mapIsHere = settle;
+        });
+
         async function loadMap() {
+            // Every failure below leaves the reader with the plate, which was
+            // already correct -- so none of them need an apology on screen. But
+            // silent and graceful are not the same thing: anyone with a console
+            // open, now or in two years, should be told which step gave up.
+            section.dataset.mapState = 'loading';
+
             let maplibre: typeof import('maplibre-gl');
             try {
                 maplibre = await import('maplibre-gl');
-            } catch {
-                // No map. The plate was already correct, so there is nothing to
-                // tell the reader and nothing to put right.
+            } catch (error) {
+                section.dataset.mapState = 'library-unavailable';
+                console.warn('[grid point code] the map library did not load.', error);
+                mapIsHere();
                 return;
             }
 
@@ -265,23 +511,65 @@ const cellHeight = PLATE / first.rows;
                 (!html.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
             const brass = getComputedStyle(html).getPropertyValue('--brass').trim() || '#8A6110';
 
-            map = new maplibre.Map({
-                container: mapHolder,
-                // Positron and Fiord are the desaturated styles, which is what a
-                // drawing laid over them needs: the cell has to be the brightest
-                // thing on the panel.
-                style: 'https://tiles.openfreemap.org/styles/' + (dark ? 'fiord' : 'positron'),
-                center: [current.centre[1], current.centre[0]],
-                zoom: 1,
-                attributionControl: { compact: false },
-                // A backdrop for a sequence rather than something to fly around
-                // in, which also stops it swallowing the page's scroll.
-                interactive: false,
-            });
+            // Where a descent of the current point starts from.
+            function openingBounds(): [[number, number], [number, number]] {
+                const first = viewFor(current.levels[0]);
+                return [[first.west, first.south], [first.east, first.north]];
+            }
 
-            map.on('load', () => {
-                if (!map) return;
-                map.addSource('cell', { type: 'geojson', data: shape(showing) });
+            try {
+                map = new maplibre.Map({
+                    container: mapHolder,
+                    // Positron and Fiord are the desaturated styles, which is
+                    // what a drawing laid over them needs: the cell has to be
+                    // the brightest thing on the panel.
+                    style:
+                        'https://tiles.openfreemap.org/styles/' +
+                        (dark ? 'fiord' : 'positron'),
+                    // Built already framing the world the way the descent's
+                    // first frame does, rather than at an arbitrary centre and
+                    // zoom. Opening somewhere else and then jumping into
+                    // position is what made a first run start with a stutter
+                    // that a replay never had: replay begins from a map that is
+                    // already on screen, so it had nothing to correct.
+                    bounds: openingBounds(),
+                    fitBoundsOptions: { padding: 24, animate: false },
+                    attributionControl: { compact: false },
+                    // Dragging, zooming and the buttons all work: a reader who
+                    // would rather look around than be shown something should
+                    // be able to. Only the wheel is held back, and only so the
+                    // map cannot swallow the page's scroll -- Ctrl with the
+                    // wheel zooms, and on a phone one finger scrolls the page
+                    // while two move the map.
+                    cooperativeGestures: true,
+                    dragPan: true,
+                    dragRotate: false,
+                    pitchWithRotate: false,
+                });
+            } catch (error) {
+                // Most often no WebGL2: MapLibre needs it, and a machine or a
+                // policy can withhold it.
+                section.dataset.mapState = 'cannot-start';
+                console.warn('[grid point code] the map could not start.', error);
+                mapIsHere();
+                return;
+            }
+
+            // Deliberately NOT the `load` event. `load` waits for every source
+            // in the viewport to finish, so one slow or stalled tile source
+            // holds it forever -- and a map that can already draw stays hidden
+            // behind a spinner nobody asked for. `style.load` fires as soon as
+            // the style is parsed and layers can be added; tiles then fill in
+            // as they arrive, which is what a map is supposed to look like.
+            const ready = () => {
+                if (!map || section.dataset.mapState === 'ready') return;
+                // Empty on purpose. Drawing the level-one cell here and then
+                // letting the first descent replace it is what produced the
+                // flash of a huge square followed by a tiny one.
+                map.addSource('cell', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: [] },
+                });
                 map.addLayer({
                     id: 'cell-fill',
                     type: 'fill',
@@ -295,14 +583,54 @@ const cellHeight = PLATE / first.rows;
                     paint: { 'line-color': brass, 'line-width': 2 },
                 });
 
+                clearTimeout(started);
+                section.dataset.mapState = 'ready';
                 section.dataset.mapped = 'true';
 
                 // Join whatever step the sequence has already reached rather
                 // than restarting it underneath the reader.
-                frame(showing, false);
-            });
+                // The map is built looking at the whole world, which is where
+                // a descent begins, so there is nothing to frame here. Whatever
+                // runs next decides what the reader sees.
+                mapIsHere();
+            };
+
+            const started = setTimeout(() => {
+                // Only claim nothing painted if nothing more specific already
+                // went wrong -- otherwise this buries the real cause.
+                if (section.dataset.mapState === 'loading') {
+                    section.dataset.mapState = 'style-never-parsed';
+                    console.warn(
+                        '[grid point code] the map never parsed its style. ' +
+                        'The plate is unaffected.',
+                    );
+                    mapIsHere();
+                }
+            }, 8000);
+
+            map.addControl(new maplibre.NavigationControl({ showCompass: false }), 'top-right');
+
+            // Touching the map is a statement that the reader would rather look
+            // around than be shown something, so the descent gets out of the
+            // way. `originalEvent` is what separates a hand on the map from the
+            // camera moving itself.
+            const takeOver = (event: { originalEvent?: unknown }) => {
+                if (!event.originalEvent) return;
+                generation += 1;
+                if (playing) {
+                    playing = false;
+                    control('idle');
+                }
+            };
+            map.on('dragstart', takeOver);
+            map.on('zoomstart', takeOver);
+
+            // The style may already be parsed by the time this runs.
+            if (map.isStyleLoaded()) ready();
+            else map.on('style.load', ready);
 
             map.on('error', (event) => {
+                section.dataset.mapState = 'tiles-failed';
                 // Tiles can fail while the library is fine. The plate is still
                 // correct and still on screen, so there is nothing to tell the
                 // reader -- but swallowing it silently would hide a real fault
@@ -312,14 +640,24 @@ const cellHeight = PLATE / first.rows;
         }
 
         section.querySelector('[data-replay]')?.addEventListener('click', () => {
-            void play(current, place.textContent ?? '');
+            if (playing) {
+                // Stopping lands on the answer rather than freezing half a code
+                // on screen, which would be a worse thing to leave somebody with.
+                generation += 1;
+                playing = false;
+                control('idle');
+                settleHere();
+                return;
+            }
+            void play(current, place.textContent ?? '', true);
         });
 
         section.querySelector('[data-next-sample]')?.addEventListener('click', () => {
             sample = (sample + 1) % SAMPLES.length;
             const next = SAMPLES[sample];
             status.textContent = '';
-            void play(resolve(next.latitude, next.longitude), next.name);
+            status.dataset.tone = 'plain';
+            void play(resolve(next.latitude, next.longitude), next.name, true);
         });
 
         section.querySelector('[data-locate]')?.addEventListener('click', (event) => {
@@ -333,14 +671,37 @@ const cellHeight = PLATE / first.rows;
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     button.disabled = false;
-                    status.textContent = '';
+
+                    // The browser reports how sure it is, and it is worth
+                    // repeating. A laptop is usually located from nearby
+                    // wireless networks and can be a hundred metres out; a
+                    // phone with a satellite fix is usually within five. The
+                    // code is exact for whatever point it is handed, so a
+                    // coarse fix produces a precise code for the wrong doorway
+                    // -- and without being told, a reader blames the code.
+                    const within = Math.round(position.coords.accuracy);
+                    const cell = 3;
+                    status.innerHTML =
+                        within <= cell
+                            ? 'Your browser placed you to within about <b>' + within +
+                              ' m</b>, which is inside a single cell.'
+                            : 'Your browser placed you to within about <b>' + within +
+                              ' m</b>. The code below is exact for the point it was ' +
+                              'given \u2014 at this accuracy that point may not be your ' +
+                              'doorway. A phone with a satellite fix is usually far ' +
+                              'closer than a computer, which is often located from ' +
+                              'nearby wireless networks.';
+                    status.dataset.tone = within <= cell ? 'plain' : 'advisory';
+
                     void play(
                         resolve(position.coords.latitude, position.coords.longitude),
                         'Your location',
+                        true,
                     );
                 },
                 (error) => {
                     button.disabled = false;
+                    status.dataset.tone = 'plain';
                     status.textContent =
                         error.code === error.PERMISSION_DENIED
                             ? 'No location given — the places above work just as well.'
@@ -350,9 +711,16 @@ const cellHeight = PLATE / first.rows;
             );
         });
 
-        // The sequence starts at once, on the plate alone, so the page does
-        // something immediately instead of waiting on somebody else's server.
-        void play(current, SAMPLES[0].name);
+        // Let the map arrive and settle on the world before the first descent.
+        // Starting over half-drawn tiles is what made the opening look like a
+        // fault rather than a film. The plate is ready immediately either way,
+        // and nothing waits on a map that is not coming.
+        void (async () => {
+            await Promise.race([mapArrived, wait(3000)]);
+            await wait(900);
+            void play(current, SAMPLES[0].name);
+        })();
+
         void loadMap();
     }
 </script>
@@ -454,12 +822,31 @@ const cellHeight = PLATE / first.rows;
         padding: 0 var(--space-2);
     }
 
+    [data-state='idle'] .when-playing,
+    [data-state='playing'] .when-idle { display: none; }
+
     .quiet:hover { color: var(--ink); }
 
     .status {
         min-height: 1.4em;
+        max-width: 52ch;
         font-size: var(--text-small-size);
+        line-height: var(--text-small-line);
         color: var(--ink-mid);
+    }
+
+    /* An accuracy warning is the one thing on this page that protects the
+       format's reputation, so it is marked rather than murmured. */
+    .status[data-tone='advisory'] {
+        border-left: 3px solid var(--brass);
+        padding: var(--space-1) 0 var(--space-1) var(--space-2);
+        color: var(--ink);
+    }
+
+    .status :global(b) {
+        font-family: var(--font-mono);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
     }
 
     /* ── the stage ───────────────────────────────────────────────────────── */
@@ -524,7 +911,13 @@ const cellHeight = PLATE / first.rows;
         pointer-events: none;
     }
 
-    .resolve[data-mapped='true'] .map { opacity: 1; }
+    /* Input is restored with the map. Without this the canvas is inert: no
+       drag, no grab cursor, and Ctrl with the wheel falls through to the
+       browser and zooms the page instead of the map. */
+    .resolve[data-mapped='true'] .map {
+        opacity: 1;
+        pointer-events: auto;
+    }
 
     /* Once the map is up it owns the stage, and the plate steps aside into the
        corner — still drawing the same step, now as a key to what the map shows. */
@@ -537,6 +930,8 @@ const cellHeight = PLATE / first.rows;
         border-radius: var(--radius-card);
     }
 
+    /* The key sits over the map, so it must not eat drags aimed at it. */
+    .resolve[data-mapped='true'] .plate { pointer-events: none; }
     .resolve[data-mapped='true'] .plate svg { width: 80px; }
     .resolve[data-mapped='true'] figcaption { display: none; }
 

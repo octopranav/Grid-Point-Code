@@ -64,19 +64,32 @@ The **map** is the geographic version of the same step. It arrives afterwards,
 over the plate, and its absence costs the page nothing — if the tiles fail, or
 the library never loads, or a reader has scripting off, the plate is still there
 and still right. Tiles come from OpenFreeMap, which needs no key, no account and
-sets no cookies; MapLibre is loaded on demand and is a 966&nbsp;KB chunk that
-never reaches a reader who does not get a map.
+sets no cookies; MapLibre is loaded on demand and is a 264&nbsp;KB chunk
+(compressed) that never reaches a reader who does not get a map.
 
 That ordering is the argument the whole site exists to make. A format whose
 claim is that it needs nobody should not have a front page that breaks when
 somebody else's server is down.
 
-Two things worth knowing before changing it. The map container must never be
-`hidden`: the attribute is `display: none`, a WebGL map given a zero-size
-container never finishes loading, and hiding it that way guarantees the thing it
-was hiding. And `load` only fires after a first render, so in any environment
-that is not compositing frames — a background tab, a headless preview — the map
-legitimately never appears and the plate is what the reader keeps.
+The version is pinned to MapLibre 5 deliberately. MapLibre 6 loads and runs, but
+never finishes loading an OpenMapTiles vector source from this provider — the
+style parses, the worker fetches tiles perfectly well on its own, and yet the
+source reports unloaded forever and the map draws nothing. Version 5 is what the
+tile provider documents, and it works. Newest is not automatically right when the
+service is somebody else's.
+
+Two more things worth knowing before changing it.
+
+The map container must never be `hidden`. That attribute is `display: none`, a
+WebGL map given a zero-size container never finishes loading, and hiding it that
+way guarantees the thing it was hiding. It is laid over the plate at zero opacity
+instead.
+
+The map is revealed on `style.load`, never on `load`. `load` waits for every
+source in the viewport to finish downloading, so a single slow or stalled tile
+source holds a map hidden that is perfectly able to draw. `style.load` fires as
+soon as the style is parsed and layers can be added; tiles then arrive as they
+arrive, which is what a map is supposed to look like.
 
 ## Themes
 
