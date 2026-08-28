@@ -1,0 +1,125 @@
+#  Copyright 2017 Pranavkumar Patel
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Builds the website and publishes it to GitHub Pages.
+#
+# The site is static: no server, no database, no API. Everything a visitor asks
+# of it is arithmetic their own browser performs, which is the reason a plain
+# file host is enough and the reason the site keeps working with the network
+# cut once it has loaded.
+#
+# It builds against the package published to the registry rather than the source
+# next door, so a green run here is also evidence that the released artifact
+# works — the same standard the release notes hold every other port to.
+#
+# Actions are pinned to a commit rather than a tag: a tag can be moved to point
+# at different code, a commit cannot.
+
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'design/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+# Read the tree, mint the token Pages needs to accept a deployment, and nothing
+# else. The build job below drops even the read permission it does not use.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and never cancel one that has started: a half
+# applied deployment is a broken site, which is worse than a slightly stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.x'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install exactly what the lockfile says
+        run: npm ci
+
+      # A generated file somebody edited by hand is a fork of the design system
+      # that nobody announced, and the next regeneration would silently undo it.
+      - name: Check the generated tokens match their source
+        run: npm run tokens:check
+
+      - name: Build
+        run: npx astro build
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: web/dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+
+      # Publishing from a workflow rather than a branch means the custom domain
+      # is repository settings and nothing else: a CNAME file in the artifact is
+      # ignored, so there is no file in this tree that can be checked instead.
+      # What can be checked is the address the deployment actually answers on.
+      #
+      # A warning rather than a failure, because the site being reachable at the
+      # wrong address is a worse thing to be told about by a red run that also
+      # threw the deployment away.
+      - name: The site should be answering on the custom domain
+        env:
+          SERVED: ${{ steps.deployment.outputs.page_url }}
+          EXPECTED: https://gridpointcode.com/
+        run: |
+          if [ "$SERVED" = "$EXPECTED" ]; then
+            echo "Serving $SERVED" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Deployed to $SERVED, expected $EXPECTED. Set the custom domain under Settings then Pages; it cannot be set from this repository."
+            {
+              echo "### Custom domain not in effect"
+              echo
+              echo "Served from \`$SERVED\`, expected \`$EXPECTED\`."
+              echo
+              echo "The domain is stored in the repository's Pages settings. A workflow"
+              echo "deployment cannot set it, and a \`CNAME\` file in the artifact is ignored."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

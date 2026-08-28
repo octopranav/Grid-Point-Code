@@ -238,6 +238,39 @@ jobs:
       - name: The four ports must agree case by case
         run: python conformance/compare.py
 
+  website:
+    name: The website builds
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.x'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install exactly what the lockfile says
+        run: npm ci
+      # design/tokens.json is the only place a colour, a step of the spacing
+      # scale or a size of type is decided. The stylesheet the site imports and
+      # the resource files an Android app would read are both generated from it,
+      # so an edit to either of those is a fork of the design system that would
+      # be silently undone the next time the generator ran.
+      - name: The generated design tokens must match their source
+        run: npm run tokens:check
+      # The site imports the package from the registry, not the source next
+      # door. So this job is also a standing test of the published artifact: if
+      # a release ever shipped a broken build or dropped an operation the site
+      # calls, the failure surfaces here rather than in somebody else's project.
+      - name: Build against the published package
+        run: npx astro build
+      - name: Type-check the components
+        run: npx astro check
+
   conformance:
     name: All four ports agree
     runs-on: ubuntu-latest

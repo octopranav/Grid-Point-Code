@@ -1,0 +1,8 @@
+# Astro's build output and its generated type definitions.
+dist/
+.astro/
+
+node_modules/
+
+# Fetched at build time, never committed: see the note in README.md.
+public/tiles/

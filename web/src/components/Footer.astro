@@ -1,0 +1,59 @@
+---
+// The two things a footer here owes a reader: what this is, and where the real
+// thing lives. Attribution for the map data joins it once a map is on the page.
+const year = new Date().getFullYear();
+---
+
+<footer>
+    <p class="what">
+        An offline geocode. Ten characters name any location on Earth, and two codes
+        share their first <span class="code">k</span> characters exactly when the two
+        points lie in the same level-<span class="code">k</span> cell.
+    </p>
+    <ul>
+        <li><a href="/spec">Specification</a></li>
+        <li><a href="/docs">Documentation</a></li>
+        <li><a href="https://github.com/octopranav/Grid-Point-Code" rel="noreferrer">Source</a></li>
+        <li><a href="https://github.com/octopranav/Grid-Point-Code/blob/main/LICENSE" rel="noreferrer">Apache 2.0</a></li>
+    </ul>
+    <p class="colophon">
+        &copy; {year} Pranavkumar Patel &middot; Set in Bitter and IBM Plex, served from
+        this origin &middot; No cookies, no trackers, nothing to dismiss
+    </p>
+</footer>
+
+<style>
+    footer {
+        margin-top: auto;
+        padding: var(--space-5) var(--space-4);
+        background: var(--surface);
+        border-top: 1px solid var(--rule);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+    }
+
+    .what {
+        font-size: var(--text-small-size);
+        line-height: var(--text-small-line);
+        color: var(--ink-mid);
+    }
+
+    ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-3);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        font-size: var(--text-small-size);
+    }
+
+    .colophon {
+        font-family: var(--font-mono);
+        font-size: var(--text-label-size);
+        line-height: 1.7;
+        color: var(--ink-soft);
+        max-width: none;
+    }
+</style>

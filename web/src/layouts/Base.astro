@@ -1,0 +1,86 @@
+---
+// The shell every page sits in.
+
+// Latin and Latin Extended only. The full families carry Cyrillic, Greek and
+// Vietnamese too, which triples the number of files deployed for scripts this
+// site never sets — the interface is English and the alphabet is Latin by
+// construction. Anything outside these ranges falls back to the reader's own
+// system font, which is the right answer for a name we did not typeset.
+import '@fontsource/bitter/latin-600.css';
+import '@fontsource/bitter/latin-ext-600.css';
+import '@fontsource/ibm-plex-sans/latin-400.css';
+import '@fontsource/ibm-plex-sans/latin-500.css';
+import '@fontsource/ibm-plex-sans/latin-600.css';
+import '@fontsource/ibm-plex-sans/latin-ext-400.css';
+import '@fontsource/ibm-plex-mono/latin-400.css';
+import '@fontsource/ibm-plex-mono/latin-500.css';
+import '@fontsource/ibm-plex-mono/latin-600.css';
+
+import '../styles/global.css';
+
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+    title: string;
+    description: string;
+}
+
+const { title, description } = Astro.props;
+
+// Pages are written to disk as files rather than directories, so at build time
+// this reads /index.html and /play.html rather than / and /play. The address a
+// visitor sees has neither suffix, and it is that address a canonical link and
+// a title have to agree with.
+const route = Astro.url.pathname.replace(/index\.html$/, '').replace(/\.html$/, '');
+
+// A page title reads best as its own name first and the project second; the
+// front door is the one place that wants the order reversed.
+const isHome = route === '/';
+const fullTitle = isHome ? 'Grid Point Code' : `${title} · Grid Point Code`;
+const canonical = new URL(route, Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{fullTitle}</title>
+        <meta name="description" content={description} />
+        <link rel="canonical" href={canonical} />
+
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={fullTitle} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={canonical} />
+
+        <!-- Runs before the first paint. Reading the stored choice after the
+             page has drawn would show the wrong theme and then correct it,
+             which is worse than either theme. It is deliberately inline and
+             deliberately not a module: both would defer it past paint. -->
+        <script is:inline>
+            (function () {
+                var root = document.documentElement;
+                var choice = 'system';
+                try {
+                    var stored = localStorage.getItem('gpc-theme');
+                    if (stored === 'light' || stored === 'dark') choice = stored;
+                } catch (error) {
+                    /* a blocked store just means the system setting wins */
+                }
+                root.dataset.themeChoice = choice;
+                if (choice !== 'system') root.dataset.theme = choice;
+            })();
+        </script>
+    </head>
+
+    <body>
+        <a class="skip-link" href="#main">Skip to content</a>
+        <Header />
+        <main id="main">
+            <slot />
+        </main>
+        <Footer />
+    </body>
+</html>

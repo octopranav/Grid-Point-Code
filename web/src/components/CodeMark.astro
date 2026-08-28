@@ -1,0 +1,149 @@
+---
+// The identity mark: a code drawn as what it is.
+//
+// Ten boxes for ten levels, tinted coarsest-darkest, so the structure the
+// format actually has is visible instead of asserted. Cells past `resolved`
+// are dashed rather than absent, because the length is fixed everywhere on
+// Earth and the mark should say so before it finishes filling.
+//
+// The cells are decoration in the accessibility sense — the code is announced
+// once, as text, and the boxes are hidden from assistive technology. A screen
+// reader should hear a code, not ten letters.
+
+interface Props {
+    /** A code in any accepted form: with or without the # and the separator. */
+    code: string;
+    size?: 'hero' | 'inline' | 'row';
+    /** How many of the ten levels have arrived. The rest are drawn empty. */
+    resolved?: number;
+    /** Ghost the first five instead of the last five, for the short form. */
+    shortForm?: boolean;
+    label?: string;
+}
+
+const { code, size = 'inline', resolved = 10, shortForm = false, label } = Astro.props;
+
+const symbols = code.replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+
+if (symbols.length !== 10) {
+    throw new Error(
+        `CodeMark needs the ten symbols of a code; "${code}" carries ${symbols.length}.`,
+    );
+}
+
+const cells = symbols.split('').map((symbol, index) => ({
+    symbol,
+    level: index + 1,
+    filled: shortForm ? index >= 5 : index < resolved,
+}));
+
+const announced = label ?? `#${symbols.slice(0, 5)}-${symbols.slice(5)}`;
+---
+
+<span class="mark" data-size={size}>
+    <span class="visually-hidden">{announced}</span>
+    <span class="cells" aria-hidden="true">
+        <span class="sigil">{shortForm ? '' : '#'}</span>
+        {cells.map(({ symbol, level, filled }) => (
+            <>
+                {level === 6 && <span class="separator"></span>}
+                <span class="cell" data-filled={filled} data-level={level}>
+                    {filled && size === 'hero' && <span class="ordinal">{level}</span>}
+                    {filled ? symbol : ''}
+                </span>
+            </>
+        ))}
+    </span>
+</span>
+
+<style>
+    .mark {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .cells {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        font-family: var(--font-mono);
+    }
+
+    .sigil {
+        color: var(--ink-soft);
+        font-weight: 500;
+        margin-right: 2px;
+    }
+
+    .separator {
+        background: var(--ink-soft);
+        margin: 0 3px;
+    }
+
+    .cell {
+        display: grid;
+        place-items: center;
+        position: relative;
+        border-radius: var(--radius-cell);
+        font-weight: 600;
+    }
+
+    .cell[data-filled='false'] {
+        background: var(--sunken);
+        border: 1px dashed var(--rule);
+    }
+
+    .ordinal {
+        position: absolute;
+        top: 0.22em;
+        left: 0.3em;
+        font-size: 0.38em;
+        font-weight: 400;
+        opacity: 0.62;
+    }
+
+    /* One rule per level rather than a loop, because a custom property set from
+       an attribute cannot be used as a colour name. */
+    .cell[data-level='1']  { background: var(--level-1);  color: var(--level-1-ink); }
+    .cell[data-level='2']  { background: var(--level-2);  color: var(--level-2-ink); }
+    .cell[data-level='3']  { background: var(--level-3);  color: var(--level-3-ink); }
+    .cell[data-level='4']  { background: var(--level-4);  color: var(--level-4-ink); }
+    .cell[data-level='5']  { background: var(--level-5);  color: var(--level-5-ink); }
+    .cell[data-level='6']  { background: var(--level-6);  color: var(--level-6-ink); }
+    .cell[data-level='7']  { background: var(--level-7);  color: var(--level-7-ink); }
+    .cell[data-level='8']  { background: var(--level-8);  color: var(--level-8-ink); }
+    .cell[data-level='9']  { background: var(--level-9);  color: var(--level-9-ink); }
+    .cell[data-level='10'] { background: var(--level-10); color: var(--level-10-ink); }
+
+    /* The dashed state has to win over the level tint above it. */
+    .cell[data-filled='false'][data-level] {
+        background: var(--sunken);
+        color: transparent;
+    }
+
+    /* Sizes. The level ordinal is only legible on the largest, and is only
+       rendered there. */
+    .mark[data-size='hero'] .cells { gap: 5px; font-size: 23px; }
+    .mark[data-size='hero'] .sigil { font-size: 29px; }
+    .mark[data-size='hero'] .cell { width: 41px; height: 52px; }
+    .mark[data-size='hero'] .separator { width: 14px; height: 2px; }
+
+    .mark[data-size='inline'] .cells { gap: 3px; font-size: 16px; }
+    .mark[data-size='inline'] .sigil { font-size: 20px; }
+    .mark[data-size='inline'] .cell { width: 27px; height: 34px; }
+    .mark[data-size='inline'] .separator { width: 10px; height: 2px; }
+
+    .mark[data-size='row'] .cells { gap: 2px; font-size: 10px; }
+    .mark[data-size='row'] .sigil { font-size: 13px; }
+    .mark[data-size='row'] .cell { width: 16px; height: 20px; border-radius: 1px; }
+    .mark[data-size='row'] .separator { width: 7px; height: 1px; }
+
+    /* A ten-cell mark at hero size does not fit a narrow phone. */
+    @media (max-width: 520px) {
+        .mark[data-size='hero'] .cells { gap: 3px; font-size: 16px; }
+        .mark[data-size='hero'] .sigil { font-size: 20px; }
+        .mark[data-size='hero'] .cell { width: 27px; height: 34px; }
+        .mark[data-size='hero'] .separator { width: 9px; }
+        .mark[data-size='hero'] .ordinal { display: none; }
+    }
+</style>
