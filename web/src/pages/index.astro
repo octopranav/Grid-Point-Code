@@ -1,0 +1,251 @@
+---
+import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
+import Base from '../layouts/Base.astro';
+import CodeMark from '../components/CodeMark.astro';
+
+// Everything below is computed at build time by the package published to npm,
+// not written out here. That makes the site a standing test of the release: if
+// a future version ever encoded this point differently, or renamed an
+// operation, the build would fail rather than the page quietly lying.
+const LATITUDE = 43.65;
+const LONGITUDE = -79.38;
+
+const code = GPC.encode(LATITUDE, LONGITUDE);
+const [centreLatitude, centreLongitude] = GPC.decode(code);
+
+// cellDimensions returns the span of a cell at that level: degrees north-south
+// and east-west, then the same in metres at the equator.
+const NAMES = [
+    'Block of the world',
+    'Country',
+    'Region',
+    'Metropolitan area',
+    'District',
+    'Suburb',
+    'A few streets',
+    'Building',
+    'Entrance',
+    'Doorway',
+];
+
+const metric = (metres: number) =>
+    metres >= 1000
+        ? `${(metres / 1000).toLocaleString('en', { maximumSignificantDigits: 4 })} km`
+        : `${metres.toLocaleString('en', { maximumSignificantDigits: 3 })} m`;
+
+const symbols = code.replace(/[^0-9A-Z]/g, '');
+
+const ladder = NAMES.map((name, index) => {
+    const [, , northSouth, eastWest] = GPC.cellDimensions(index + 1);
+    return {
+        level: index + 1,
+        symbol: symbols[index],
+        name,
+        size: `${metric(northSouth)} × ${metric(eastWest)}`,
+    };
+});
+
+const description =
+    'Ten characters name any location on Earth. Encoding and decoding are arithmetic, ' +
+    'offline, with no lookup table and no network — and a shared prefix is a shared region.';
+---
+
+<Base title="Home" description={description}>
+    <section class="hero">
+        <div class="statement">
+            <p class="label">A code for every 2.56 by 3.42 metres on Earth</p>
+            <h1>A shared prefix is a shared cell.</h1>
+            <p class="lede">
+                Ten characters name any doorway on the planet. Each one narrows the world
+                by twenty-five — from a block of it spanning two continents down to the step
+                outside a front door.
+            </p>
+        </div>
+
+        <div class="specimen">
+            <CodeMark code={code} size="hero" />
+            <p class="readout code">
+                {centreLatitude.toFixed(6)}, {centreLongitude.toFixed(6)}
+            </p>
+        </div>
+
+        <dl class="facts">
+            <div><dt>Dependencies</dt><dd>0</dd></div>
+            <div><dt>Languages</dt><dd>4</dd></div>
+            <div><dt>Characters</dt><dd>10</dd></div>
+            <div><dt>Network calls</dt><dd>0</dd></div>
+        </dl>
+    </section>
+
+    <section class="ladder" aria-labelledby="ladder-heading">
+        <div class="ladder-head">
+            <h2 id="ladder-heading">Ten characters, ten levels</h2>
+            <p>
+                Every character after the first selects one cell of a five-by-five division
+                of the cell before it. Read the code from the left and the world closes in
+                at a constant rate, which is what makes a prefix mean something.
+            </p>
+        </div>
+
+        <ol class="levels">
+            {ladder.map(({ level, symbol, name, size }) => (
+                <li>
+                    <span class="tint" data-level={level} aria-hidden="true">{symbol}</span>
+                    <span class="rank label">Level {level}</span>
+                    <span class="what">{name}</span>
+                    <span class="size code">{size}</span>
+                </li>
+            ))}
+        </ol>
+    </section>
+</Base>
+
+<style>
+    .hero {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-5);
+        padding: var(--space-6) var(--space-4) var(--space-5);
+        max-width: 1180px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .statement {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    .lede {
+        font-size: var(--text-body-l-size);
+        line-height: var(--text-body-l-line);
+        color: var(--ink-mid);
+        max-width: 54ch;
+    }
+
+    .specimen {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        align-items: flex-start;
+    }
+
+    .readout {
+        font-size: var(--text-small-size);
+        color: var(--ink-soft);
+    }
+
+    .facts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-4) var(--space-5);
+        margin: 0;
+        padding-top: var(--space-3);
+        border-top: 1px solid var(--rule);
+    }
+
+    .facts > div {
+        display: flex;
+        flex-direction: column-reverse;
+        gap: 2px;
+    }
+
+    .facts dt {
+        font-family: var(--font-mono);
+        font-size: var(--text-label-size);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+    }
+
+    .facts dd {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: var(--text-display-m-size);
+        font-weight: var(--text-display-m-weight);
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+    }
+
+    .ladder {
+        background: var(--surface);
+        border-top: 1px solid var(--rule);
+        padding: var(--space-5) var(--space-4) var(--space-6);
+    }
+
+    .ladder-head {
+        max-width: 1180px;
+        margin: 0 auto var(--space-4);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    .ladder-head p {
+        color: var(--ink-mid);
+        font-size: var(--text-body-size);
+        line-height: var(--text-body-line);
+    }
+
+    .levels {
+        display: grid;
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+        gap: var(--space-2);
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 0;
+        list-style: none;
+    }
+
+    .levels li {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+        min-width: 0;
+    }
+
+    .tint {
+        display: grid;
+        place-items: center;
+        height: 34px;
+        border-radius: var(--radius-cell);
+        font-family: var(--font-mono);
+        font-size: 15px;
+        font-weight: 600;
+    }
+
+    .tint[data-level='1']  { background: var(--level-1);  color: var(--level-1-ink); }
+    .tint[data-level='2']  { background: var(--level-2);  color: var(--level-2-ink); }
+    .tint[data-level='3']  { background: var(--level-3);  color: var(--level-3-ink); }
+    .tint[data-level='4']  { background: var(--level-4);  color: var(--level-4-ink); }
+    .tint[data-level='5']  { background: var(--level-5);  color: var(--level-5-ink); }
+    .tint[data-level='6']  { background: var(--level-6);  color: var(--level-6-ink); }
+    .tint[data-level='7']  { background: var(--level-7);  color: var(--level-7-ink); }
+    .tint[data-level='8']  { background: var(--level-8);  color: var(--level-8-ink); }
+    .tint[data-level='9']  { background: var(--level-9);  color: var(--level-9-ink); }
+    .tint[data-level='10'] { background: var(--level-10); color: var(--level-10-ink); }
+
+    .rank { color: var(--ink-soft); }
+
+    .what {
+        font-size: var(--text-small-size);
+        font-weight: 500;
+        line-height: 1.3;
+    }
+
+    .size {
+        font-size: var(--text-label-size);
+        color: var(--ink-soft);
+    }
+
+    @media (max-width: 1080px) {
+        .levels { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-3) var(--space-2); }
+    }
+
+    @media (max-width: 620px) {
+        .hero { padding: var(--space-5) var(--space-3) var(--space-4); }
+        .ladder { padding: var(--space-4) var(--space-3) var(--space-5); }
+        .levels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+</style>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from design/tokens.json by design/build-tokens.mjs. Do not edit by hand. -->
+<resources>
+    <color name="ground">#0A151B</color>
+    <color name="surface">#102028</color>
+    <color name="sunken">#14252E</color>
+    <color name="ink">#DFE9EC</color>
+    <color name="ink_mid">#9FB4BC</color>
+    <color name="ink_soft">#7C939C</color>
+    <color name="rule">#273C46</color>
+    <color name="rule_soft">#1C2E37</color>
+    <color name="prussian">#74B6D6</color>
+    <color name="brass">#D5A343</color>
+    <color name="verdigris">#6BBE9B</color>
+    <color name="crimson">#E08585</color>
+
+    <color name="level_1">#74B6D6</color>
+    <color name="level_2">#6CA9C7</color>
+    <color name="level_3">#639CB8</color>
+    <color name="level_4">#5B8FA9</color>
+    <color name="level_5">#52829A</color>
+    <color name="level_6">#4A768B</color>
+    <color name="level_7">#41697C</color>
+    <color name="level_8">#395C6D</color>
+    <color name="level_9">#304F5E</color>
+    <color name="level_10">#28424F</color>
+
+    <color name="level_1_ink">#0A151B</color>
+    <color name="level_2_ink">#0A151B</color>
+    <color name="level_3_ink">#0A151B</color>
+    <color name="level_4_ink">#0A151B</color>
+    <color name="level_5_ink">#0A151B</color>
+    <color name="level_6_ink">#DFE9EC</color>
+    <color name="level_7_ink">#DFE9EC</color>
+    <color name="level_8_ink">#DFE9EC</color>
+    <color name="level_9_ink">#DFE9EC</color>
+    <color name="level_10_ink">#DFE9EC</color>
+</resources>

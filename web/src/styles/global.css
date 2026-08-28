@@ -1,0 +1,139 @@
+/* The base layer: everything a page can assume before it styles anything. */
+
+@import './tokens.css';
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body,
+h1, h2, h3, h4,
+p, figure, blockquote,
+dl, dd {
+    margin: 0;
+}
+
+html {
+    /* Anchored headings land clear of the sticky masthead rather than under it. */
+    scroll-padding-top: var(--space-6);
+}
+
+body {
+    /* The viewer paints its own background behind this page, so an unpainted
+       body silently borrows whichever theme the host is in. */
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: var(--text-body-l-size);
+    line-height: var(--text-body-l-line);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+h1, h2, h3 {
+    font-family: var(--font-display);
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+}
+
+h1 { font-size: var(--text-display-xl-size); font-weight: var(--text-display-xl-weight); }
+h2 { font-size: var(--text-display-l-size);  font-weight: var(--text-display-l-weight); }
+h3 { font-size: var(--text-title-size);      font-weight: var(--text-title-weight); font-family: var(--font-body); }
+
+p {
+    max-width: var(--measure);
+    text-wrap: pretty;
+}
+
+a {
+    color: var(--prussian);
+    text-underline-offset: 0.18em;
+}
+
+a:hover {
+    text-decoration-thickness: 2px;
+}
+
+img,
+svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Every interactive thing has to be visibly reachable from a keyboard. The
+   outline is drawn outside the element so it never covers what it marks. */
+:focus-visible {
+    outline: 2px solid var(--prussian);
+    outline-offset: 3px;
+    border-radius: 1px;
+}
+
+:where(button, [role='button']) {
+    font: inherit;
+    color: inherit;
+}
+
+/* Anything set in the format's own alphabet: fixed advance width, figures that
+   line up in columns, and enough tracking that ten characters never touch. */
+.code {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: var(--code-tracking);
+}
+
+/* The small uppercase captions that label a figure or a field. */
+.label {
+    font-family: var(--font-mono);
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-line);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+
+/* Present to a screen reader, absent to everyone else. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* Sends keyboard and screen-reader users past the masthead in one keystroke. */
+.skip-link {
+    position: absolute;
+    top: var(--space-2);
+    left: var(--space-2);
+    z-index: 10;
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-card);
+    transform: translateY(-200%);
+}
+
+.skip-link:focus {
+    transform: none;
+}
+
+/* A stated preference for less movement is a statement about health for some
+   people, so it is honoured everywhere rather than per-animation. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

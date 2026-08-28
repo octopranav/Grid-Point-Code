@@ -1,0 +1,35 @@
+{
+  "name": "gridpointcode-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The Grid Point Code website: a playground, a specification and a proof, all of which keep working with the network cut.",
+  "scripts": {
+    "tokens": "node ../design/build-tokens.mjs",
+    "tokens:check": "node ../design/build-tokens.mjs --check",
+    "dev": "astro dev",
+    "build": "npm run tokens:check && astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "@fontsource/bitter": "^5.2.5",
+    "@fontsource/ibm-plex-mono": "^5.2.5",
+    "@fontsource/ibm-plex-sans": "^5.2.5",
+    "@pranavpatel.ca/algo-gridpointcode": "^2.0.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "astro": "^7.2.9",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "license": "Apache-2.0",
+  "author": "Pranavkumar Patel",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/octopranav/Grid-Point-Code.git"
+  }
+}

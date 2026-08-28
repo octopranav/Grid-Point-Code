@@ -1,0 +1,121 @@
+---
+// Three states, not two. A viewer who has expressed no preference is following
+// their system, and that is a real setting rather than a missing one — so the
+// control cycles system, light, dark and says which it is on.
+---
+
+<button
+    class="toggle"
+    type="button"
+    data-theme-toggle
+    aria-live="polite"
+>
+    <span class="visually-hidden">Colour theme</span>
+    <svg class="glyph auto" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="8"></circle>
+        <path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"></path>
+    </svg>
+    <svg class="glyph light" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"></circle>
+        <path d="M12 2v2.6M12 19.4V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.6M19.4 12H22M4.2 19.8 6 18M18 6l1.8-1.8"></path>
+    </svg>
+    <svg class="glyph dark" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"></path>
+    </svg>
+    <span class="name" data-theme-name>System</span>
+</button>
+
+<style>
+    .toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-1);
+        height: 34px;
+        padding: 0 var(--space-2);
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: var(--radius-card);
+        color: var(--ink-mid);
+        cursor: pointer;
+    }
+
+    .toggle:hover {
+        border-color: var(--rule);
+        color: var(--ink);
+    }
+
+    .name {
+        font-family: var(--font-mono);
+        font-size: var(--text-label-size);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+
+    /* Only the glyph for the current choice is drawn. The choice is on the root
+       element, so this reads it from up the tree rather than from state here. */
+    .glyph { display: none; }
+    :global(:root[data-theme-choice='system']) .toggle .glyph.auto,
+    :global(:root[data-theme-choice='light']) .toggle .glyph.light,
+    :global(:root[data-theme-choice='dark']) .toggle .glyph.dark {
+        display: block;
+    }
+
+    /* Before the script runs, and if it never does, show the system glyph. */
+    :global(:root:not([data-theme-choice])) .toggle .glyph.auto {
+        display: block;
+    }
+
+    @media (max-width: 720px) {
+        .name { display: none; }
+    }
+</style>
+
+<script>
+    const ORDER = ['system', 'light', 'dark'] as const;
+    type Choice = (typeof ORDER)[number];
+
+    const root = document.documentElement;
+
+    function apply(choice: Choice) {
+        root.dataset.themeChoice = choice;
+
+        // Only an explicit choice stamps data-theme. Leaving it off is what
+        // lets prefers-color-scheme decide, which is the whole point of the
+        // system setting.
+        if (choice === 'system') {
+            delete root.dataset.theme;
+        } else {
+            root.dataset.theme = choice;
+        }
+
+        for (const button of document.querySelectorAll<HTMLElement>('[data-theme-toggle]')) {
+            const name = button.querySelector<HTMLElement>('[data-theme-name]');
+            if (name) name.textContent = choice[0].toUpperCase() + choice.slice(1);
+            button.setAttribute(
+                'title',
+                `Colour theme: ${choice}. Switch to ${ORDER[(ORDER.indexOf(choice) + 1) % ORDER.length]}.`,
+            );
+        }
+
+        // A blocked or full store is not a reason to fail; the choice simply
+        // lasts as long as the page does.
+        try {
+            localStorage.setItem('gpc-theme', choice);
+        } catch {
+            /* nothing to do */
+        }
+    }
+
+    function current(): Choice {
+        const stored = root.dataset.themeChoice;
+        return ORDER.includes(stored as Choice) ? (stored as Choice) : 'system';
+    }
+
+    apply(current());
+
+    for (const button of document.querySelectorAll('[data-theme-toggle]')) {
+        button.addEventListener('click', () => {
+            apply(ORDER[(ORDER.indexOf(current()) + 1) % ORDER.length]);
+        });
+    }
+</script>

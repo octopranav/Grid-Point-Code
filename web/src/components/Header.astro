@@ -1,0 +1,142 @@
+---
+// The masthead. The wordmark is four level tints in a row — the mark reduced
+// until only its structure is left, which is what survives at favicon size.
+import ThemeToggle from './ThemeToggle.astro';
+
+// Built as files rather than directories, so the path here carries a .html the
+// reader's address bar never shows. Compare against what they actually see.
+const route = Astro.url.pathname.replace(/index\.html$/, '').replace(/\.html$/, '');
+
+const sections = [
+    { href: '/play', name: 'Play' },
+    { href: '/learn', name: 'Learn' },
+    { href: '/typos', name: 'Typos' },
+    { href: '/seams', name: 'Seams' },
+    { href: '/proof', name: 'Proof' },
+    { href: '/spec', name: 'Spec' },
+    { href: '/docs', name: 'Docs' },
+    { href: '/compare', name: 'Compare' },
+];
+---
+
+<header class="masthead">
+    <a class="wordmark" href="/">
+        <span class="stack" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+        </span>
+        <span class="name">Grid Point Code</span>
+    </a>
+
+    <nav aria-label="Sections">
+        <ul>
+            {sections.map(({ href, name }) => (
+                <li>
+                    <a href={href} aria-current={route === href ? 'page' : undefined}>{name}</a>
+                </li>
+            ))}
+        </ul>
+    </nav>
+
+    <div class="right">
+        <ThemeToggle />
+        <a class="source" href="https://github.com/octopranav/Grid-Point-Code" rel="noreferrer">
+            <span class="visually-hidden">Source on GitHub</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 .5a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.2 1.7 1.2 1 1.8 2.7 1.3 3.4 1 .1-.7.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.5-2.7 5.5-5.3 5.8.4.4.8 1.1.8 2.2v3.3c0 .4.2.7.8.6A11.5 11.5 0 0 0 12 .5z"></path>
+            </svg>
+        </a>
+    </div>
+</header>
+
+<style>
+    .masthead {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-4);
+        height: 56px;
+        padding: 0 var(--space-4);
+        background: var(--surface);
+        border-bottom: 1px solid var(--rule);
+    }
+
+    .wordmark {
+        display: flex;
+        align-items: center;
+        gap: var(--space-1);
+        color: var(--ink);
+        text-decoration: none;
+        flex-shrink: 0;
+    }
+
+    .stack {
+        display: flex;
+        gap: 1.5px;
+    }
+
+    .stack span {
+        width: 8px;
+        height: 16px;
+        border-radius: 1px;
+    }
+
+    .stack span:nth-child(1) { background: var(--level-1); }
+    .stack span:nth-child(2) { background: var(--level-4); }
+    .stack span:nth-child(3) { background: var(--level-7); }
+    .stack span:nth-child(4) { background: var(--level-10); }
+
+    .name {
+        font-family: var(--font-display);
+        font-size: 15.5px;
+        font-weight: 600;
+    }
+
+    nav ul {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        overflow-x: auto;
+    }
+
+    nav a {
+        color: var(--ink-mid);
+        font-size: var(--text-small-size);
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    nav a:hover { color: var(--prussian); }
+
+    nav a[aria-current='page'] {
+        color: var(--ink);
+        font-weight: 500;
+        border-bottom: 2px solid var(--brass);
+        padding-bottom: 2px;
+    }
+
+    .right {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        flex-shrink: 0;
+    }
+
+    .source {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        color: var(--ink-mid);
+    }
+
+    .source:hover { color: var(--ink); }
+
+    @media (max-width: 900px) {
+        .masthead { height: auto; flex-wrap: wrap; padding: var(--space-2) var(--space-3); }
+        nav { order: 3; width: 100%; }
+        nav ul { gap: var(--space-3); padding-bottom: var(--space-1); }
+    }
+</style>
