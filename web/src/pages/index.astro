@@ -1,49 +1,12 @@
 ---
-import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
 import Base from '../layouts/Base.astro';
-import CodeMark from '../components/CodeMark.astro';
+import Resolve from '../components/Resolve.astro';
+import { resolve, SAMPLES } from '../lib/levels';
 
-// Everything below is computed at build time by the package published to npm,
-// not written out here. That makes the site a standing test of the release: if
-// a future version ever encoded this point differently, or renamed an
-// operation, the build would fail rather than the page quietly lying.
-const LATITUDE = 43.65;
-const LONGITUDE = -79.38;
-
-const code = GPC.encode(LATITUDE, LONGITUDE);
-const [centreLatitude, centreLongitude] = GPC.decode(code);
-
-// cellDimensions returns the span of a cell at that level: degrees north-south
-// and east-west, then the same in metres at the equator.
-const NAMES = [
-    'Block of the world',
-    'Country',
-    'Region',
-    'Metropolitan area',
-    'District',
-    'Suburb',
-    'A few streets',
-    'Building',
-    'Entrance',
-    'Doorway',
-];
-
-const metric = (metres: number) =>
-    metres >= 1000
-        ? `${(metres / 1000).toLocaleString('en', { maximumSignificantDigits: 4 })} km`
-        : `${metres.toLocaleString('en', { maximumSignificantDigits: 3 })} m`;
-
-const symbols = code.replace(/[^0-9A-Z]/g, '');
-
-const ladder = NAMES.map((name, index) => {
-    const [, , northSouth, eastWest] = GPC.cellDimensions(index + 1);
-    return {
-        level: index + 1,
-        symbol: symbols[index],
-        name,
-        size: `${metric(northSouth)} × ${metric(eastWest)}`,
-    };
-});
+// The ladder is the same ten cells the hero steps through, standing still —
+// computed by the package published to npm rather than written out here, so a
+// release that changed a cell size would change this table or fail the build.
+const { levels } = resolve(SAMPLES[0].latitude, SAMPLES[0].longitude);
 
 const description =
     'Ten characters name any location on Earth. Encoding and decoding are arithmetic, ' +
@@ -51,31 +14,7 @@ const description =
 ---
 
 <Base title="Home" description={description}>
-    <section class="hero">
-        <div class="statement">
-            <p class="label">A code for every 2.56 by 3.42 metres on Earth</p>
-            <h1>A shared prefix is a shared cell.</h1>
-            <p class="lede">
-                Ten characters name any doorway on the planet. Each one narrows the world
-                by twenty-five — from a block of it spanning two continents down to the step
-                outside a front door.
-            </p>
-        </div>
-
-        <div class="specimen">
-            <CodeMark code={code} size="hero" />
-            <p class="readout code">
-                {centreLatitude.toFixed(6)}, {centreLongitude.toFixed(6)}
-            </p>
-        </div>
-
-        <dl class="facts">
-            <div><dt>Dependencies</dt><dd>0</dd></div>
-            <div><dt>Languages</dt><dd>4</dd></div>
-            <div><dt>Characters</dt><dd>10</dd></div>
-            <div><dt>Network calls</dt><dd>0</dd></div>
-        </dl>
-    </section>
+    <Resolve />
 
     <section class="ladder" aria-labelledby="ladder-heading">
         <div class="ladder-head">
@@ -88,7 +27,7 @@ const description =
         </div>
 
         <ol class="levels">
-            {ladder.map(({ level, symbol, name, size }) => (
+            {levels.map(({ level, symbol, name, size }) => (
                 <li>
                     <span class="tint" data-level={level} aria-hidden="true">{symbol}</span>
                     <span class="rank label">Level {level}</span>
@@ -101,73 +40,6 @@ const description =
 </Base>
 
 <style>
-    .hero {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-5);
-        padding: var(--space-6) var(--space-4) var(--space-5);
-        max-width: 1180px;
-        margin: 0 auto;
-        width: 100%;
-    }
-
-    .statement {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-2);
-    }
-
-    .lede {
-        font-size: var(--text-body-l-size);
-        line-height: var(--text-body-l-line);
-        color: var(--ink-mid);
-        max-width: 54ch;
-    }
-
-    .specimen {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-2);
-        align-items: flex-start;
-    }
-
-    .readout {
-        font-size: var(--text-small-size);
-        color: var(--ink-soft);
-    }
-
-    .facts {
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--space-4) var(--space-5);
-        margin: 0;
-        padding-top: var(--space-3);
-        border-top: 1px solid var(--rule);
-    }
-
-    .facts > div {
-        display: flex;
-        flex-direction: column-reverse;
-        gap: 2px;
-    }
-
-    .facts dt {
-        font-family: var(--font-mono);
-        font-size: var(--text-label-size);
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--ink-soft);
-    }
-
-    .facts dd {
-        margin: 0;
-        font-family: var(--font-display);
-        font-size: var(--text-display-m-size);
-        font-weight: var(--text-display-m-weight);
-        font-variant-numeric: tabular-nums;
-        line-height: 1;
-    }
-
     .ladder {
         background: var(--surface);
         border-top: 1px solid var(--rule);
@@ -244,7 +116,6 @@ const description =
     }
 
     @media (max-width: 620px) {
-        .hero { padding: var(--space-5) var(--space-3) var(--space-4); }
         .ladder { padding: var(--space-4) var(--space-3) var(--space-5); }
         .levels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }

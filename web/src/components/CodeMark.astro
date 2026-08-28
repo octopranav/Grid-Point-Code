@@ -48,8 +48,8 @@ const announced = label ?? `#${symbols.slice(0, 5)}-${symbols.slice(5)}`;
             <>
                 {level === 6 && <span class="separator"></span>}
                 <span class="cell" data-filled={filled} data-level={level}>
-                    {filled && size === 'hero' && <span class="ordinal">{level}</span>}
-                    {filled ? symbol : ''}
+                    <span class="ordinal">{level}</span>
+                    <span class="symbol">{symbol}</span>
                 </span>
             </>
         ))}
@@ -86,11 +86,7 @@ const announced = label ?? `#${symbols.slice(0, 5)}-${symbols.slice(5)}`;
         position: relative;
         border-radius: var(--radius-cell);
         font-weight: 600;
-    }
-
-    .cell[data-filled='false'] {
-        background: var(--sunken);
-        border: 1px dashed var(--rule);
+        transition: background-color 220ms ease-out;
     }
 
     .ordinal {
@@ -100,6 +96,8 @@ const announced = label ?? `#${symbols.slice(0, 5)}-${symbols.slice(5)}`;
         font-size: 0.38em;
         font-weight: 400;
         opacity: 0.62;
+        /* Only legible at hero size, so only drawn there. */
+        display: none;
     }
 
     /* One rule per level rather than a loop, because a custom property set from
@@ -115,14 +113,23 @@ const announced = label ?? `#${symbols.slice(0, 5)}-${symbols.slice(5)}`;
     .cell[data-level='9']  { background: var(--level-9);  color: var(--level-9-ink); }
     .cell[data-level='10'] { background: var(--level-10); color: var(--level-10-ink); }
 
-    /* The dashed state has to win over the level tint above it. */
+    /* An empty cell has to beat the level tint above it, which is why this
+       carries the extra attribute. The symbol and its ordinal stay in the
+       markup and are merely hidden, so filling a cell is one attribute flip
+       and never a rewrite of its contents. */
     .cell[data-filled='false'][data-level] {
         background: var(--sunken);
-        color: transparent;
+        border: 1px dashed var(--rule);
+    }
+
+    .cell[data-filled='false'] .symbol,
+    .cell[data-filled='false'] .ordinal {
+        visibility: hidden;
     }
 
     /* Sizes. The level ordinal is only legible on the largest, and is only
        rendered there. */
+    .mark[data-size='hero'] .ordinal { display: block; }
     .mark[data-size='hero'] .cells { gap: 5px; font-size: 23px; }
     .mark[data-size='hero'] .sigil { font-size: 29px; }
     .mark[data-size='hero'] .cell { width: 41px; height: 52px; }
