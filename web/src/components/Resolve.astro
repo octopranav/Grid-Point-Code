@@ -1,0 +1,551 @@
+---
+// The front door: a coordinate arriving one character at a time.
+//
+// Two surfaces show the same step. The PLATE is a drawing of the subdivision
+// the current level performs — the world four by six, everything under it five
+// by five, with the containing cell lit. It is server-rendered, exact, and
+// needs no network, no basemap and no JavaScript. The MAP is the geographic
+// version of the same step, and it is an enhancement: it arrives afterwards,
+// over the plate, and its absence costs the page nothing.
+//
+// That ordering is the argument the whole site exists to make. A format whose
+// claim is that it needs nobody should not have a front page that breaks when
+// somebody else's server is down.
+
+import CodeMark from './CodeMark.astro';
+import { resolve, SAMPLES, checkSamples } from '../lib/levels';
+
+// Fails the build if the site and section 9.4 of the specification ever
+// disagree about what these places encode to.
+checkSamples();
+
+const start = SAMPLES[0];
+const initial = resolve(start.latitude, start.longitude);
+const first = initial.levels[0];
+
+// The plate a reader gets before any script runs: level one, the world divided
+// four ways by six, with Toronto's block lit. It is the first step of the story
+// and it stands on its own.
+const PLATE = 300;
+const cellWidth = PLATE / first.columns;
+const cellHeight = PLATE / first.rows;
+---
+
+<section class="resolve" data-resolve>
+    <div class="statement">
+        <p class="label">A code for every 2.56 by 3.42 metres on Earth</p>
+        <h1>A shared prefix is a shared cell.</h1>
+        <p class="lede">
+            Ten characters name any doorway on the planet. Each one narrows the world
+            by twenty-five — from a block of it spanning two continents down to the
+            step outside a front door.
+        </p>
+
+        <div class="specimen">
+            <CodeMark code={initial.code} size="hero" />
+            <p class="readout">
+                <span class="place" data-place>{start.name}</span>
+                <span class="dot" aria-hidden="true">·</span>
+                <span class="code" data-coords>
+                    {initial.centre[0].toFixed(6)}, {initial.centre[1].toFixed(6)}
+                </span>
+            </p>
+        </div>
+
+        <!-- Hidden until the script is running: without it these do nothing,
+             and a control that cannot work should not be offered. -->
+        <div class="controls" data-controls>
+            <button type="button" class="primary" data-locate>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"></path>
+                    <circle cx="12" cy="10" r="2.6"></circle>
+                </svg>
+                Code my location
+            </button>
+            <button type="button" class="secondary" data-next-sample>Somewhere else</button>
+            <button type="button" class="quiet" data-replay>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path>
+                    <path d="M3 3v5h5"></path>
+                </svg>
+                Replay
+            </button>
+        </div>
+
+        <p class="status" data-status role="status"></p>
+    </div>
+
+    <div class="stage">
+        <!-- Correct with nothing else loaded. -->
+        <figure class="plate" data-plate>
+            <svg viewBox={`0 0 ${PLATE} ${PLATE}`} role="img" aria-labelledby="plate-caption">
+                <g data-plate-cells>
+                    {Array.from({ length: first.rows * first.columns }, (_, index) => {
+                        const gridRow = Math.floor(index / first.columns);
+                        const gridColumn = index % first.columns;
+                        // The grid counts rows from the south; a screen counts
+                        // from the top, so the lit row is flipped here.
+                        const lit =
+                            gridRow === first.rows - 1 - first.row && gridColumn === first.column;
+                        return (
+                            <rect
+                                x={gridColumn * cellWidth}
+                                y={gridRow * cellHeight}
+                                width={cellWidth}
+                                height={cellHeight}
+                                class={lit ? 'cell lit' : 'cell'}
+                            />
+                        );
+                    })}
+                </g>
+            </svg>
+            <figcaption id="plate-caption">
+                <span class="label" data-plate-level>Level {first.level} · {first.name}</span>
+                <span class="code" data-plate-size>{first.size}</span>
+            </figcaption>
+        </figure>
+
+        <!-- Mounted once it loads. Never required.
+
+             Deliberately not `hidden`: the attribute is display:none, and a
+             WebGL map given a zero-size container never finishes loading, so
+             hiding it that way would guarantee the thing it was hiding. It is
+             laid over the plate and faded in instead. -->
+        <div class="map" data-map></div>
+    </div>
+</section>
+
+<script>
+    // The library itself is loaded on demand below and is a 966 KB chunk that
+    // never reaches a reader who does not get a map. Its stylesheet is not
+    // split with it: Astro gathers every stylesheet a page's module graph
+    // touches and links them all up front, so importing it dynamically moved
+    // nothing. At 10 KB compressed it is not worth hand-trimming, and the
+    // playground will want the control styles it carries.
+    import 'maplibre-gl/dist/maplibre-gl.css';
+    import { resolve, SAMPLES, type Resolution, type LevelCell } from '../lib/levels';
+    import type { Map as MapLibreMap, GeoJSONSource } from 'maplibre-gl';
+
+    const PLATE = 300;
+
+    const root = document.querySelector<HTMLElement>('[data-resolve]');
+    if (root) begin(root);
+
+    function begin(section: HTMLElement) {
+        // Everything below needs a script, so the controls appear only now.
+        section.dataset.enhanced = 'true';
+
+        const boxes = [...section.querySelectorAll<HTMLElement>('.cells .cell')];
+        const glyphs = boxes.map((box) => box.querySelector<HTMLElement>('.symbol')!);
+        const spoken = section.querySelector<HTMLElement>('.mark .visually-hidden')!;
+        const coords = section.querySelector<HTMLElement>('[data-coords]')!;
+        const place = section.querySelector<HTMLElement>('[data-place]')!;
+        const status = section.querySelector<HTMLElement>('[data-status]')!;
+        const plateCells = section.querySelector<SVGGElement>('[data-plate-cells]')!;
+        const plateLevel = section.querySelector<HTMLElement>('[data-plate-level]')!;
+        const plateSize = section.querySelector<HTMLElement>('[data-plate-size]')!;
+        const mapHolder = section.querySelector<HTMLElement>('[data-map]')!;
+
+        const still = matchMedia('(prefers-reduced-motion: reduce)');
+        const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
+
+        let current: Resolution = resolve(SAMPLES[0].latitude, SAMPLES[0].longitude);
+        let showing: LevelCell = current.levels[0];
+        let sample = 0;
+        let generation = 0;
+        let map: MapLibreMap | null = null;
+
+        function drawPlate(cell: LevelCell) {
+            const width = PLATE / cell.columns;
+            const height = PLATE / cell.rows;
+            const parts: string[] = [];
+
+            for (let gridRow = 0; gridRow < cell.rows; gridRow += 1) {
+                for (let gridColumn = 0; gridColumn < cell.columns; gridColumn += 1) {
+                    // The grid counts rows from the south, a screen from the top.
+                    const lit =
+                        gridRow === cell.rows - 1 - cell.row && gridColumn === cell.column;
+                    const x = gridColumn * width;
+                    const y = gridRow * height;
+                    parts.push(
+                        '<rect x="' + x + '" y="' + y + '" width="' + width + '" height="' +
+                        height + '" class="cell' + (lit ? ' lit' : '') + '"/>',
+                    );
+                }
+            }
+
+            plateCells.innerHTML = parts.join('');
+            plateLevel.textContent = 'Level ' + cell.level + ' · ' + cell.name;
+            plateSize.textContent = cell.size;
+        }
+
+        function shape(cell: LevelCell) {
+            return {
+                type: 'Feature' as const,
+                properties: {},
+                geometry: {
+                    type: 'Polygon' as const,
+                    coordinates: [[
+                        [cell.west, cell.south],
+                        [cell.east, cell.south],
+                        [cell.east, cell.north],
+                        [cell.west, cell.north],
+                        [cell.west, cell.south],
+                    ]],
+                },
+            };
+        }
+
+        function frame(cell: LevelCell, animate: boolean) {
+            if (!map) return;
+            const source = map.getSource('cell') as GeoJSONSource | undefined;
+            source?.setData(shape(cell));
+            map.fitBounds(
+                [[cell.west, cell.south], [cell.east, cell.north]],
+                { padding: 28, duration: animate ? 360 : 0, essential: true },
+            );
+        }
+
+        function paint(cell: LevelCell, animate: boolean) {
+            showing = cell;
+            boxes.forEach((box, index) => {
+                box.dataset.filled = String(index < cell.level);
+            });
+            drawPlate(cell);
+            frame(cell, animate);
+        }
+
+        function setCode(resolution: Resolution) {
+            const symbols = resolution.code.replace(/[^0-9A-Z]/g, '');
+            glyphs.forEach((glyph, index) => {
+                glyph.textContent = symbols[index];
+            });
+            spoken.textContent = resolution.code;
+            coords.textContent =
+                resolution.centre[0].toFixed(6) + ', ' + resolution.centre[1].toFixed(6);
+        }
+
+        async function play(resolution: Resolution, label: string) {
+            const mine = (generation += 1);
+            current = resolution;
+            place.textContent = label;
+            setCode(resolution);
+
+            // A stated preference for less movement gets the answer, not the show.
+            if (still.matches) {
+                paint(resolution.levels[9], false);
+                return;
+            }
+
+            boxes.forEach((box) => {
+                box.dataset.filled = 'false';
+            });
+
+            for (const cell of resolution.levels) {
+                // A newer run has started; abandon this one rather than fight it.
+                if (mine !== generation) return;
+                paint(cell, true);
+                await wait(cell.level === 1 ? 540 : 380);
+            }
+        }
+
+        async function loadMap() {
+            let maplibre: typeof import('maplibre-gl');
+            try {
+                maplibre = await import('maplibre-gl');
+            } catch {
+                // No map. The plate was already correct, so there is nothing to
+                // tell the reader and nothing to put right.
+                return;
+            }
+
+            const html = document.documentElement;
+            const dark =
+                html.dataset.theme === 'dark' ||
+                (!html.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+            const brass = getComputedStyle(html).getPropertyValue('--brass').trim() || '#8A6110';
+
+            map = new maplibre.Map({
+                container: mapHolder,
+                // Positron and Fiord are the desaturated styles, which is what a
+                // drawing laid over them needs: the cell has to be the brightest
+                // thing on the panel.
+                style: 'https://tiles.openfreemap.org/styles/' + (dark ? 'fiord' : 'positron'),
+                center: [current.centre[1], current.centre[0]],
+                zoom: 1,
+                attributionControl: { compact: false },
+                // A backdrop for a sequence rather than something to fly around
+                // in, which also stops it swallowing the page's scroll.
+                interactive: false,
+            });
+
+            map.on('load', () => {
+                if (!map) return;
+                map.addSource('cell', { type: 'geojson', data: shape(showing) });
+                map.addLayer({
+                    id: 'cell-fill',
+                    type: 'fill',
+                    source: 'cell',
+                    paint: { 'fill-color': brass, 'fill-opacity': 0.16 },
+                });
+                map.addLayer({
+                    id: 'cell-line',
+                    type: 'line',
+                    source: 'cell',
+                    paint: { 'line-color': brass, 'line-width': 2 },
+                });
+
+                section.dataset.mapped = 'true';
+
+                // Join whatever step the sequence has already reached rather
+                // than restarting it underneath the reader.
+                frame(showing, false);
+            });
+
+            map.on('error', (event) => {
+                // Tiles can fail while the library is fine. The plate is still
+                // correct and still on screen, so there is nothing to tell the
+                // reader -- but swallowing it silently would hide a real fault
+                // from anyone with a console open.
+                console.warn('Basemap unavailable; the plate is unaffected.', event.error);
+            });
+        }
+
+        section.querySelector('[data-replay]')?.addEventListener('click', () => {
+            void play(current, place.textContent ?? '');
+        });
+
+        section.querySelector('[data-next-sample]')?.addEventListener('click', () => {
+            sample = (sample + 1) % SAMPLES.length;
+            const next = SAMPLES[sample];
+            status.textContent = '';
+            void play(resolve(next.latitude, next.longitude), next.name);
+        });
+
+        section.querySelector('[data-locate]')?.addEventListener('click', (event) => {
+            const button = event.currentTarget as HTMLButtonElement;
+            if (!navigator.geolocation) {
+                status.textContent = 'This browser does not offer a location.';
+                return;
+            }
+            button.disabled = true;
+            status.textContent = 'Asking your browser where you are…';
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    button.disabled = false;
+                    status.textContent = '';
+                    void play(
+                        resolve(position.coords.latitude, position.coords.longitude),
+                        'Your location',
+                    );
+                },
+                (error) => {
+                    button.disabled = false;
+                    status.textContent =
+                        error.code === error.PERMISSION_DENIED
+                            ? 'No location given — the places above work just as well.'
+                            : 'Your location could not be read just now.';
+                },
+                { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+            );
+        });
+
+        // The sequence starts at once, on the plate alone, so the page does
+        // something immediately instead of waiting on somebody else's server.
+        void play(current, SAMPLES[0].name);
+        void loadMap();
+    }
+</script>
+
+<style>
+    .resolve {
+        display: grid;
+        grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+        gap: var(--space-5);
+        align-items: center;
+        max-width: 1180px;
+        margin: 0 auto;
+        width: 100%;
+        padding: var(--space-6) var(--space-4) var(--space-5);
+    }
+
+    .statement {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+    }
+
+    .lede {
+        font-size: var(--text-body-l-size);
+        line-height: var(--text-body-l-line);
+        color: var(--ink-mid);
+        max-width: 46ch;
+    }
+
+    .specimen {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        align-items: flex-start;
+        margin-top: var(--space-2);
+    }
+
+    .readout {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-2);
+        flex-wrap: wrap;
+        font-size: var(--text-small-size);
+        color: var(--ink-soft);
+    }
+
+    .place {
+        color: var(--ink-mid);
+        font-weight: 500;
+    }
+
+    .dot { color: var(--rule); }
+
+    .controls { display: none; }
+
+    .resolve[data-enhanced='true'] .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+        margin-top: var(--space-2);
+    }
+
+    button {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-1);
+        height: 46px;
+        padding: 0 var(--space-3);
+        border: 1px solid transparent;
+        border-radius: var(--radius-card);
+        background: transparent;
+        font-size: 14.5px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    button:disabled {
+        opacity: 0.55;
+        cursor: default;
+    }
+
+    .primary {
+        background: var(--prussian);
+        color: var(--surface);
+    }
+
+    .primary:hover:not(:disabled) { background: var(--ink); }
+
+    .secondary {
+        background: var(--surface);
+        border-color: var(--rule);
+        color: var(--ink);
+    }
+
+    .secondary:hover { border-color: var(--ink-soft); }
+
+    .quiet {
+        color: var(--ink-soft);
+        padding: 0 var(--space-2);
+    }
+
+    .quiet:hover { color: var(--ink); }
+
+    .status {
+        min-height: 1.4em;
+        font-size: var(--text-small-size);
+        color: var(--ink-mid);
+    }
+
+    /* ── the stage ───────────────────────────────────────────────────────── */
+    .stage {
+        position: relative;
+        aspect-ratio: 3 / 2;
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-card);
+        background: var(--sunken);
+        overflow: hidden;
+    }
+
+    .plate {
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        padding: var(--space-3);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+    }
+
+    .plate svg {
+        width: min(100%, 300px);
+        height: auto;
+        min-height: 0;
+    }
+
+    .plate :global(.cell) {
+        fill: none;
+        stroke: var(--rule);
+        stroke-width: 1;
+    }
+
+    .plate :global(.cell.lit) {
+        fill: var(--brass);
+        fill-opacity: 0.18;
+        stroke: var(--brass);
+        stroke-width: 2;
+    }
+
+    figcaption {
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+    }
+
+    figcaption .code {
+        font-size: var(--text-label-size);
+        color: var(--ink-soft);
+    }
+
+    .map {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        transition: opacity 320ms ease-out;
+        pointer-events: none;
+    }
+
+    .resolve[data-mapped='true'] .map { opacity: 1; }
+
+    /* Once the map is up it owns the stage, and the plate steps aside into the
+       corner — still drawing the same step, now as a key to what the map shows. */
+    .resolve[data-mapped='true'] .plate {
+        inset: auto var(--space-2) var(--space-2) auto;
+        width: 112px;
+        padding: var(--space-2);
+        background: var(--surface);
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-card);
+    }
+
+    .resolve[data-mapped='true'] .plate svg { width: 80px; }
+    .resolve[data-mapped='true'] figcaption { display: none; }
+
+    @media (max-width: 900px) {
+        .resolve {
+            grid-template-columns: minmax(0, 1fr);
+            padding: var(--space-5) var(--space-3) var(--space-4);
+        }
+
+        .stage { aspect-ratio: 4 / 3; }
+    }
+</style>

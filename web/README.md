@@ -38,16 +38,45 @@ There are no cookies, no analytics and nothing to dismiss.
 
 ```
 src/
-  components/     CodeMark, the masthead, the theme control
+  components/     CodeMark, Resolve, the masthead, the theme control
   layouts/        the shell every page sits in
   pages/          one file per route
+  lib/            the level arithmetic, shared by the build and the browser
   styles/         global.css, and tokens.css generated from ../design
-public/           copied verbatim; CNAME lives here
 ```
 
 `src/styles/tokens.css` is generated. Edit
 [`../design/tokens.json`](../design/README.md) and regenerate; the build refuses
 to run against a stylesheet that has drifted from it.
+
+## The hero, and the order it loads in
+
+The front page shows a coordinate arriving one character at a time, on two
+surfaces that show the same step.
+
+The **plate** is a drawing of the subdivision the current level performs: the
+world four by six, everything under it five by five, with the containing cell
+lit. It is rendered on the server, it is exact, and it needs no network, no
+basemap and no JavaScript. Without a script it stands still at level one, which
+is a true and complete statement on its own.
+
+The **map** is the geographic version of the same step. It arrives afterwards,
+over the plate, and its absence costs the page nothing — if the tiles fail, or
+the library never loads, or a reader has scripting off, the plate is still there
+and still right. Tiles come from OpenFreeMap, which needs no key, no account and
+sets no cookies; MapLibre is loaded on demand and is a 966&nbsp;KB chunk that
+never reaches a reader who does not get a map.
+
+That ordering is the argument the whole site exists to make. A format whose
+claim is that it needs nobody should not have a front page that breaks when
+somebody else's server is down.
+
+Two things worth knowing before changing it. The map container must never be
+`hidden`: the attribute is `display: none`, a WebGL map given a zero-size
+container never finishes loading, and hiding it that way guarantees the thing it
+was hiding. And `load` only fires after a first render, so in any environment
+that is not compositing frames — a background tab, a headless preview — the map
+legitimately never appears and the plate is what the reader keeps.
 
 ## Themes
 
