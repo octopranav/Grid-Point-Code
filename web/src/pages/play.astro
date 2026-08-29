@@ -1,0 +1,19 @@
+---
+import Base from '../layouts/Base.astro';
+import Playground from '../components/Playground.astro';
+
+const description =
+    'Set a point on the map, type a coordinate, or paste a code, and watch the ' +
+    'other two follow. Every operation runs in your browser, offline, with no ' +
+    'lookup table and no network.';
+---
+
+<Base title="Playground" description={description}>
+    <Playground />
+</Base>
+
+<style>
+    /* The playground is a tool rather than a document, so it takes the whole
+       frame: no page margins, no measure, nothing between it and the edges. */
+    :global(main) { display: flex; flex-direction: column; }
+</style>

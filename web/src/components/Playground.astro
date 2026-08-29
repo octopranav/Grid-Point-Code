@@ -1,0 +1,1089 @@
+---
+// The playground: every operation in the published library, reachable.
+//
+// One code, in one place. It is an input, so it can be typed into, and the mark
+// under it is the same code drawn as its ten levels. There is no second copy of
+// it anywhere on the panel: two places showing the same value is two places
+// that can disagree, and the reader has to work out which one is lying.
+//
+// Coordinates, the code and the map are three views of a single point. Touch any
+// one and the other two follow. Nothing is ever left showing a stale answer
+// beside a fresh error — if an entry cannot be read, every surface empties.
+//
+// Correcting a typo is deliberately not here. A mistyped code usually lands on
+// another perfectly valid code, so correction is not a validation question at
+// all; it needs a reference point and a frame that explains what it is doing,
+// which is the typo lab rather than this panel.
+
+import CodeMark from './CodeMark.astro';
+import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
+import { BASEMAPS } from '../lib/basemap';
+
+const START = { latitude: 43.65, longitude: -79.38 };
+const code = GPC.encode(START.latitude, START.longitude);
+---
+
+<section class="playground" data-playground data-start={JSON.stringify(START)}>
+    <div class="stage">
+        <div class="map" data-map></div>
+        <p class="hint" data-hint>Move over the map to see the cells; click to choose one.</p>
+
+        <label class="basemap">
+            <span class="visually-hidden">Basemap</span>
+            <select data-basemap>
+                {BASEMAPS.map((each) => <option value={each.id}>{each.name}</option>)}
+            </select>
+        </label>
+    </div>
+
+    <aside class="panel">
+        <div class="result">
+            <div class="row">
+                <span class="label">Grid Point Code</span>
+                <span class="pill" data-verdict data-class="GEOMETRIC">Valid</span>
+            </div>
+
+            <input
+                class="code-entry"
+                type="text"
+                spellcheck="false"
+                autocapitalize="characters"
+                autocomplete="off"
+                placeholder="#_____-_____"
+                aria-label="Grid Point Code"
+                data-code-input
+                value={code}
+            />
+
+            <div class="specimen">
+                <CodeMark code={code} size="inline" />
+            </div>
+
+            <div class="row">
+                <span class="code muted" data-cell-size>—</span>
+                <button type="button" class="copy" data-copy>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="9" y="9" width="12" height="12" rx="1"></rect>
+                        <path d="M5 15V4a1 1 0 0 1 1-1h9"></path>
+                    </svg>
+                    <span data-copy-label>Copy</span>
+                </button>
+            </div>
+
+            <p class="note" data-code-note></p>
+        </div>
+
+        <div class="block">
+            <div class="pair">
+                <label>
+                    <span class="label">Latitude</span>
+                    <input type="text" inputmode="decimal" data-latitude value={START.latitude.toFixed(6)} />
+                </label>
+                <label>
+                    <span class="label">Longitude</span>
+                    <input type="text" inputmode="decimal" data-longitude value={START.longitude.toFixed(6)} />
+                </label>
+            </div>
+            <p class="note" data-coordinate-note></p>
+        </div>
+
+        <div class="block">
+            <button type="button" class="primary" data-locate>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"></path>
+                    <circle cx="12" cy="10" r="2.6"></circle>
+                </svg>
+                Use my location
+            </button>
+            <p class="note" data-locate-note></p>
+        </div>
+
+        <p class="advisory" data-advisory hidden></p>
+    </aside>
+</section>
+
+<script>
+    import 'maplibre-gl/dist/maplibre-gl.css';
+    import { GPC, CodeClass } from '@pranavpatel.ca/algo-gridpointcode';
+    import { resolve, neighbourhood, type LevelCell } from '../lib/levels';
+    import {
+        basemapStyle,
+        chosenBasemap,
+        rememberBasemap,
+        token,
+        outline,
+        WORLD,
+        type Basemap,
+        type Box,
+    } from '../lib/basemap';
+    import type { Map as MapLibreMap } from 'maplibre-gl';
+
+    // A level announces itself, then the camera falls to it.
+    const PULSES = 3;
+    const PULSE = 190;
+    const FALL = 720;
+
+    // How far the camera stands back from the finest cell, and so how far in it
+    // is ever allowed to go. The same figure the front page ends its descent on,
+    // deliberately: a cell filling the frame says nothing about where it is, and
+    // a reader who has just watched the front page should arrive here to a view
+    // at the same scale rather than a different idea of how close is close.
+    const SURROUNDINGS = 16;
+
+    const section = document.querySelector<HTMLElement>('[data-playground]');
+    if (section) begin(section);
+
+    function begin(section: HTMLElement) {
+        const start = JSON.parse(section.dataset.start ?? '{}') as {
+            latitude: number;
+            longitude: number;
+        };
+
+        const mapHolder = section.querySelector<HTMLElement>('[data-map]')!;
+        const hint = section.querySelector<HTMLElement>('[data-hint]')!;
+        const latitudeField = section.querySelector<HTMLInputElement>('[data-latitude]')!;
+        const longitudeField = section.querySelector<HTMLInputElement>('[data-longitude]')!;
+        const coordinateNote = section.querySelector<HTMLElement>('[data-coordinate-note]')!;
+        const codeField = section.querySelector<HTMLInputElement>('[data-code-input]')!;
+        const codeNote = section.querySelector<HTMLElement>('[data-code-note]')!;
+        const locateNote = section.querySelector<HTMLElement>('[data-locate-note]')!;
+        const verdict = section.querySelector<HTMLElement>('[data-verdict]')!;
+        const cellSize = section.querySelector<HTMLElement>('[data-cell-size]')!;
+        const advisory = section.querySelector<HTMLElement>('[data-advisory]')!;
+        const boxes = [...section.querySelectorAll<HTMLElement>('.cells .cell')];
+        const glyphs = boxes.map((box) => box.querySelector<HTMLElement>('.symbol')!);
+        const spoken = section.querySelector<HTMLElement>('.mark .visually-hidden')!;
+        const copyButton = section.querySelector<HTMLButtonElement>('[data-copy]')!;
+        const copyLabel = section.querySelector<HTMLElement>('[data-copy-label]')!;
+        const basemapChooser = section.querySelector<HTMLSelectElement>('[data-basemap]')!;
+
+        const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
+
+        let map: MapLibreMap | null = null;
+        let code: string | null = null;
+        let generation = 0;
+        let descending = false;
+        let hovered = '';
+        let chosen: Basemap = chosenBasemap();
+        // The cell currently drawn, so it can be put back after a style change.
+        let shown: LevelCell | null = null;
+
+        // ── the panel ────────────────────────────────────────────────────────
+
+        /**
+         * The one place the current code is set.
+         *
+         * Everything that depends on it is written here and nowhere else: the
+         * ten cells, what a screen reader hears, the cell size, and whether Copy
+         * can be pressed. An earlier version left Copy reading a variable that
+         * had been emptied elsewhere, so pressing it after an error quietly left
+         * the clipboard holding a code from several minutes ago -- which looks
+         * exactly like the button handing back a stale answer.
+         */
+        function setCode(value: string | null, latitude?: number) {
+            code = value;
+
+            const symbols = (value ?? '').replace(/[^0-9A-Z]/g, '');
+            glyphs.forEach((glyph, index) => {
+                glyph.textContent = symbols[index] ?? '';
+            });
+            boxes.forEach((box) => {
+                box.dataset.filled = String(value !== null);
+            });
+            spoken.textContent = value ?? 'No code';
+
+            copyButton.disabled = value === null;
+            copyLabel.textContent = 'Copy';
+
+            if (value === null || latitude === undefined) {
+                cellSize.textContent = '—';
+                return;
+            }
+
+            // A cell is square at 41.4 degrees and stretches away from it, so
+            // its size is a property of where you are, not a constant.
+            const [, , northSouth, eastWest] = GPC.cellDimensions(10);
+            const narrowing = Math.cos((latitude * Math.PI) / 180);
+            cellSize.textContent =
+                northSouth.toFixed(2) + ' × ' + (eastWest * narrowing).toFixed(2) + ' m';
+        }
+
+        /**
+         * No code: nothing is half-shown.
+         *
+         * `keepTyping` is set when the reader is mid-edit in the coordinate
+         * fields — clearing those under someone's cursor would be worse than
+         * the stale value. Everywhere else empties, including the coordinates
+         * when it was the code that failed, because they describe a point that
+         * is no longer on offer.
+         */
+        function blank(keepTyping: 'coordinates' | 'code' | null = null) {
+            generation += 1;
+            setCode(null);
+            verdict.hidden = true;
+            advisory.hidden = true;
+            // Not the note the caller is about to write: only the one belonging
+            // to a device fix that no longer describes anything.
+            locateNote.textContent = '';
+
+            if (keepTyping !== 'coordinates') {
+                latitudeField.value = '';
+                longitudeField.value = '';
+            }
+            if (keepTyping !== 'code') codeField.value = '';
+
+            clearBoxes();
+            shown = null;
+            map?.fitBounds([[WORLD.west, WORLD.south], [WORLD.east, WORLD.north]], {
+                padding: 12,
+                duration: FALL,
+                essential: true,
+            });
+        }
+
+        function say(kind: string, reason: string) {
+            verdict.hidden = false;
+            verdict.dataset.class = kind;
+            verdict.textContent =
+                kind === CodeClass.GEOMETRIC
+                    ? 'Valid'
+                    : kind === CodeClass.RESERVED
+                      ? 'Reserved'
+                      : reason || 'Not a code';
+        }
+
+        // ── the box on the map ───────────────────────────────────────────────
+        //
+        // One box at a time. The level before is taken down before the next is
+        // announced, so there is never a moment where two boxes are asking for
+        // attention and the reader has to work out which one is the subject.
+
+        const ID = 'level';
+
+        function clearBoxes() {
+            if (!map) return;
+            for (const id of [ID + '-glow', ID]) {
+                if (map.getLayer(id)) map.removeLayer(id);
+            }
+            if (map.getSource(ID)) map.removeSource(ID);
+        }
+
+        function addBox(cell: LevelCell) {
+            if (!map) return;
+            const brass = token('--brass', '#8A6110');
+            map.addSource(ID, { type: 'geojson', data: outline(cell) });
+            // Outline only, never filled. A filled box hides the very thing a
+            // reader came to see, and at the coarse levels it covers a continent.
+            map.addLayer({
+                id: ID + '-glow',
+                type: 'line',
+                source: ID,
+                paint: { 'line-color': brass, 'line-width': 9, 'line-blur': 7, 'line-opacity': 0 },
+            });
+            map.addLayer({
+                id: ID,
+                type: 'line',
+                source: ID,
+                paint: { 'line-color': brass, 'line-width': 2, 'line-opacity': 0 },
+            });
+        }
+
+        function setOpacity(line: number, glow: number) {
+            if (!map || !map.getLayer(ID)) return;
+            map.setPaintProperty(ID, 'line-opacity', line);
+            map.setPaintProperty(ID + '-glow', 'line-opacity', glow);
+        }
+
+        /** Announce the level: three pulses of light, then settle lit. */
+        function announce(alive: () => boolean) {
+            return new Promise<void>((done) => {
+                const span = PULSE * PULSES * 2;
+                const begun = performance.now();
+                const tick = (now: number) => {
+                    if (!map || !alive()) return done();
+                    const t = Math.min(1, (now - begun) / span);
+                    // Cosine gives a soft rise and fall rather than a hard
+                    // on-off, which is what makes it read as light rather than
+                    // as a flickering border.
+                    const wave = 0.5 - 0.5 * Math.cos(2 * Math.PI * PULSES * t);
+                    setOpacity(0.25 + 0.75 * wave, 0.7 * wave);
+                    if (t < 1) requestAnimationFrame(tick);
+                    else {
+                        setOpacity(1, 0.18);
+                        done();
+                    }
+                };
+                requestAnimationFrame(tick);
+            });
+        }
+
+        // ── the grid under the cursor ────────────────────────────────────────
+        //
+        // Hovering shows which cells are on offer without committing to one. A
+        // code is minted on click and never on movement: a reader sweeping
+        // across the map is looking, not choosing, and generating a code for
+        // every pixel they pass over would be both wrong and expensive.
+
+        const HOVER = 'hover';
+
+        // The grid always offers level ten, whatever the zoom. An earlier
+        // version chose a level to suit the view, which meant the thing under
+        // the cursor silently changed meaning as a reader zoomed -- the same
+        // gesture selecting a doorway at one moment and a district at the next.
+        // A cell is one thing. Zoomed out it becomes too small to see, and that
+        // is the honest outcome rather than a reason to substitute a coarser
+        // one.
+        const OFFERED = 10;
+
+        /** How wide the offered cell currently is, in screen pixels. */
+        function cellOnScreen(): number {
+            if (!map) return 0;
+            const bounds = map.getBounds();
+            const across = Math.abs(bounds.getEast() - bounds.getWest());
+            if (across === 0) return 0;
+            const [, span] = GPC.cellDimensions(OFFERED);
+            return (span / across) * mapHolder.clientWidth;
+        }
+
+        function hoverLayers() {
+            if (!map || map.getSource(HOVER)) return;
+            const ink = token('--ink-soft', '#6E848D');
+            map.addSource(HOVER, {
+                type: 'geojson',
+                data: { type: 'FeatureCollection', features: [] },
+            });
+            map.addLayer({
+                id: HOVER + '-fill',
+                type: 'fill',
+                source: HOVER,
+                paint: {
+                    'fill-color': ink,
+                    // The one under the cursor is barely stronger than its
+                    // neighbours: enough to say which would be chosen, not
+                    // enough to hide what is beneath it.
+                    'fill-opacity': ['case', ['get', 'under'], 0.16, 0.05],
+                },
+            });
+            map.addLayer({
+                id: HOVER + '-line',
+                type: 'line',
+                source: HOVER,
+                paint: {
+                    'line-color': ink,
+                    'line-width': ['case', ['get', 'under'], 1.6, 0.8],
+                    'line-opacity': 0.55,
+                },
+            });
+        }
+
+        function clearHover() {
+            hovered = '';
+            const source = map?.getSource(HOVER) as
+                | { setData: (data: unknown) => void }
+                | undefined;
+            source?.setData({ type: 'FeatureCollection', features: [] });
+        }
+
+        function drawHover(latitude: number, longitude: number) {
+            // Nothing to offer while the camera is moving on its own: the
+            // reader is being shown something, not choosing.
+            if (!map || descending) return;
+
+            // Below a couple of pixels the grid is not a thing anybody could
+            // aim at, and at world zoom a single pixel of movement crosses
+            // thousands of cells -- so drawing it would be invisible work done
+            // on every mouse event. It simply is not offered that far out.
+            if (cellOnScreen() < 3) {
+                if (hovered !== '') clearHover();
+                return;
+            }
+
+            let cells;
+            try {
+                cells = neighbourhood(latitude, longitude, OFFERED);
+            } catch {
+                // Off the edge of the world, where there is no cell to offer.
+                clearHover();
+                return;
+            }
+
+            const under = cells.find((cell) => cell.under);
+            const key = under ? under.south + ',' + under.west : '';
+            // Redrawn only when the cursor crosses into a different cell, not
+            // on every pixel of movement.
+            if (key === hovered) return;
+            hovered = key;
+
+            hoverLayers();
+            const source = map.getSource(HOVER) as
+                | { setData: (data: unknown) => void }
+                | undefined;
+            source?.setData({
+                type: 'FeatureCollection',
+                features: cells.map((cell) => ({
+                    ...outline(cell),
+                    properties: { under: cell.under },
+                })),
+            });
+        }
+
+        // Pointer events arrive far faster than frames do. Coalescing them onto
+        // the next frame means the grid is computed once per painted frame at
+        // most, however hard somebody waves the mouse about.
+        let pending: [number, number] | null = null;
+        let queued = false;
+
+        function showHover(latitude: number, longitude: number) {
+            pending = [latitude, longitude];
+            if (queued) return;
+            queued = true;
+            requestAnimationFrame(() => {
+                queued = false;
+                if (pending) drawHover(pending[0], pending[1]);
+            });
+        }
+
+        /** A box stood back from by a fixed factor, clamped to the world. */
+        function surroundings(cell: Box): Box {
+            const midLatitude = (cell.north + cell.south) / 2;
+            const midLongitude = (cell.east + cell.west) / 2;
+            const reachLatitude = ((cell.north - cell.south) * SURROUNDINGS) / 2;
+            const reachLongitude = ((cell.east - cell.west) * SURROUNDINGS) / 2;
+            return {
+                south: Math.max(WORLD.south, midLatitude - reachLatitude),
+                north: Math.min(WORLD.north, midLatitude + reachLatitude),
+                west: Math.max(WORLD.west, midLongitude - reachLongitude),
+                east: Math.min(WORLD.east, midLongitude + reachLongitude),
+            };
+        }
+
+        /**
+         * The closest the camera may ever get: the view the front page ends on,
+         * with the finest cell standing back by SURROUNDINGS. Beyond it the
+         * screen fills with a box and the surroundings that give it meaning are
+         * gone, so every fall is clamped to it rather than fitted past it.
+         */
+        function closest(finest: LevelCell): number | undefined {
+            if (!map) return undefined;
+            const view = surroundings(finest);
+            const camera = map.cameraForBounds(
+                [[view.west, view.south], [view.east, view.north]],
+                { padding: 34 },
+            );
+            return camera?.zoom;
+        }
+
+        /** Fall to a cell and wait until the camera has actually arrived. */
+        function fall(cell: LevelCell, maxZoom: number | undefined, alive: () => boolean) {
+            return new Promise<void>((done) => {
+                if (!map) return done();
+                const finish = () => {
+                    map?.off('moveend', finish);
+                    clearTimeout(guard);
+                    done();
+                };
+                // A move can be interrupted, and a promise that never settles
+                // would strand the descent, so the wait is bounded.
+                const guard = setTimeout(finish, FALL + 900);
+                map.on('moveend', finish);
+                map.fitBounds(
+                    [[cell.west, cell.south], [cell.east, cell.north]],
+                    { padding: 34, duration: FALL, maxZoom, essential: true },
+                );
+                if (!alive()) finish();
+            });
+        }
+
+        async function descend(latitude: number, longitude: number, from: number) {
+            const mine = (generation += 1);
+            const alive = () => mine === generation && map !== null;
+            const release = () => {
+                // Only the run that is still current may hand the map back;
+                // an abandoned one would unlock it under its replacement.
+                if (mine === generation) descending = false;
+            };
+
+            const cells = resolve(latitude, longitude).levels;
+            const limit = closest(cells[9]);
+            descending = true;
+            clearHover();
+            clearBoxes();
+            shown = null;
+
+            if (from <= 1 && map) map.jumpTo({ center: [longitude, latitude], zoom: 0 });
+
+            for (let level = Math.max(1, from); level <= 10; level += 1) {
+                if (!alive()) return release();
+
+                clearBoxes();
+                addBox(cells[level - 1]);
+                shown = cells[level - 1];
+                await announce(alive);
+                if (!alive()) return release();
+
+                // Level ten is the answer and it needs no move of its own: the
+                // camera is already as close as it is allowed to go, so it sits
+                // there as a small box with its surroundings around it.
+                if (level === 10) return release();
+
+                await fall(cells[level - 1], limit, alive);
+            }
+        }
+
+        /** Which level the current view is already showing, near enough. */
+        function levelOnScreen(): number {
+            if (!map) return 1;
+            const bounds = map.getBounds();
+            const across = Math.abs(bounds.getEast() - bounds.getWest());
+            for (let level = 10; level >= 1; level -= 1) {
+                const [, span] = GPC.cellDimensions(level);
+                if (span >= across) return level;
+            }
+            return 1;
+        }
+
+        // ── setting the point ────────────────────────────────────────────────
+
+        /**
+         * Move the point, and with it everything that describes the point.
+         *
+         * `accuracy` is metres, and only ever arrives from a device fix. It is
+         * a property of THIS point rather than a message left on the page, and
+         * that distinction is the whole reason it is a parameter: an advisory
+         * about how well a browser located somebody must not survive the reader
+         * moving somewhere else. Neither must a note from a locate that failed.
+         *
+         * The same rule the code itself follows -- one owner, everything
+         * downstream written from it -- applied to the prose.
+         */
+        function place(
+            latitude: number,
+            longitude: number,
+            from: 'map' | 'fields' | 'code' | 'elsewhere',
+            accuracy?: number,
+        ) {
+            code = GPC.encode(latitude, longitude);
+
+            // Decoding gives the cell centre, which is the point the code
+            // actually names — not the arbitrary spot inside the cell that was
+            // clicked. Showing the click back would claim a precision the code
+            // does not have.
+            const [centreLatitude, centreLongitude] = GPC.decode(code);
+
+            if (from !== 'fields') {
+                latitudeField.value = centreLatitude.toFixed(6);
+                longitudeField.value = centreLongitude.toFixed(6);
+            }
+            if (from !== 'code') codeField.value = code;
+
+            setCode(code, centreLatitude);
+            say(CodeClass.GEOMETRIC, '');
+            coordinateNote.textContent = '';
+            locateNote.textContent = '';
+            if (from !== 'code') codeNote.textContent = '';
+            showAccuracy(accuracy);
+
+            // A click already has a frame, so it picks up from the level the
+            // view is showing. Everything else is a brand new place and starts
+            // from the world, which is the only honest place to begin when a
+            // reader has no idea where they are about to be taken.
+            void descend(
+                centreLatitude,
+                centreLongitude,
+                from === 'map' ? levelOnScreen() + 1 : 1,
+            );
+        }
+
+        // ── typed coordinates ────────────────────────────────────────────────
+
+        const readCoordinates = () => {
+            const latitude = Number(latitudeField.value.trim());
+            const longitude = Number(longitudeField.value.trim());
+
+            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+                coordinateNote.textContent = 'Both need to be numbers.';
+                blank('coordinates');
+                return;
+            }
+
+            // The library is the authority on what is in range, so it is asked
+            // rather than second-guessed here.
+            const [ok, reason] = GPC.isValidCoordinates(latitude, longitude);
+            if (!ok) {
+                coordinateNote.textContent =
+                    reason === 'LATITUDE'
+                        ? 'Latitude runs from −90 to 90.'
+                        : 'Longitude runs from −180 to 180.';
+                blank('coordinates');
+                return;
+            }
+
+            coordinateNote.textContent = '';
+            place(latitude, longitude, 'fields');
+        };
+
+        latitudeField.addEventListener('change', readCoordinates);
+        longitudeField.addEventListener('change', readCoordinates);
+
+        // ── the code, typed into where it is shown ───────────────────────────
+
+        const ALPHABET = '0123456789CDFGHJKLMNPRTWX';
+
+        codeField.addEventListener('input', () => {
+            const typed = codeField.value.trim();
+
+            if (typed === '') {
+                codeNote.textContent = '';
+                blank('code');
+                return;
+            }
+
+            let cleaned: string;
+            let check: string | null;
+            try {
+                [cleaned, check] = GPC.normalise(typed);
+            } catch {
+                codeNote.textContent = 'That cannot be read as a code.';
+                blank('code');
+                say(CodeClass.INVALID, 'Unreadable');
+                return;
+            }
+
+            const [kind, reason] = GPC.validate(typed);
+            const canonical = GPC.formatGPC(cleaned);
+
+            if (kind === CodeClass.GEOMETRIC) {
+                // Say what normalisation did, but only when it did something.
+                // The alias table is the specification's, so a code accepted
+                // here is accepted by every port.
+                codeNote.textContent =
+                    canonical === typed.toUpperCase()
+                        ? ''
+                        : 'Read as ' + canonical +
+                          (check ? ' with check character ' + check : '');
+                const [latitude, longitude] = GPC.decode(cleaned);
+                place(latitude, longitude, 'code');
+                return;
+            }
+
+            blank('code');
+
+            if (kind === CodeClass.RESERVED) {
+                say(kind, '');
+                codeNote.textContent =
+                    'A reserved code. Well formed, but it names no location — the ' +
+                    'specification sets this range aside and never decodes it.';
+                return;
+            }
+
+            say(kind, wording(reason));
+            codeNote.textContent = explain(reason, cleaned);
+        });
+
+        function wording(reason: string): string {
+            if (reason === 'GPC_LENGTH') return 'Wrong length';
+            if (reason === 'GPC_CHAR') return 'Not in the alphabet';
+            if (reason === 'GPC_CHECK') return 'Check character';
+            return 'Not a code';
+        }
+
+        function explain(reason: string, cleaned: string): string {
+            if (reason === 'GPC_LENGTH') {
+                return 'A code is exactly ten characters, everywhere on Earth — ' +
+                    'this one has ' + cleaned.length + '.';
+            }
+            if (reason === 'GPC_CHAR') {
+                // Name the offending characters rather than describing the rule
+                // in the abstract. Look-alikes never reach here: O, I, S, Z and
+                // B are folded to their digits on the way in, so whatever is
+                // left really is outside the alphabet.
+                const stray = [...new Set([...cleaned].filter((c) => !ALPHABET.includes(c)))];
+                return stray.length === 0
+                    ? 'One of those characters is not in the alphabet.'
+                    : stray.map((c) => '“' + c + '”').join(', ') +
+                      ' is not in the alphabet. It has no vowels and no U, Q, V ' +
+                      'or Y, so a word can never be read as a code.';
+            }
+            if (reason === 'GPC_CHECK') {
+                return 'The code and its check character disagree, so one of them ' +
+                    'was mistyped. The check catches every single wrong character ' +
+                    'and every swapped pair — which is why it is worth adding when ' +
+                    'a code is read aloud or written down.';
+            }
+            return '';
+        }
+
+        // ── the device's own idea of where it is ─────────────────────────────
+
+        section.querySelector('[data-locate]')?.addEventListener('click', (event) => {
+            const button = event.currentTarget as HTMLButtonElement;
+            if (!navigator.geolocation) {
+                locateNote.textContent = 'This browser does not offer a location.';
+                return;
+            }
+            button.disabled = true;
+            locateNote.textContent = 'Asking your browser where you are…';
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    button.disabled = false;
+                    codeNote.textContent = '';
+                    // `elsewhere`, so every surface is written: arriving from a
+                    // failed code with the old text still in the box would leave
+                    // the reader looking at an error about a code they are no
+                    // longer being shown. The accuracy rides along with the
+                    // point rather than being announced separately, so it can
+                    // never outlive it.
+                    place(
+                        position.coords.latitude,
+                        position.coords.longitude,
+                        'elsewhere',
+                        position.coords.accuracy,
+                    );
+                },
+                (error) => {
+                    button.disabled = false;
+                    locateNote.textContent =
+                        error.code === error.PERMISSION_DENIED
+                            ? 'No location given.'
+                            : 'Your location could not be read just now.';
+                },
+                { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+            );
+        });
+
+        /**
+         * A coarse fix yields a precise code for the wrong doorway, and a reader
+         * with nothing else to go on blames the code. So the browser's own
+         * admission of accuracy is repeated rather than hidden.
+         *
+         * Called on every placement, with nothing when the point did not come
+         * from a device -- which is what takes the advisory down again.
+         */
+        function showAccuracy(metres?: number) {
+            if (metres === undefined) {
+                advisory.hidden = true;
+                return;
+            }
+
+            const within = Math.round(metres);
+            advisory.hidden = false;
+            advisory.innerHTML =
+                within <= 3
+                    ? 'Your browser placed you to within about <b>' + within +
+                      ' m</b>, which is inside a single cell.'
+                    : 'Your browser placed you to within about <b>' + within +
+                      ' m</b>. The code is exact for the point it was given — at ' +
+                      'this accuracy that point may not be your doorway.';
+            advisory.dataset.tone = within <= 3 ? 'plain' : 'warn';
+        }
+
+        // ── the map ──────────────────────────────────────────────────────────
+
+        async function loadMap() {
+            let maplibre: typeof import('maplibre-gl');
+            try {
+                maplibre = await import('maplibre-gl');
+            } catch (error) {
+                hint.textContent = 'The map could not load. Everything else still works.';
+                console.warn('[grid point code] the map library did not load.', error);
+                return;
+            }
+
+            map = new maplibre.Map({
+                container: mapHolder,
+                style: basemapStyle(chosen),
+                center: [start.longitude, start.latitude],
+                zoom: 0,
+                attributionControl: { compact: false },
+                cooperativeGestures: true,
+                dragRotate: false,
+                pitchWithRotate: false,
+                // One Earth. Repeating it sideways turns a descent from the
+                // world into a descent from an aquarium, and makes the level-one
+                // box look like several boxes.
+                renderWorldCopies: false,
+            });
+
+            map.addControl(new maplibre.NavigationControl({ showCompass: false }), 'top-right');
+
+            const ready = () => {
+                if (!map || section.dataset.mapState === 'ready') return;
+                section.dataset.mapState = 'ready';
+                place(start.latitude, start.longitude, 'elsewhere');
+            };
+
+            if (map.isStyleLoaded()) ready();
+            else map.on('style.load', ready);
+
+            basemapChooser.value = chosen;
+            basemapChooser.addEventListener('change', () => {
+                const wanted = basemapChooser.value as Basemap;
+                chosen = wanted;
+                rememberBasemap(wanted);
+                if (!map) return;
+
+                // setStyle replaces the whole style, taking every source and
+                // layer this component added with it. They are put back once
+                // the new one is parsed, at whatever the descent had reached,
+                // so switching the basemap does not restart anything.
+                const cell = shown;
+                clearHover();
+                map.setStyle(basemapStyle(wanted));
+                map.once('style.load', () => {
+                    if (cell) {
+                        addBox(cell);
+                        setOpacity(1, 0.18);
+                    }
+                });
+            });
+
+            map.on('mousemove', (event) => {
+                showHover(event.lngLat.lat, event.lngLat.lng);
+            });
+            map.on('mouseout', clearHover);
+            map.on('movestart', clearHover);
+
+            map.on('click', (event) => {
+                place(event.lngLat.lat, event.lngLat.lng, 'map');
+            });
+
+            map.on('error', (event) => {
+                console.warn('[grid point code] basemap trouble.', event.error);
+            });
+        }
+
+        copyButton.addEventListener('click', async () => {
+            // Disabled whenever there is no code, so this cannot be reached with
+            // nothing to give -- and the clipboard is never left holding an
+            // answer from before the last error.
+            if (!code) return;
+            const wanted = code;
+            try {
+                await navigator.clipboard.writeText(wanted);
+                // The code may have changed while the write was in flight.
+                copyLabel.textContent = code === wanted ? 'Copied' : 'Copy';
+                setTimeout(() => {
+                    if (copyLabel.textContent === 'Copied') copyLabel.textContent = 'Copy';
+                }, 1400);
+            } catch {
+                copyLabel.textContent = 'Press Ctrl+C';
+            }
+        });
+
+        // Without a map the panel still works; the descent simply has nowhere
+        // to happen, so the code appears on its own.
+        setCode(GPC.encode(start.latitude, start.longitude), start.latitude);
+        void loadMap();
+    }
+</script>
+
+<style>
+    .playground {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 420px;
+        min-height: calc(100vh - 56px);
+    }
+
+    .stage {
+        position: relative;
+        background: var(--sunken);
+        border-right: 1px solid var(--rule);
+        min-height: 420px;
+    }
+
+    .map { position: absolute; inset: 0; }
+
+    .basemap {
+        position: absolute;
+        top: calc(var(--space-2) + 34px);
+        left: var(--space-2);
+        z-index: 1;
+    }
+
+    .basemap select {
+        height: 30px;
+        padding: 0 var(--space-2);
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-card);
+        background: var(--surface);
+        color: var(--ink-mid);
+        font: inherit;
+        font-size: var(--text-small-size);
+        cursor: pointer;
+    }
+
+    .basemap select:hover { color: var(--ink); }
+
+    .hint {
+        position: absolute;
+        top: var(--space-2);
+        left: var(--space-2);
+        margin: 0;
+        padding: var(--space-1) var(--space-2);
+        background: var(--surface);
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-card);
+        font-size: var(--text-small-size);
+        color: var(--ink-mid);
+        z-index: 1;
+    }
+
+    .panel {
+        background: var(--surface);
+        padding: var(--space-4) var(--space-3);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+        overflow-y: auto;
+    }
+
+    .block { display: flex; flex-direction: column; gap: var(--space-2); }
+    .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+    label { display: flex; flex-direction: column; gap: var(--space-1); }
+
+    input {
+        height: 40px;
+        min-width: 0;
+        padding: 0 var(--space-2);
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-cell);
+        background: var(--surface);
+        color: var(--ink);
+        font-family: var(--font-mono);
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: var(--code-tracking);
+    }
+
+    input:focus-visible { border-color: var(--prussian); }
+
+    .note {
+        margin: 0;
+        min-height: 1.2em;
+        font-size: var(--text-small-size);
+        line-height: var(--text-small-line);
+        color: var(--ink-mid);
+        max-width: none;
+    }
+
+    .primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-1);
+        height: 44px;
+        border: 0;
+        border-radius: var(--radius-card);
+        background: var(--prussian);
+        color: var(--surface);
+        font: inherit;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .primary:disabled { opacity: 0.55; cursor: default; }
+
+    /* ── the code, which is the only place the code appears ──────────────── */
+    .result {
+        border: 1px solid var(--brass);
+        border-radius: var(--radius-card);
+        padding: var(--space-3) var(--space-2);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-2);
+        padding: 0 var(--space-1);
+    }
+
+    .code-entry {
+        height: 46px;
+        text-align: center;
+        font-size: 17px;
+        font-weight: 500;
+        color: var(--brass);
+        border-color: var(--brass);
+    }
+
+    .code-entry::placeholder { color: var(--ink-soft); font-weight: 400; }
+
+    .specimen { display: flex; justify-content: center; }
+    .specimen :global(.mark[data-size='inline'] .cell) { width: 24px; height: 31px; }
+    .specimen :global(.mark[data-size='inline'] .cells) { gap: 2px; font-size: 15px; }
+    .specimen :global(.mark[data-size='inline'] .sigil) { font-size: 18px; }
+
+    .pill {
+        border-radius: var(--radius-pill);
+        padding: 2px var(--space-2);
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--surface);
+        background: var(--verdigris);
+        white-space: nowrap;
+    }
+
+    .pill[data-class='INVALID'] { background: var(--crimson); }
+    .pill[data-class='RESERVED'] { background: var(--ink-soft); }
+
+    .muted { font-size: var(--text-label-size); color: var(--ink-soft); }
+
+    .copy:disabled {
+        opacity: 0.4;
+        cursor: default;
+        border-color: var(--rule);
+        color: var(--ink-soft);
+    }
+
+    .copy {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-1);
+        height: 28px;
+        padding: 0 var(--space-2);
+        border: 1px solid var(--brass);
+        border-radius: var(--radius-cell);
+        background: var(--surface);
+        color: var(--brass);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .advisory {
+        margin: 0;
+        max-width: none;
+        font-size: var(--text-small-size);
+        line-height: var(--text-small-line);
+        color: var(--ink-mid);
+    }
+
+    .advisory[data-tone='warn'] {
+        border-left: 3px solid var(--brass);
+        padding: var(--space-1) 0 var(--space-1) var(--space-2);
+        color: var(--ink);
+    }
+
+    .advisory :global(b) {
+        font-family: var(--font-mono);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+
+    @media (max-width: 900px) {
+        .playground {
+            grid-template-columns: minmax(0, 1fr);
+            min-height: 0;
+        }
+
+        .stage { min-height: 340px; border-right: 0; border-bottom: 1px solid var(--rule); }
+        .panel { overflow: visible; }
+    }
+</style>
