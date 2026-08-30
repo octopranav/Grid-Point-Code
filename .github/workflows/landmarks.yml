@@ -1,0 +1,132 @@
+#  Copyright 2017 Pranavkumar Patel
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Builds the landmark shards from a GeoNames dump and publishes them as a
+# release asset.
+#
+# These are the places a short form can be anchored to. Five characters resolve
+# only against a reference near the point, so the playground has to be able to
+# say which references are near enough -- and outside that range recovery does
+# not fail, it returns somewhere else entirely.
+#
+# It is a job of its own, run by hand, for two reasons. It downloads 400 MB and
+# spends five minutes on it, which is not a thing to do on every push to a
+# stylesheet. And the data changing is a decision rather than a side effect: a
+# new archive here does not reach the site until the next Pages run, which is
+# the right way round for something a reader is asked to trust.
+#
+# Actions are pinned to a commit rather than a tag: a tag can be moved to point
+# at different code, a commit cannot. The release itself is made with `gh`,
+# which ships on the runner, so publishing adds no third party to the chain.
+
+name: Landmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      level:
+        description: 'Cell level to shard on'
+        required: false
+        default: '4'
+      slices:
+        description: 'Passes over the dump; more passes, less memory'
+        required: false
+        default: '8'
+
+# Enough to write the release, and nothing else.
+permissions:
+  contents: write
+
+concurrency:
+  group: landmarks
+  cancel-in-progress: false
+
+jobs:
+
+  build:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.x'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install exactly what the lockfile says
+        run: npm ci
+        working-directory: web
+
+      # The dump, and the two tables that turn its codes into words. Canadian
+      # provinces arrive as FIPS numerals, so `Ontario` has to be looked up --
+      # and printing `ON, CA` instead would invite a reader to hear Ontario,
+      # California, which is a real place 3,700 km from the other one.
+      - name: Fetch the GeoNames dump
+        run: |
+          mkdir -p geonames
+          cd geonames
+          for f in allCountries.zip admin1CodesASCII.txt countryInfo.txt; do
+            curl -fsSL --retry 3 --retry-delay 5 -O "https://download.geonames.org/export/dump/$f"
+          done
+          unzip -q allCountries.zip
+          rm allCountries.zip
+          echo "rows: $(wc -l < allCountries.txt)"
+
+      # Slices keep the peak under about 2 GB. Without them this needs more
+      # than 4 and is one runner change away from failing.
+      - name: Build the shards
+        run: |
+          node scripts/build-landmarks.mjs \
+            --geonames ../geonames \
+            --out public/landmarks \
+            --level '${{ inputs.level }}' \
+            --slices '${{ inputs.slices }}' | tee ../report.txt
+        working-directory: web
+
+      - name: Pack them
+        run: |
+          tar -czf landmarks.tar.gz -C web/public/landmarks .
+          ls -l landmarks.tar.gz
+
+      # One moving tag rather than a dated one, so the Pages build has a fixed
+      # name to ask for. Asking for `latest` would hand it whichever release is
+      # newest, and the ports publish releases here too.
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view landmarks >/dev/null 2>&1 || gh release create landmarks \
+            --title 'Landmark shards' \
+            --notes 'Built by the Landmarks workflow.'
+
+          gh release upload landmarks landmarks.tar.gz --clobber
+
+          {
+            echo 'Places a short form can be anchored to, sharded by cell.'
+            echo
+            echo 'Built by the Landmarks workflow from a GeoNames dump.'
+            echo
+            echo '```'
+            cat report.txt
+            echo '```'
+            echo
+            echo 'Data from [GeoNames](https://www.geonames.org), CC BY 4.0.'
+          } > notes.md
+          gh release edit landmarks --notes-file notes.md
+
+          cat report.txt >> "$GITHUB_STEP_SUMMARY"
