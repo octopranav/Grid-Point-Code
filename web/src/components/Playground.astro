@@ -18,6 +18,7 @@
 import CodeMark from './CodeMark.astro';
 import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
 import { BASEMAPS } from '../lib/basemap';
+import { FORMS, PAD } from '../lib/forms';
 
 const START = { latitude: 43.65, longitude: -79.38 };
 const code = GPC.encode(START.latitude, START.longitude);
@@ -73,32 +74,98 @@ const code = GPC.encode(START.latitude, START.longitude);
             <p class="note" data-code-note></p>
         </div>
 
-        <div class="block">
-            <div class="pair">
-                <label>
-                    <span class="label">Latitude</span>
-                    <input type="text" inputmode="decimal" data-latitude value={START.latitude.toFixed(6)} />
-                </label>
-                <label>
-                    <span class="label">Longitude</span>
-                    <input type="text" inputmode="decimal" data-longitude value={START.longitude.toFixed(6)} />
-                </label>
-            </div>
-            <p class="note" data-coordinate-note></p>
-        </div>
+        <div class="groups">
+            <details class="group" name="playground" open>
+                <summary>Where</summary>
+                <div class="body">
+                    <div class="pair">
+                        <label>
+                            <span class="label">Latitude</span>
+                            <input type="text" inputmode="decimal" data-latitude value={START.latitude.toFixed(6)} />
+                        </label>
+                        <label>
+                            <span class="label">Longitude</span>
+                            <input type="text" inputmode="decimal" data-longitude value={START.longitude.toFixed(6)} />
+                        </label>
+                    </div>
+                    <p class="note" data-coordinate-note></p>
 
-        <div class="block">
-            <button type="button" class="primary" data-locate>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"></path>
-                    <circle cx="12" cy="10" r="2.6"></circle>
-                </svg>
-                Use my location
-            </button>
-            <p class="note" data-locate-note></p>
-        </div>
+                    <button type="button" class="primary" data-locate>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"></path>
+                            <circle cx="12" cy="10" r="2.6"></circle>
+                        </svg>
+                        Use my location
+                    </button>
+                    <p class="note" data-locate-note></p>
+                    <p class="advisory" data-advisory hidden></p>
+                </div>
+            </details>
 
-        <p class="advisory" data-advisory hidden></p>
+            <details class="group" name="playground">
+                <summary>Nudge one cell</summary>
+                <div class="body">
+                    <div class="pad">
+                        {PAD.map((direction) =>
+                            direction === null ? (
+                                <span class="pad-centre" aria-hidden="true"></span>
+                            ) : (
+                                <button
+                                    type="button"
+                                    class="pad-key"
+                                    data-nudge={direction}
+                                    aria-label={'One cell ' + direction}
+                                >
+                                    <span aria-hidden="true">{direction}</span>
+                                </button>
+                            ),
+                        )}
+                    </div>
+                </div>
+            </details>
+
+            <details class="group" name="playground">
+                <summary>Also written as</summary>
+                <div class="body">
+                    <dl class="forms">
+                        {FORMS.map((form) => (
+                            <>
+                                <dt>
+                                    {form.label}
+                                    {form.caution && <span class="caution">{form.caution}</span>}
+                                </dt>
+                                <dd>
+                                    <span class="code" data-form={form.key}>—</span>
+                                    <button
+                                        type="button"
+                                        class="tiny"
+                                        data-copy-form={form.key}
+                                        aria-label={'Copy the ' + form.label.toLowerCase() + ' form'}
+                                    >
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+                                            <rect x="9" y="9" width="12" height="12" rx="1"></rect>
+                                            <path d="M5 15V4a1 1 0 0 1 1-1h9"></path>
+                                        </svg>
+                                    </button>
+                                </dd>
+                            </>
+                        ))}
+                    </dl>
+                </div>
+            </details>
+
+            <details class="group" name="playground">
+                <summary>Read aloud</summary>
+                <div class="body">
+                    <p class="aloud" data-aloud>—</p>
+                    <p class="note quiet">
+                        A callout is any word beginning with the symbol; the listener keeps
+                        the first character. Said in English, C, D, G, P, T and three all
+                        rhyme — which is what the check character is for.
+                    </p>
+                </div>
+            </details>
+        </div>
     </aside>
 </section>
 
@@ -106,6 +173,7 @@ const code = GPC.encode(START.latitude, START.longitude);
     import 'maplibre-gl/dist/maplibre-gl.css';
     import { GPC, CodeClass } from '@pranavpatel.ca/algo-gridpointcode';
     import { resolve, neighbourhood, type LevelCell } from '../lib/levels';
+    import { FORMS, COMPASS, aloud } from '../lib/forms';
     import {
         basemapStyle,
         chosenBasemap,
@@ -156,6 +224,15 @@ const code = GPC.encode(START.latitude, START.longitude);
         const copyButton = section.querySelector<HTMLButtonElement>('[data-copy]')!;
         const copyLabel = section.querySelector<HTMLElement>('[data-copy-label]')!;
         const basemapChooser = section.querySelector<HTMLSelectElement>('[data-basemap]')!;
+        const aloudLine = section.querySelector<HTMLElement>('[data-aloud]')!;
+        const formValues = new Map(
+            FORMS.map((form) => [
+                form.key,
+                section.querySelector<HTMLElement>('[data-form="' + form.key + '"]')!,
+            ]),
+        );
+        const nudgeKeys = [...section.querySelectorAll<HTMLButtonElement>('[data-nudge]')];
+        const formCopies = [...section.querySelectorAll<HTMLButtonElement>('[data-copy-form]')];
 
         const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
@@ -180,7 +257,7 @@ const code = GPC.encode(START.latitude, START.longitude);
          * the clipboard holding a code from several minutes ago -- which looks
          * exactly like the button handing back a stale answer.
          */
-        function setCode(value: string | null, latitude?: number) {
+        function setCode(value: string | null, latitude?: number, longitude?: number) {
             code = value;
 
             const symbols = (value ?? '').replace(/[^0-9A-Z]/g, '');
@@ -195,9 +272,37 @@ const code = GPC.encode(START.latitude, START.longitude);
             copyButton.disabled = value === null;
             copyLabel.textContent = 'Copy';
 
-            if (value === null || latitude === undefined) {
+            // Everything below is derived from the code, so it is computed here
+            // and nowhere else. Any form updated somewhere else is a form that
+            // can be left behind showing an answer to a question nobody asked
+            // any more -- which has already happened three times on this panel.
+            const usable = value !== null && latitude !== undefined && longitude !== undefined;
+
+            for (const key of nudgeKeys) key.disabled = !usable;
+            for (const key of formCopies) key.disabled = !usable;
+
+            if (!usable) {
                 cellSize.textContent = '—';
+                aloudLine.textContent = '—';
+                for (const slot of formValues.values()) slot.textContent = '—';
                 return;
+            }
+
+            aloudLine.textContent = aloud(value as string);
+            for (const form of FORMS) {
+                const slot = formValues.get(form.key);
+                if (!slot) continue;
+                try {
+                    slot.textContent = form.of(
+                        value as string,
+                        latitude as number,
+                        longitude as number,
+                    );
+                } catch {
+                    // A form that cannot be produced says so rather than keeping
+                    // the last one that could.
+                    slot.textContent = '—';
+                }
             }
 
             // A cell is square at 41.4 degrees and stretches away from it, so
@@ -530,6 +635,30 @@ const code = GPC.encode(START.latitude, START.longitude);
             }
         }
 
+        /** Move the drawn cell one step, without a descent. */
+        function nudgeTo(latitude: number, longitude: number) {
+            generation += 1;
+            descending = false;
+            if (!map || !code) return;
+
+            const cell = resolve(latitude, longitude).levels[9];
+            clearBoxes();
+            addBox(cell);
+            shown = cell;
+            setOpacity(1, 0.18);
+
+            // Only chase it if it has gone off the edge. Recentring on every
+            // step would drag the map about under a reader who is trying to
+            // look at something next to where they are stepping.
+            const bounds = map.getBounds();
+            const outside =
+                longitude < bounds.getWest() ||
+                longitude > bounds.getEast() ||
+                latitude < bounds.getSouth() ||
+                latitude > bounds.getNorth();
+            if (outside) map.easeTo({ center: [longitude, latitude], duration: 400 });
+        }
+
         /** Which level the current view is already showing, near enough. */
         function levelOnScreen(): number {
             if (!map) return 1;
@@ -559,7 +688,7 @@ const code = GPC.encode(START.latitude, START.longitude);
         function place(
             latitude: number,
             longitude: number,
-            from: 'map' | 'fields' | 'code' | 'elsewhere',
+            from: 'map' | 'fields' | 'code' | 'elsewhere' | 'nudge',
             accuracy?: number,
         ) {
             code = GPC.encode(latitude, longitude);
@@ -570,18 +699,33 @@ const code = GPC.encode(START.latitude, START.longitude);
             // does not have.
             const [centreLatitude, centreLongitude] = GPC.decode(code);
 
-            if (from !== 'fields') {
-                latitudeField.value = centreLatitude.toFixed(6);
-                longitudeField.value = centreLongitude.toFixed(6);
-            }
+            // The coordinate fields always show the centre of the cell, even
+            // when the reader typed the point themselves: the code names a
+            // cell, and a field saying something the code does not mean is one
+            // more place that can disagree. Safe to overwrite because those
+            // fields report on `change` — blur or Enter — by which time the
+            // typing is finished.
+            latitudeField.value = centreLatitude.toFixed(6);
+            longitudeField.value = centreLongitude.toFixed(6);
+
+            // The code field is different: it reports on every keystroke, so
+            // writing to it mid-word would eat what is being typed.
             if (from !== 'code') codeField.value = code;
 
-            setCode(code, centreLatitude);
+            setCode(code, centreLatitude, centreLongitude);
             say(CodeClass.GEOMETRIC, '');
             coordinateNote.textContent = '';
             locateNote.textContent = '';
             if (from !== 'code') codeNote.textContent = '';
             showAccuracy(accuracy);
+
+            // A nudge is a step of one cell, often a couple of metres. Falling
+            // from the world to show it would be absurd, so the box simply moves
+            // and the camera follows if the point has left the view.
+            if (from === 'nudge') {
+                nudgeTo(centreLatitude, centreLongitude);
+                return;
+            }
 
             // A click already has a frame, so it picks up from the level the
             // view is showing. Everything else is a brand new place and starts
@@ -852,6 +996,41 @@ const code = GPC.encode(START.latitude, START.longitude);
             });
         }
 
+        for (const key of nudgeKeys) {
+            key.addEventListener('click', () => {
+                if (!code) return;
+                const wanted = COMPASS.indexOf(
+                    key.dataset.nudge as (typeof COMPASS)[number],
+                );
+                if (wanted < 0) return;
+                // The library returns the eight clockwise from north; COMPASS
+                // names that order, so the index is the direction.
+                const next = GPC.neighbours(code)[wanted];
+                if (!next) return;
+                const [latitude, longitude] = GPC.decode(next);
+                place(latitude, longitude, 'nudge');
+            });
+        }
+
+        // One handler for every row: each reads the text that is on screen, and
+        // that text is only ever written by setCode, so it cannot be stale.
+        for (const button of formCopies) {
+            button.addEventListener('click', async () => {
+                const slot = formValues.get(button.dataset.copyForm ?? '');
+                const text = slot?.textContent ?? '';
+                if (!text || text === '—') return;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    button.dataset.copied = 'true';
+                    setTimeout(() => {
+                        delete button.dataset.copied;
+                    }, 1200);
+                } catch {
+                    /* the reader can select it instead */
+                }
+            });
+        }
+
         copyButton.addEventListener('click', async () => {
             // Disabled whenever there is no code, so this cannot be reached with
             // nothing to give -- and the clipboard is never left holding an
@@ -872,23 +1051,37 @@ const code = GPC.encode(START.latitude, START.longitude);
 
         // Without a map the panel still works; the descent simply has nowhere
         // to happen, so the code appears on its own.
-        setCode(GPC.encode(start.latitude, start.longitude), start.latitude);
+        setCode(
+            GPC.encode(start.latitude, start.longitude),
+            start.latitude,
+            start.longitude,
+        );
         void loadMap();
     }
 </script>
 
 <style>
+    /* A fixed height, not a minimum. With `min-height` the grid grows past the
+       viewport when the panel gets long, the panel's own overflow never engages,
+       and the whole page scrolls instead -- taking the map with it. `min-height:
+       0` on both tracks is the other half: a grid item will not shrink below its
+       content without it, so the panel could not scroll even once the frame was
+       pinned. */
     .playground {
         display: grid;
         grid-template-columns: minmax(0, 1fr) 420px;
-        min-height: calc(100vh - 56px);
+        /* Stretched by the flex parent rather than sized as a percentage of it:
+           a percentage height needs a definite parent, and asking for one here
+           is one more thing that can quietly fail to resolve. */
+        flex: 1;
+        min-height: 0;
     }
 
     .stage {
         position: relative;
         background: var(--sunken);
         border-right: 1px solid var(--rule);
-        min-height: 420px;
+        min-height: 0;
     }
 
     .map { position: absolute; inset: 0; }
@@ -928,16 +1121,95 @@ const code = GPC.encode(START.latitude, START.longitude);
         z-index: 1;
     }
 
+    /* The card sits above the scrolling region rather than sticking to the top
+       of it -- the difference between a fixed head and a floating one. Nothing
+       passes behind a fixed head, so no stacking order or opaque backing is
+       holding the illusion together, and the group titles below can stick at
+       zero without anyone having to measure how tall the card happens to be.
+       An earlier attempt did make the card sticky and offset the titles by its
+       measured height, which needed a ResizeObserver; those are delivered with
+       the rendering steps, so wherever those do not run the offset was never
+       set and the titles slid underneath. A structure that cannot be wrong is
+       worth more than a measurement that is usually right. */
     .panel {
         background: var(--surface);
-        padding: var(--space-4) var(--space-3);
+        padding: var(--space-3);
         display: flex;
         flex-direction: column;
-        gap: var(--space-4);
+        gap: var(--space-2);
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .groups {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        flex: 1;
+        min-height: 0;
         overflow-y: auto;
     }
 
-    .block { display: flex; flex-direction: column; gap: var(--space-2); }
+    /* ── groups ──────────────────────────────────────────────────────────
+       Native `details` with a shared `name`, which browsers open one at a time
+       without a line of script. Where that is not supported they simply all
+       open, which is the old behaviour and no worse than it was. */
+    .group {
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-card);
+        background: var(--surface);
+    }
+
+    .group summary {
+        list-style: none;
+        cursor: pointer;
+        /* Held at the top of the scrolling region, so a reader inside a long
+           group can still see which group they are in. Opaque, because a sticky
+           element without a background is a transparent hole and whatever
+           scrolls underneath shows straight through it. */
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: var(--surface);
+        border-radius: var(--radius-card) var(--radius-card) 0 0;
+        padding: var(--space-2) var(--space-3);
+        font-size: var(--text-small-size);
+        font-weight: 500;
+        color: var(--ink-mid);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .group summary::-webkit-details-marker { display: none; }
+
+    .group summary::after {
+        content: '';
+        width: 7px;
+        height: 7px;
+        border-right: 1.5px solid currentColor;
+        border-bottom: 1.5px solid currentColor;
+        transform: rotate(45deg) translate(-2px, -2px);
+        transition: transform 160ms ease-out;
+    }
+
+    .group[open] summary { color: var(--ink); }
+    .group[open] summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
+
+    .group .body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        padding: 0 var(--space-3) var(--space-3);
+    }
+
+    /* The answer is never inside a group and never scrolls at all: it is the
+       one thing a reader is here for, and hiding it behind a heading they have
+       to open would be a strange way to present it. */
+    .result {
+        flex: none;
+    }
+
     .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
     label { display: flex; flex-direction: column; gap: var(--space-1); }
 
@@ -991,6 +1263,10 @@ const code = GPC.encode(START.latitude, START.longitude);
         display: flex;
         flex-direction: column;
         gap: var(--space-2);
+        /* Opaque, and that is not decoration. A sticky element without a
+           background is a transparent hole: everything scrolling underneath
+           shows straight through it and the two collide. */
+        background: var(--surface);
     }
 
     .row {
@@ -1057,6 +1333,102 @@ const code = GPC.encode(START.latitude, START.longitude);
         cursor: pointer;
     }
 
+    /* ── the nudge pad ───────────────────────────────────────────────── */
+    .pad {
+        display: grid;
+        grid-template-columns: repeat(3, 46px);
+        grid-template-rows: repeat(3, 40px);
+        gap: 3px;
+    }
+
+    .pad-key {
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-cell);
+        background: var(--surface);
+        color: var(--ink-mid);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        cursor: pointer;
+    }
+
+    .pad-key:hover:not(:disabled) { border-color: var(--brass); color: var(--brass); }
+    .pad-key:disabled { opacity: 0.4; cursor: default; }
+
+    .pad-centre {
+        border: 1px dashed var(--rule);
+        border-radius: var(--radius-cell);
+        background: var(--sunken);
+    }
+
+    /* ── the other forms ─────────────────────────────────────────────── */
+    .forms {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--space-2);
+        margin: 0;
+    }
+
+    .forms dt {
+        font-size: var(--text-small-size);
+        color: var(--ink-mid);
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-1);
+        flex-wrap: wrap;
+    }
+
+    .caution {
+        font-family: var(--font-mono);
+        font-size: var(--text-label-size);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--brass);
+    }
+
+    .forms dd {
+        margin: 0 0 var(--space-2);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-2);
+        padding-bottom: var(--space-2);
+        border-bottom: 1px solid var(--rule-soft);
+    }
+
+    .forms dd .code {
+        font-size: 13px;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .tiny {
+        display: grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        flex-shrink: 0;
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-cell);
+        background: var(--surface);
+        color: var(--ink-soft);
+        cursor: pointer;
+    }
+
+    .tiny:hover:not(:disabled) { border-color: var(--brass); color: var(--brass); }
+    .tiny:disabled { opacity: 0.35; cursor: default; }
+    .tiny[data-copied] { border-color: var(--verdigris); color: var(--verdigris); }
+
+    .aloud {
+        margin: 0;
+        max-width: none;
+        font-size: var(--text-small-size);
+        line-height: 1.6;
+        color: var(--ink);
+    }
+
+    .quiet { color: var(--ink-soft); }
+
     .advisory {
         margin: 0;
         max-width: none;
@@ -1083,7 +1455,12 @@ const code = GPC.encode(START.latitude, START.longitude);
             min-height: 0;
         }
 
-        .stage { min-height: 340px; border-right: 0; border-bottom: 1px solid var(--rule); }
+        /* On a narrow screen a pinned frame is worse than a scrolling one:
+           there is not enough height to divide. The map takes a fixed slice and
+           the page scrolls normally. */
+        .playground { flex: none; }
+        .stage { height: 55vh; min-height: 300px; border-right: 0; border-bottom: 1px solid var(--rule); }
         .panel { overflow: visible; }
+        .groups { overflow: visible; flex: none; }
     }
 </style>

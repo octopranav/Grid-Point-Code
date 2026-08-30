@@ -8,12 +8,6 @@ const description =
     'lookup table and no network.';
 ---
 
-<Base title="Playground" description={description}>
+<Base title="Playground" description={description} fills>
     <Playground />
 </Base>
-
-<style>
-    /* The playground is a tool rather than a document, so it takes the whole
-       frame: no page margins, no measure, nothing between it and the edges. */
-    :global(main) { display: flex; flex-direction: column; }
-</style>
