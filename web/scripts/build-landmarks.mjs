@@ -104,7 +104,7 @@ async function eachRow(files, visit) {
     }
 }
 
-export async function build({ geonames, out, dumps }) {
+export async function build({ geonames, out, dumps, level }) {
     const lookup = await tables(geonames);
 
     // Pass one counts the text we would print. A name that is not unique
@@ -138,7 +138,7 @@ export async function build({ geonames, out, dumps }) {
 
         let shard;
         try {
-            shard = GPC.cell(GPC.encode(latitude, longitude), 3);
+            shard = GPC.cell(GPC.encode(latitude, longitude), level);
         } catch {
             unplaceable++;                    // reserved, or outside the domain
             return;
@@ -174,6 +174,17 @@ export async function build({ geonames, out, dumps }) {
         bytes += Buffer.byteLength(json);
     }
 
+    // The shards say how they were cut. The reader has to know the level to
+    // work out which files a box reaches into, and a reader that assumes one
+    // while the build used another asks for names that do not exist -- which
+    // does not look like a broken build, it looks like a place with no
+    // landmarks near it. Written beside the data so the two cannot drift.
+    await writeFile(
+        path.join(out, 'manifest.json'),
+        JSON.stringify({ level, shards: shards.size, landmarks: kept }),
+        'utf8',
+    );
+
     return { kept, ambiguous, unplaceable, shards: shards.size, bytes };
 }
 
@@ -191,11 +202,16 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
         process.exit(2);
     }
     const out = argument('out', 'public/landmarks');
+    const level = Number(argument('level', '4'));
 
+    // The world dump contains every country dump, so taking both would file
+    // those countries twice. Whole world if it is there, per-country otherwise.
     const { readdir } = await import('node:fs/promises');
-    const dumps = (await readdir(geonames))
-        .filter((f) => /^[A-Z]{2}\.txt$/.test(f) || f === 'allCountries.txt')
-        .map((f) => path.join(geonames, f));
+    const present = await readdir(geonames);
+    const dumps = (present.includes('allCountries.txt')
+        ? ['allCountries.txt']
+        : present.filter((f) => /^[A-Z]{2}\.txt$/.test(f))
+    ).map((f) => path.join(geonames, f));
 
     if (dumps.length === 0) {
         console.error(`no country dumps found in ${geonames}`);
@@ -203,10 +219,10 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     }
 
     const started = Date.now();
-    const report = await build({ geonames, out, dumps });
+    const report = await build({ geonames, out, dumps, level });
     const mb = (report.bytes / 1048576).toFixed(1);
 
-    console.log(`from ${dumps.length} dump(s) in ${((Date.now() - started) / 1000).toFixed(1)}s`);
+    console.log(`from ${dumps.length} dump(s) at level ${level} in ${((Date.now() - started) / 1000).toFixed(1)}s`);
     console.log(`  kept        ${report.kept.toLocaleString('en')}`);
     console.log(`  ambiguous   ${report.ambiguous.toLocaleString('en')}  (name not unique in its region)`);
     console.log(`  unplaceable ${report.unplaceable.toLocaleString('en')}`);

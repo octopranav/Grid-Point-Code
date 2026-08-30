@@ -38,8 +38,8 @@ interface Shard {
 // shard that does not exist should be asked for once, not on every keystroke.
 const held = new Map<string, Promise<Shard | null>>();
 
-const url = (shard: string) =>
-    `${import.meta.env.BASE_URL.replace(/\/$/, '')}/landmarks/${shard}.json`;
+const base = () => import.meta.env.BASE_URL.replace(/\/$/, '');
+const url = (shard: string) => `${base()}/landmarks/${shard}.json`;
 
 function fetchShard(shard: string): Promise<Shard | null> {
     const already = held.get(shard);
@@ -53,22 +53,40 @@ function fetchShard(shard: string): Promise<Shard | null> {
     return pending;
 }
 
+interface Manifest {
+    level: number;
+    shards: number;
+    landmarks: number;
+}
+
+// Which level the shards were cut at is a property of the data, not of this
+// file. Assuming it means that rebuilding at a different level turns every
+// lookup into a miss, and a miss reads as `no landmarks near here` rather than
+// as the broken deployment it is.
+let described: Promise<Manifest | null> | null = null;
+
+function manifest(): Promise<Manifest | null> {
+    described ??= fetch(`${base()}/landmarks/manifest.json`)
+        .then((response) => (response.ok ? (response.json() as Promise<Manifest>) : null))
+        .catch(() => null);
+    return described;
+}
+
 /**
  * The shards the recovery box reaches into.
  *
- * The box is under 11 km across and a level-3 cell is about 200 by 267 km, so
- * this is one shard nine times in ten and never more than four. Taken from the
- * corners rather than the centre, because a box that straddles a boundary is
- * exactly the case a centre lookup would miss.
+ * Taken from the corners rather than the centre, because a box that straddles
+ * a boundary is exactly the case a centre lookup would miss -- and missing one
+ * does not raise anything, it just quietly shortens the list.
  */
-export function shardsFor(latitude: number, longitude: number): string[] {
+export function shardsFor(latitude: number, longitude: number, level: number): string[] {
     const shards = new Set<string>();
     for (const dy of [-1, 1]) {
         for (const dx of [-1, 1]) {
             const corner = latitude + dy * RECOVERY.latitude;
             const wrapped = ((longitude + dx * RECOVERY.longitude + 540) % 360) - 180;
             try {
-                shards.add(GPC.cell(GPC.encode(Math.max(-90, Math.min(90, corner)), wrapped), 3));
+                shards.add(GPC.cell(GPC.encode(Math.max(-90, Math.min(90, corner)), wrapped), level));
             } catch {
                 // A corner past the pole or inside the reserved range has no
                 // shard. The other corners still do, and the box is clipped to
@@ -89,7 +107,12 @@ export function shardsFor(latitude: number, longitude: number): string[] {
  * in any case.
  */
 export async function nearby(latitude: number, longitude: number): Promise<Choice[]> {
-    const shards = await Promise.all(shardsFor(latitude, longitude).map(fetchShard));
+    const described = await manifest();
+    if (!described) return [];       // no data deployed: an empty list, honestly
+
+    const shards = await Promise.all(
+        shardsFor(latitude, longitude, described.level).map(fetchShard),
+    );
 
     let here: string | null = null;
     try {
