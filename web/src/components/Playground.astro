@@ -165,6 +165,12 @@ const code = GPC.encode(START.latitude, START.longitude);
                     </p>
                     <p class="note" data-anchor-note></p>
                     <ul class="anchors" data-anchors></ul>
+                    <div class="offline" data-offline hidden>
+                        <button type="button" class="secondary" data-keep>Keep this area offline</button>
+                        <button type="button" class="secondary" data-forget hidden>Forget</button>
+                        <p class="note quiet" data-offline-note></p>
+                    </div>
+
                     <div class="anchored">
                         <span class="code" data-anchored>—</span>
                         <button
@@ -203,7 +209,15 @@ const code = GPC.encode(START.latitude, START.longitude);
     import { GPC, CodeClass } from '@pranavpatel.ca/algo-gridpointcode';
     import { resolve, neighbourhood, type LevelCell } from '../lib/levels';
     import { FORMS, COMPASS, aloud } from '../lib/forms';
-    import { nearby, anchored, type Choice } from '../lib/landmarks';
+    import {
+        nearby,
+        anchored,
+        canKeep,
+        keepArea,
+        kept,
+        forget,
+        type Choice,
+    } from '../lib/landmarks';
     import {
         basemapStyle,
         chosenBasemap,
@@ -267,8 +281,10 @@ const code = GPC.encode(START.latitude, START.longitude);
         const anchorNote = section.querySelector<HTMLElement>('[data-anchor-note]')!;
         const anchoredLine = section.querySelector<HTMLElement>('[data-anchored]')!;
         const anchoredCopy = section.querySelector<HTMLButtonElement>('[data-copy-anchored]')!;
-
-        const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
+        const offlineRow = section.querySelector<HTMLElement>('[data-offline]')!;
+        const offlineNote = section.querySelector<HTMLElement>('[data-offline-note]')!;
+        const keepButton = section.querySelector<HTMLButtonElement>('[data-keep]')!;
+        const forgetButton = section.querySelector<HTMLButtonElement>('[data-forget]')!;
 
         let map: MapLibreMap | null = null;
         let code: string | null = null;
@@ -371,6 +387,8 @@ const code = GPC.encode(START.latitude, START.longitude);
         let asked = 0;
         let choices: Choice[] = [];
         let picked: string | null = null;
+        /** Where the list is for. Set here so nothing else has to be asked. */
+        let anchorAt: { latitude: number; longitude: number } | null = null;
 
         /** Identity that survives a nudge; two landmarks can share a name. */
         const identify = (choice: Choice) => choice.name + '\u0000' + choice.region;
@@ -442,12 +460,14 @@ const code = GPC.encode(START.latitude, START.longitude);
         function blankAnchors(note: string) {
             choices = [];
             picked = null;
+            anchorAt = null;
             anchorNote.textContent = note;
             drawAnchors();
         }
 
         function findAnchors(latitude: number, longitude: number) {
             const mine = ++asked;
+            anchorAt = { latitude, longitude };
             anchorNote.textContent = 'Looking for references\u2026';
 
             nearby(latitude, longitude).then(
@@ -489,6 +509,65 @@ const code = GPC.encode(START.latitude, START.longitude);
                 /* a refused clipboard is not worth an error message */
             }
         });
+
+
+        // ── keeping an area to hand ────────────────────────────────────────
+        //
+        // Offered only where the browser will actually honour it. A button that
+        // silently does nothing is worse than no button, and a page served over
+        // plain http or opened from a file has no cache to write into.
+        const size = (bytes: number) =>
+            bytes < 1048576
+                ? Math.round(bytes / 1024) + ' KB'
+                : (bytes / 1048576).toFixed(1) + ' MB';
+
+        // Reports how much is held; deliberately does not touch the note. It
+        // runs after a keep, and what the reader wants to read then is what
+        // that keep just did, not the running total it already knew.
+        async function showKept(): Promise<number> {
+            const holding = await kept();
+            const held = holding?.shards ?? 0;
+            forgetButton.hidden = held === 0;
+            return held;
+        }
+
+        const heldSoFar = (held: number) =>
+            held + ' shard' + (held === 1 ? '' : 's') + ' held for use without a network.';
+
+        if (canKeep()) {
+            offlineRow.hidden = false;
+            void showKept().then((held) => {
+                if (held > 0) offlineNote.textContent = heldSoFar(held);
+            });
+
+            keepButton.addEventListener('click', async () => {
+                if (anchorAt === null) return;
+                keepButton.disabled = true;
+                const said = keepButton.textContent;
+                keepButton.textContent = 'Keeping\u2026';
+                offlineNote.textContent = '';
+                try {
+                    const area = await keepArea(anchorAt.latitude, anchorAt.longitude);
+                    offlineNote.textContent =
+                        area.shards === 0
+                            ? 'Nothing to keep here \u2014 this area holds no landmarks.'
+                            : 'Kept ' + area.shards + ' shard' + (area.shards === 1 ? '' : 's')
+                              + ' (' + size(area.bytes) + ') around cell ' + area.cell + '.';
+                } catch {
+                    offlineNote.textContent = 'That area could not be kept.';
+                } finally {
+                    keepButton.disabled = false;
+                    keepButton.textContent = said;
+                    void showKept();
+                }
+            });
+
+            forgetButton.addEventListener('click', async () => {
+                await forget();
+                offlineNote.textContent = 'Everything held has been given back.';
+                forgetButton.hidden = true;
+            });
+        }
 
         /**
          * No code: nothing is half-shown.
@@ -1630,6 +1709,45 @@ const code = GPC.encode(START.latitude, START.longitude);
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--brass);
+    }
+
+    /* The reader can ask for the area around a point before losing the
+       network. A cell one level above a shard is about 200 by 267 km, which is
+       a few hundred kilobytes -- worth asking for before a journey, where the
+       whole world at eighty-odd megabytes would not be. */
+    .offline {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-2);
+        padding-top: var(--space-2);
+        border-top: 1px solid var(--rule-soft);
+    }
+
+    .offline .note {
+        flex-basis: 100%;
+        margin: 0;
+    }
+
+    .secondary {
+        height: 32px;
+        padding: 0 var(--space-2);
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-cell);
+        background: var(--surface);
+        color: var(--ink);
+        font: inherit;
+        font-size: var(--text-small-size);
+        cursor: pointer;
+    }
+
+    .secondary:hover:not(:disabled) {
+        border-color: var(--brass);
+    }
+
+    .secondary:disabled {
+        color: var(--ink-soft);
+        cursor: default;
     }
 
     .anchored {

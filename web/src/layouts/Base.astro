@@ -89,6 +89,22 @@ const canonical = new URL(route, Astro.site);
             <slot />
         </main>
         {!fills && <Footer />}
+
+        <script>
+            // Registered after load, and never awaited: the site is arithmetic
+            // and works without it. All this buys is the same site with the
+            // network cut -- which for a format whose whole claim is that a
+            // code needs no lookup seems the least it should manage.
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker
+                        .register(import.meta.env.BASE_URL + 'sw.js')
+                        .catch(() => {
+                            /* refused registration costs only the offline copy */
+                        });
+                });
+            }
+        </script>
     </body>
 </html>
 

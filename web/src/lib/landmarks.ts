@@ -57,6 +57,8 @@ interface Manifest {
     level: number;
     shards: number;
     landmarks: number;
+    /** When the archive was built. What tells a held copy from a current one. */
+    built: string;
 }
 
 // Which level the shards were cut at is a property of the data, not of this
@@ -108,7 +110,11 @@ export function shardsFor(latitude: number, longitude: number, level: number): s
  */
 export async function nearby(latitude: number, longitude: number): Promise<Choice[]> {
     const described = await manifest();
-    if (!described) return [];       // no data deployed: an empty list, honestly
+
+    // Not an empty list. An empty list means open country, and saying that
+    // when the archive simply is not deployed would be a lie the reader
+    // cannot see through -- they would believe there is nowhere near them.
+    if (!described) throw new Error('no landmark data is deployed');
 
     const shards = await Promise.all(
         shardsFor(latitude, longitude, described.level).map(fetchShard),
@@ -151,4 +157,106 @@ export async function nearby(latitude: number, longitude: number): Promise<Choic
 export function anchored(short: string, choice: Choice): string {
     const dashed = short.startsWith('-') ? short : `-${short}`;
     return `${dashed} near ${choice.name}, ${choice.region}`;
+}
+
+// ── keeping an area to hand ────────────────────────────────────────────────
+
+/**
+ * The alphabet of section 4, written out rather than read from the library,
+ * which keeps it private. It cannot change without changing the format, so
+ * this is a constant in the same sense the grid is.
+ */
+const ALPHABET = '0123456789CDFGHJKLMNPRTWX';
+
+const shardCacheName = (described: Manifest) => `gpc-landmarks-${described.built}`;
+
+/** Whether the browser will let anything be kept at all. */
+export const canKeep = () => typeof caches !== 'undefined';
+
+export interface Area {
+    /** The cell being kept: one level up from a shard. */
+    cell: string;
+    /** How many of its shards hold anything. Most of the planet is ocean. */
+    shards: number;
+    bytes: number;
+}
+
+/**
+ * Fetch and keep every shard of the area around a point.
+ *
+ * The area is the cell one level above a shard -- about 200 by 267 km at the
+ * level the archive is cut for. That is a deliberate size: large enough to be
+ * worth asking for before a journey, small enough that the answer is a few
+ * hundred kilobytes rather than the eighty-odd megabytes the whole world
+ * weighs. Shards already held are not fetched again.
+ *
+ * Written into the cache the worker reads from, under the name the current
+ * build stamped, so keeping something and being served it offline are the
+ * same act rather than two that have to agree.
+ */
+export async function keepArea(latitude: number, longitude: number): Promise<Area> {
+    const described = await manifest();
+    if (!described) throw new Error('no landmark data is deployed');
+    if (!canKeep()) throw new Error('this browser will not keep anything');
+
+    const area = GPC.cell(GPC.encode(latitude, longitude), described.level - 1);
+    const cache = await caches.open(shardCacheName(described));
+    const wanted = [...ALPHABET].map((symbol) => url(area + symbol));
+
+    // Fetching happens together, because it is all network waiting and there
+    // are at most twenty-five of them.
+    await Promise.all(
+        wanted.map(async (address) => {
+            if (await cache.match(address)) return;
+
+            let response: Response;
+            try {
+                response = await fetch(address);
+            } catch {
+                return;                  // no network for this one; the rest may work
+            }
+            // A 404 is ocean, which is an answer rather than a failure.
+            if (!response.ok) return;
+
+            await cache.put(address, response);
+        }),
+    );
+
+    // Measuring happens one at a time, and that is not fussiness. Reading
+    // twenty-five cached bodies at once returned 1,177 bytes where reading the
+    // same twenty-five in turn returned 83,506 -- the stored data was whole
+    // either way, but concurrent reads of it were not. A wrong size is a small
+    // lie told confidently, which is worse than the millisecond this costs.
+    let shards = 0;
+    let bytes = 0;
+    for (const address of wanted) {
+        const held = await cache.match(address);
+        if (!held) continue;
+        shards += 1;
+        bytes += (await held.arrayBuffer()).byteLength;
+    }
+
+    return { cell: area, shards, bytes };
+}
+
+/** How much is being kept, across every area asked for so far. */
+export async function kept(): Promise<{ shards: number } | null> {
+    if (!canKeep()) return null;
+    const described = await manifest();
+    if (!described) return null;
+
+    const names = await caches.keys();
+    const name = shardCacheName(described);
+    if (!names.includes(name)) return { shards: 0 };
+
+    const cache = await caches.open(name);
+    return { shards: (await cache.keys()).length };
+}
+
+/** Give it all back. Every build's worth, not just the current one. */
+export async function forget(): Promise<void> {
+    if (!canKeep()) return;
+    for (const name of await caches.keys()) {
+        if (name.startsWith('gpc-landmarks-')) await caches.delete(name);
+    }
 }
