@@ -71,7 +71,7 @@ const NUMBERS = [
 const callout = (symbol: string) => CALLOUTS[symbol] ?? NUMBERS[Number(symbol)];
 
 /**
- * A code as it should be read aloud.
+ * A code as it should be read aloud — which is always the check form.
  *
  * The alphabet excludes vowels so a code cannot spell a word, and excludes the
  * shapes a reader confuses on paper — but it was never chosen for phonetic
@@ -79,16 +79,30 @@ const callout = (symbol: string) => CALLOUTS[symbol] ?? NUMBERS[Number(symbol)];
  * three all rhyme. A listener who hears D where T was said writes down a code
  * that parses, validates, and decodes somewhere else.
  *
+ * Callouts are what avoid that; the check character is what catches it when
+ * they fail, and appendix D.1 puts one on anything dictated for exactly this
+ * reason. So the check character is added here rather than expected from the
+ * caller: a spoken line without it is the one case the specification names as
+ * a mistake, and asking every call site to remember that is how it gets made.
+ * `withCheck` is idempotent, so a code that already carries one is unharmed.
+ *
  * Two details are the specification's and both matter to a listener who is
  * writing: the group boundary is worth a pause, and the check character is
  * named as one rather than read as an eleventh symbol, so they know where it
  * goes. Verified against the worked example in appendix D.2.
  */
 export function aloud(code: string): string {
-    const [payload, check] = GPC.normalise(code);
+    const [payload, check] = GPC.normalise(GPC.withCheck(code));
+
+    // Unreachable: the code was just put into the check form. Stated rather
+    // than defaulted, because the only alternatives are a spoken line with the
+    // check character silently missing or one with the word `undefined` in it,
+    // and this is the form whose whole purpose is catching a wrong character.
+    if (check === null) throw new Error('the check form has no check character');
+
     const head = [...payload.slice(0, 5)].map(callout).join(', ');
     const tail = [...payload.slice(5)].map(callout).join(', ');
-    return head + ' — ' + tail + (check ? ' — check ' + callout(check) : '');
+    return head + ' — ' + tail + ' — check ' + callout(check);
 }
 
 /**
