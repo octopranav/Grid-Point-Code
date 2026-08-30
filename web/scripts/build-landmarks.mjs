@@ -50,6 +50,32 @@ const field = {
 /** The string a listener would be given, minus the code itself. */
 const describe = (name, region) => (region ? `${name}, ${region}` : name);
 
+/**
+ * A 52-bit fingerprint of that string.
+ *
+ * Pass one below only needs to know which descriptions occur more than once,
+ * and holding nine million of them as strings to find out costs several
+ * gigabytes -- enough that the build died on a 3 GB heap and would have needed
+ * a large runner to survive. Numbers pack into a typed array at eight bytes
+ * each and sort in place, which turns the question into a scan.
+ *
+ * Two independent hashes, truncated to 52 bits so every value stays an exact
+ * integer in a double. Over nine million descriptions that is about a one per
+ * cent chance of a single collision anywhere in the world, and a collision
+ * drops a good landmark rather than admitting a bad one -- the same direction
+ * every other judgement here leans.
+ */
+function fingerprint(text) {
+    let a = 0x811c9dc5;
+    let b = 0x1505;
+    for (let i = 0; i < text.length; i++) {
+        const c = text.charCodeAt(i);
+        a = Math.imul(a ^ c, 0x01000193) >>> 0;
+        b = (Math.imul(b, 33) + c) >>> 0;
+    }
+    return a * 1048576 + (b >>> 12);
+}
+
 async function tables(dir) {
     const countries = new Map();
     for (const line of (await readFile(path.join(dir, 'countryInfo.txt'), 'utf8')).split('\n')) {
@@ -104,88 +130,129 @@ async function eachRow(files, visit) {
     }
 }
 
-export async function build({ geonames, out, dumps, level }) {
+export async function build({ geonames, out, dumps, level, slices = 8 }) {
     const lookup = await tables(geonames);
 
-    // Pass one counts the text we would print. A name that is not unique
-    // within its own region makes an ambiguous string, and an ambiguous string
-    // is the silent failure again by another route: Scarborough is a district
-    // of Toronto and a place in the north, and a listener who picks the wrong
-    // one is not told. Counted rather than assumed, and counted over the text
-    // rather than the name, because the region is what disambiguates it.
-    const seen = new Map();
+    // Pass one finds the text we would print more than once. A name that is
+    // not unique within its own region makes an ambiguous string, and an
+    // ambiguous string is the silent failure again by another route:
+    // Scarborough is a district of Toronto and a place 1,900 km north, and a
+    // listener who picks the wrong one is not told. Measured rather than
+    // assumed, and measured over the whole printed text rather than the name,
+    // because the region is the part that disambiguates it.
+    const marks = [];
     await eachRow(dumps, (row) => {
-        const text = describe(row[field.name], regionOf(row, lookup));
-        seen.set(text, (seen.get(text) ?? 0) + 1);
+        marks.push(fingerprint(describe(row[field.name], regionOf(row, lookup))));
     });
 
-    // Pass two keeps the ones that name exactly one place, and files each under
-    // the level-3 cell that contains it -- the first three characters of its
-    // own code. A level-3 cell is about 200 by 267 km, so the recovery box sits
-    // inside one of them better than nine times in ten and never touches more
-    // than four.
-    const shards = new Map();
-    let kept = 0, ambiguous = 0, unplaceable = 0;
+    // Sorted so duplicates sit next to each other; only the repeats are kept,
+    // and there are far fewer of those than there are descriptions.
+    const sorted = Float64Array.from(marks);
+    marks.length = 0;
+    sorted.sort();
 
-    await eachRow(dumps, (row) => {
-        const region = regionOf(row, lookup);
-        const text = describe(row[field.name], region);
-        if (seen.get(text) !== 1) { ambiguous++; return; }
+    const repeated = new Set();
+    for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i] === sorted[i - 1]) repeated.add(sorted[i]);
+    }
 
-        const latitude = Number(row[field.latitude]);
-        const longitude = Number(row[field.longitude]);
-        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) { unplaceable++; return; }
-
-        let shard;
-        try {
-            shard = GPC.cell(GPC.encode(latitude, longitude), level);
-        } catch {
-            unplaceable++;                    // reserved, or outside the domain
-            return;
-        }
-
-        if (!shards.has(shard)) shards.set(shard, { regions: new Map(), landmarks: [] });
-        const bucket = shards.get(shard);
-        if (!bucket.regions.has(region)) bucket.regions.set(region, bucket.regions.size);
-
-        bucket.landmarks.push([
-            row[field.name],
-            // Five decimals is about a metre. The box this feeds is kilometres
-            // across, and the digits beyond are bytes in every reader's cache.
-            Math.round(latitude * 1e5) / 1e5,
-            Math.round(longitude * 1e5) / 1e5,
-            bucket.regions.get(region),
-            KINDS[row[field.class]],
-        ]);
-        kept++;
-    });
-
+    // Pass two keeps the descriptions that name exactly one place and files
+    // each landmark under the cell that contains it -- the first `level`
+    // characters of its own code.
+    //
+    // Run in slices, because holding every kept landmark at once is what makes
+    // this build expensive: six and a half million small arrays did not fit in
+    // a 4 GB heap, and a job that needs a large runner is a job that breaks the
+    // first time it is moved. Each slice keeps a share of the shards and
+    // re-reads the dump to fill it, trading a few minutes of parsing for a
+    // ceiling low enough to run anywhere. Sliced on a hash of the shard name so
+    // the shares come out even -- the alphabet would not, since most of the
+    // planet is ocean and holds nothing.
     await rm(out, { recursive: true, force: true });
     await mkdir(out, { recursive: true });
 
+    let kept = 0;
+    let ambiguous = 0;
+    let unplaceable = 0;
+    let written = 0;
     let bytes = 0;
-    for (const [shard, bucket] of shards) {
-        bucket.landmarks.sort((a, b) => a[0].localeCompare(b[0]));
-        const json = JSON.stringify({
-            regions: [...bucket.regions.keys()],
-            landmarks: bucket.landmarks,
+
+    for (let slice = 0; slice < slices; slice++) {
+        const counting = slice === 0;      // totals are the same every time round
+        const shards = new Map();
+
+        await eachRow(dumps, (row) => {
+            const region = regionOf(row, lookup);
+            const text = describe(row[field.name], region);
+            if (repeated.has(fingerprint(text))) { if (counting) ambiguous++; return; }
+
+            const latitude = Number(row[field.latitude]);
+            const longitude = Number(row[field.longitude]);
+            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+                if (counting) unplaceable++;
+                return;
+            }
+
+            let shard;
+            try {
+                shard = GPC.cell(GPC.encode(latitude, longitude), level);
+            } catch {
+                if (counting) unplaceable++;   // reserved, or outside the domain
+                return;
+            }
+
+            if (fingerprint(shard) % slices !== slice) return;
+
+            if (!shards.has(shard)) shards.set(shard, { regions: new Map(), landmarks: [] });
+            const bucket = shards.get(shard);
+            if (!bucket.regions.has(region)) bucket.regions.set(region, bucket.regions.size);
+
+            bucket.landmarks.push([
+                row[field.name],
+                // Five decimals is about a metre. The box this feeds is
+                // kilometres across, and the digits past that are bytes in
+                // every reader's cache.
+                Math.round(latitude * 1e5) / 1e5,
+                Math.round(longitude * 1e5) / 1e5,
+                bucket.regions.get(region),
+                KINDS[row[field.class]],
+            ]);
+            kept++;
         });
-        await writeFile(path.join(out, `${shard}.json`), json, 'utf8');
-        bytes += Buffer.byteLength(json);
+
+        for (const [shard, bucket] of shards) {
+            bucket.landmarks.sort((a, b) => a[0].localeCompare(b[0]));
+            const json = JSON.stringify({
+                regions: [...bucket.regions.keys()],
+                landmarks: bucket.landmarks,
+            });
+            await writeFile(path.join(out, `${shard}.json`), json, 'utf8');
+            bytes += Buffer.byteLength(json);
+            written++;
+        }
     }
 
-    // The shards say how they were cut. The reader has to know the level to
-    // work out which files a box reaches into, and a reader that assumes one
-    // while the build used another asks for names that do not exist -- which
-    // does not look like a broken build, it looks like a place with no
-    // landmarks near it. Written beside the data so the two cannot drift.
+    // The shards say how they were cut. A reader has to know the level to work
+    // out which files a box reaches into, and one that assumes a level the
+    // build did not use asks for names that do not exist -- which does not look
+    // like a broken deployment, it looks like a place with no landmarks near
+    // it. Written beside the data so the two cannot drift apart.
     await writeFile(
         path.join(out, 'manifest.json'),
-        JSON.stringify({ level, shards: shards.size, landmarks: kept }),
+        // `built` is what tells a held copy from a current one. Shard names do
+        // not change between builds, only their contents, so without a stamp a
+        // cache-first reader serves last year's landmarks for as long as the
+        // browser keeps them.
+        JSON.stringify({
+            level,
+            shards: written,
+            landmarks: kept,
+            built: new Date().toISOString(),
+        }),
         'utf8',
     );
 
-    return { kept, ambiguous, unplaceable, shards: shards.size, bytes };
+    return { kept, ambiguous, unplaceable, shards: written, bytes };
 }
 
 // ── command line ───────────────────────────────────────────────────────────
@@ -203,6 +270,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     }
     const out = argument('out', 'public/landmarks');
     const level = Number(argument('level', '4'));
+    const slices = Number(argument('slices', '8'));
 
     // The world dump contains every country dump, so taking both would file
     // those countries twice. Whole world if it is there, per-country otherwise.
@@ -219,10 +287,13 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     }
 
     const started = Date.now();
-    const report = await build({ geonames, out, dumps, level });
+    const report = await build({ geonames, out, dumps, level, slices });
     const mb = (report.bytes / 1048576).toFixed(1);
 
-    console.log(`from ${dumps.length} dump(s) at level ${level} in ${((Date.now() - started) / 1000).toFixed(1)}s`);
+    console.log(
+        `from ${dumps.length} dump(s) at level ${level}, ${slices} slice(s), `
+            + `in ${((Date.now() - started) / 1000).toFixed(1)}s`,
+    );
     console.log(`  kept        ${report.kept.toLocaleString('en')}`);
     console.log(`  ambiguous   ${report.ambiguous.toLocaleString('en')}  (name not unique in its region)`);
     console.log(`  unplaceable ${report.unplaceable.toLocaleString('en')}`);
