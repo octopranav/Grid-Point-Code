@@ -1,0 +1,131 @@
+// Fetching the landmarks a short form can be anchored to.
+//
+// The shards are built by scripts/build-landmarks.mjs and keyed by level-3
+// cell -- the first three characters of a landmark's own code. Which shards a
+// lookup needs is decided by the recovery box of section 12.3, never by a
+// radius: see reference.ts for why that distinction is not cosmetic.
+
+import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
+import { RECOVERY, references, type Candidate, type Landmark } from './reference';
+
+/** The order is the file format's, written as an index by the build script. */
+const KINDS = ['structure', 'natural', 'place'] as const;
+export type Kind = (typeof KINDS)[number];
+
+export interface Choice extends Candidate {
+    kind: Kind;
+    region: string;
+    /**
+     * The landmark shares the point's level-5 cell.
+     *
+     * That is worth marking because it is a stronger promise than the box. A
+     * listener who has this data can take the landmark's cell and use its
+     * centre, and recovery is then exact by construction rather than dependent
+     * on anyone's coordinates agreeing -- which is the weakness section 12.3 is
+     * candid about and the one no arithmetic here can repair.
+     */
+    exact: boolean;
+}
+
+interface Shard {
+    regions: string[];
+    landmarks: [string, number, number, number, number][];
+}
+
+// A shard once fetched is kept: the data does not change between deployments,
+// and a reader nudging a point around asks for the same three characters over
+// and over. A miss is remembered too -- most of the planet is ocean, and a
+// shard that does not exist should be asked for once, not on every keystroke.
+const held = new Map<string, Promise<Shard | null>>();
+
+const url = (shard: string) =>
+    `${import.meta.env.BASE_URL.replace(/\/$/, '')}/landmarks/${shard}.json`;
+
+function fetchShard(shard: string): Promise<Shard | null> {
+    const already = held.get(shard);
+    if (already) return already;
+
+    const pending = fetch(url(shard))
+        .then((response) => (response.ok ? (response.json() as Promise<Shard>) : null))
+        .catch(() => null);          // offline, or no shard there: the same answer
+
+    held.set(shard, pending);
+    return pending;
+}
+
+/**
+ * The shards the recovery box reaches into.
+ *
+ * The box is under 11 km across and a level-3 cell is about 200 by 267 km, so
+ * this is one shard nine times in ten and never more than four. Taken from the
+ * corners rather than the centre, because a box that straddles a boundary is
+ * exactly the case a centre lookup would miss.
+ */
+export function shardsFor(latitude: number, longitude: number): string[] {
+    const shards = new Set<string>();
+    for (const dy of [-1, 1]) {
+        for (const dx of [-1, 1]) {
+            const corner = latitude + dy * RECOVERY.latitude;
+            const wrapped = ((longitude + dx * RECOVERY.longitude + 540) % 360) - 180;
+            try {
+                shards.add(GPC.cell(GPC.encode(Math.max(-90, Math.min(90, corner)), wrapped), 3));
+            } catch {
+                // A corner past the pole or inside the reserved range has no
+                // shard. The other corners still do, and the box is clipped to
+                // what the world actually holds.
+            }
+        }
+    }
+    return [...shards];
+}
+
+/**
+ * Every landmark this point's short form may be given as its reference,
+ * nearest first.
+ *
+ * An empty result is an answer rather than a failure, and the caller is
+ * expected to say so: in open country there is no landmark near enough, and
+ * the honest response is the full ten characters, which is the form of record
+ * in any case.
+ */
+export async function nearby(latitude: number, longitude: number): Promise<Choice[]> {
+    const shards = await Promise.all(shardsFor(latitude, longitude).map(fetchShard));
+
+    let here: string | null = null;
+    try {
+        here = GPC.cell(GPC.encode(latitude, longitude), 5);
+    } catch {
+        return [];                   // a point with no code has no short form
+    }
+
+    const found: (Landmark & { kind: Kind; region: string })[] = [];
+    for (const shard of shards) {
+        if (!shard) continue;
+        for (const [name, lat, lng, region, kind] of shard.landmarks) {
+            found.push({
+                name,
+                latitude: lat,
+                longitude: lng,
+                region: shard.regions[region] ?? '',
+                kind: KINDS[kind] ?? 'place',
+            });
+        }
+    }
+
+    return references(latitude, longitude, found).map((candidate) => {
+        const source = candidate as Candidate & { kind: Kind; region: string };
+        let exact = false;
+        try {
+            exact = GPC.cell(GPC.encode(candidate.latitude, candidate.longitude), 5) === here;
+        } catch {
+            exact = false;
+        }
+        return { ...source, exact };
+    });
+}
+
+/** The reference line a reader can copy, said the way section 12.1 writes it. */
+export function anchored(short: string, choice: Choice): string {
+    const dashed = short.startsWith('-') ? short : `-${short}`;
+    return `${dashed} near ${choice.name}, ${choice.region}`;
+}
