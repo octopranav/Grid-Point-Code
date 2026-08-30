@@ -6,3 +6,6 @@ node_modules/
 
 # Fetched at build time, never committed: see the note in README.md.
 public/tiles/
+
+# Built from a GeoNames dump by scripts/build-landmarks.mjs, never committed.
+public/landmarks/
