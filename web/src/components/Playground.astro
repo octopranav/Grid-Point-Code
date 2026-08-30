@@ -155,6 +155,35 @@ const code = GPC.encode(START.latitude, START.longitude);
             </details>
 
             <details class="group" name="playground">
+                <summary>Anchor the short form</summary>
+                <div class="body">
+                    <p class="note quiet">
+                        Five characters name a position inside a cell 8 by 10.7 km, so
+                        they need a reference near the point to be read back. These are
+                        the places near enough that recovery is guaranteed. A reference
+                        further off does not fail — it returns somewhere else.
+                    </p>
+                    <p class="note" data-anchor-note></p>
+                    <ul class="anchors" data-anchors></ul>
+                    <div class="anchored">
+                        <span class="code" data-anchored>—</span>
+                        <button
+                            type="button"
+                            class="tiny"
+                            data-copy-anchored
+                            aria-label="Copy the short form and its reference"
+                            disabled
+                        >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="9" y="9" width="12" height="12" rx="1"></rect>
+                                <path d="M5 15V4a1 1 0 0 1 1-1h9"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </details>
+
+            <details class="group" name="playground">
                 <summary>Read aloud</summary>
                 <div class="body">
                     <p class="aloud" data-aloud>—</p>
@@ -174,6 +203,7 @@ const code = GPC.encode(START.latitude, START.longitude);
     import { GPC, CodeClass } from '@pranavpatel.ca/algo-gridpointcode';
     import { resolve, neighbourhood, type LevelCell } from '../lib/levels';
     import { FORMS, COMPASS, aloud } from '../lib/forms';
+    import { nearby, anchored, type Choice } from '../lib/landmarks';
     import {
         basemapStyle,
         chosenBasemap,
@@ -233,6 +263,10 @@ const code = GPC.encode(START.latitude, START.longitude);
         );
         const nudgeKeys = [...section.querySelectorAll<HTMLButtonElement>('[data-nudge]')];
         const formCopies = [...section.querySelectorAll<HTMLButtonElement>('[data-copy-form]')];
+        const anchorList = section.querySelector<HTMLElement>('[data-anchors]')!;
+        const anchorNote = section.querySelector<HTMLElement>('[data-anchor-note]')!;
+        const anchoredLine = section.querySelector<HTMLElement>('[data-anchored]')!;
+        const anchoredCopy = section.querySelector<HTMLButtonElement>('[data-copy-anchored]')!;
 
         const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
@@ -285,6 +319,10 @@ const code = GPC.encode(START.latitude, START.longitude);
                 cellSize.textContent = '—';
                 aloudLine.textContent = '—';
                 for (const slot of formValues.values()) slot.textContent = '—';
+                // Bumped so a lookup already in flight cannot land on a panel
+                // that no longer has a code for it to anchor.
+                asked++;
+                blankAnchors('');
                 return;
             }
 
@@ -305,6 +343,8 @@ const code = GPC.encode(START.latitude, START.longitude);
                 }
             }
 
+            findAnchors(latitude as number, longitude as number);
+
             // A cell is square at 41.4 degrees and stretches away from it, so
             // its size is a property of where you are, not a constant.
             const [, , northSouth, eastWest] = GPC.cellDimensions(10);
@@ -312,6 +352,143 @@ const code = GPC.encode(START.latitude, START.longitude);
             cellSize.textContent =
                 northSouth.toFixed(2) + ' × ' + (eastWest * narrowing).toFixed(2) + ' m';
         }
+
+
+        /**
+         * The reference list, which is the one thing on this panel that arrives
+         * late.
+         *
+         * Every other surface is a pure function of the code and can be written
+         * the moment it changes. This one needs a shard over the network, so a
+         * reader dragging across the map has several lookups in flight at once
+         * and they can land in any order. `asked` is the guard: each request
+         * carries the number of the point that wanted it, and a reply for any
+         * point but the current one is dropped. Without it the slowest fetch
+         * wins the argument and the list describes a place the reader has
+         * already left -- the same fault as a stale form, arriving by a route
+         * no amount of care in synchronous code can prevent.
+         */
+        let asked = 0;
+        let choices: Choice[] = [];
+        let picked: string | null = null;
+
+        /** Identity that survives a nudge; two landmarks can share a name. */
+        const identify = (choice: Choice) => choice.name + '\u0000' + choice.region;
+
+        const away = (metres: number) =>
+            metres < 1000 ? Math.round(metres) + ' m' : (metres / 1000).toFixed(1) + ' km';
+
+        function showAnchored() {
+            const choice = choices.find((c) => identify(c) === picked);
+            let short: string | null = null;
+            if (code !== null) {
+                try {
+                    short = GPC.shorten(code);
+                } catch {
+                    short = null;
+                }
+            }
+            const line = choice && short ? anchored(short, choice) : null;
+
+            anchoredLine.textContent = line ?? '\u2014';
+            anchoredCopy.disabled = line === null;
+
+            for (const button of anchorList.querySelectorAll<HTMLButtonElement>('[data-anchor]')) {
+                button.setAttribute('aria-pressed', String(button.dataset.anchor === picked));
+            }
+        }
+
+        function drawAnchors() {
+            anchorList.replaceChildren();
+
+            for (const choice of choices) {
+                const item = document.createElement('li');
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'anchor';
+                button.dataset.anchor = identify(choice);
+                button.setAttribute('aria-pressed', 'false');
+
+                const name = document.createElement('span');
+                name.className = 'anchor-name';
+                name.textContent = choice.name;
+
+                // Marked rather than left to a tooltip: it is the difference
+                // between a reference that recovers by construction and one
+                // that recovers only if two parties agree where a place is.
+                if (choice.exact) {
+                    const mark = document.createElement('span');
+                    mark.className = 'caution';
+                    mark.textContent = 'exact';
+                    mark.title =
+                        'Shares this point’s level-5 cell, so a reader resolving by cell rather than by coordinates recovers it exactly.';
+                    name.append(' ', mark);
+                }
+
+                const where = document.createElement('span');
+                where.className = 'anchor-where';
+                where.textContent =
+                    away(choice.distance) + ' ' + choice.bearing + ' \u00b7 ' + choice.region;
+
+                button.append(name, where);
+                item.append(button);
+                anchorList.append(item);
+            }
+
+            showAnchored();
+        }
+
+        /** Empty every surface this group owns, with a reason for the emptiness. */
+        function blankAnchors(note: string) {
+            choices = [];
+            picked = null;
+            anchorNote.textContent = note;
+            drawAnchors();
+        }
+
+        function findAnchors(latitude: number, longitude: number) {
+            const mine = ++asked;
+            anchorNote.textContent = 'Looking for references\u2026';
+
+            nearby(latitude, longitude).then(
+                (found) => {
+                    if (mine !== asked) return;
+                    choices = found;
+                    // A reader who chose a landmark keeps it for as long as it
+                    // stays a valid reference. When a nudge carries it out of
+                    // the box it is dropped, not quietly left standing.
+                    if (!found.some((c) => identify(c) === picked)) {
+                        picked = found.length > 0 ? identify(found[0]) : null;
+                    }
+                    anchorNote.textContent =
+                        found.length > 0
+                            ? ''
+                            : 'No landmark is near enough to anchor a short form here. Share the full ten characters instead \u2014 they resolve on their own.';
+                    drawAnchors();
+                },
+                () => {
+                    if (mine !== asked) return;
+                    blankAnchors('The reference list could not be loaded.');
+                },
+            );
+        }
+
+        anchorList.addEventListener('click', (event) => {
+            const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-anchor]');
+            if (!button) return;
+            picked = button.dataset.anchor ?? null;
+            showAnchored();
+        });
+
+        anchoredCopy.addEventListener('click', async () => {
+            const line = anchoredLine.textContent;
+            if (!line || line === '\u2014') return;
+            try {
+                await navigator.clipboard.writeText(line);
+            } catch {
+                /* a refused clipboard is not worth an error message */
+            }
+        });
 
         /**
          * No code: nothing is half-shown.
@@ -1376,6 +1553,94 @@ const code = GPC.encode(START.latitude, START.longitude);
         align-items: baseline;
         gap: var(--space-1);
         flex-wrap: wrap;
+    }
+
+    /* ── anchoring a short form ──────────────────────────────────────────
+       The rows are built by script rather than written in the template, and
+       Astro scopes a component's styles by stamping an attribute onto the
+       elements it can see at build time. Anything `createElement` makes is
+       invisible to that, so scoped rules never match it and the buttons come
+       out with the browser's own grey. `:global` inside a scoped selector is
+       the way out: `.anchors` still carries the scope, so the loosened rules
+       reach no further than this one list.
+
+       The list is scrolled rather than cut short. In a city there can be
+       hundreds of valid references and the useful one is not always in the
+       first three -- the reader picks the landmark their listener knows,
+       which is a judgement only they can make. */
+    .anchors {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        max-height: 240px;
+        overflow-y: auto;
+        border: 1px solid var(--rule-soft);
+        border-radius: var(--radius-cell);
+    }
+
+    .anchors:empty {
+        display: none;
+    }
+
+    .anchors :global(.anchor) {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: var(--space-2);
+        border: 0;
+        border-bottom: 1px solid var(--rule-soft);
+        background: transparent;
+        color: var(--ink);
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .anchors :global(li:last-child .anchor) {
+        border-bottom: 0;
+    }
+
+    .anchors :global(.anchor:hover) {
+        background: var(--sunken);
+    }
+
+    /* The brass edge carries the selection, not the fill: at this size a
+       background tint alone is easy to miss against the row above it. */
+    .anchors :global(.anchor[aria-pressed='true']) {
+        background: var(--sunken);
+        box-shadow: inset 2px 0 0 var(--brass);
+    }
+
+    .anchors :global(.anchor-name) {
+        font-size: var(--text-small-size);
+        color: var(--ink);
+    }
+
+    .anchors :global(.anchor-where) {
+        font-family: var(--font-mono);
+        font-size: var(--text-label-size);
+        color: var(--ink-soft);
+    }
+
+    .anchors :global(.caution) {
+        font-family: var(--font-mono);
+        font-size: var(--text-label-size);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--brass);
+    }
+
+    .anchored {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-2);
+    }
+
+    .anchored .code {
+        overflow-wrap: anywhere;
     }
 
     .caution {
