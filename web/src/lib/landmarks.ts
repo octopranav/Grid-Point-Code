@@ -6,6 +6,7 @@
 // radius: see reference.ts for why that distinction is not cosmetic.
 
 import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
+import { ALPHABET } from './alphabet';
 import { RECOVERY, references, type Candidate, type Landmark } from './reference';
 
 /** The order is the file format's, written as an index by the build script. */
@@ -160,13 +161,6 @@ export function anchored(short: string, choice: Choice): string {
 }
 
 // ── keeping an area to hand ────────────────────────────────────────────────
-
-/**
- * The alphabet of section 4, written out rather than read from the library,
- * which keeps it private. It cannot change without changing the format, so
- * this is a constant in the same sense the grid is.
- */
-const ALPHABET = '0123456789CDFGHJKLMNPRTWX';
 
 /**
  * Two stores, because two different things are being remembered.

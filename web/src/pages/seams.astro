@@ -1,0 +1,12 @@
+---
+import Base from '../layouts/Base.astro';
+import SeamExplorer from '../components/SeamExplorer.astro';
+
+const description =
+    'Two points either side of a Grid Point Code seam share no characters at all, however '
+    + 'close they stand. Where the seams are, what they cost, and how the operations cross them.';
+---
+
+<Base title="Seams" description={description}>
+    <SeamExplorer />
+</Base>

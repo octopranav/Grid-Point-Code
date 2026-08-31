@@ -1,0 +1,320 @@
+---
+// Where the format comes apart.
+//
+// Every fixed grid has boundaries and every code built on one has seams. The
+// question a reader should be able to answer for themselves is not whether they
+// exist but how much they cost, and the only honest way to show that is beside
+// what happens everywhere else.
+//
+// Rendered entirely at build time. There is nothing here a reader interacts
+// with, so there is no reason to ship a script that recomputes what the build
+// already knows — and it means the page works with everything turned off.
+
+import { SEAMS, crossing, ordinary, neighboursCross } from '../lib/seams';
+
+const measured = SEAMS.map((seam) => ({
+    seam,
+    across: crossing(seam),
+    elsewhere: ordinary(seam),
+    neighbours: neighboursCross(seam),
+}));
+
+const greenwich = measured[0];
+
+// The claim the format makes for itself is not that seams are absent but that
+// the operations cross them. If that were ever untrue the build should fail
+// rather than the page quietly print a softer sentence.
+const allCross = measured.every((row) => row.neighbours.crosses);
+if (!allCross) {
+    throw new Error('a neighbour operation stopped crossing a seam');
+}
+
+const metres = (value: number) => value.toFixed(1) + ' m';
+---
+
+<section class="seams">
+    <header class="intro">
+        <h1>Where it comes apart</h1>
+        <p class="lede">
+            Two points either side of a level-1 boundary are in different cells at
+            every level, so they share no characters at all — however close they
+            stand. The shortest possible crossing is one cell: 2.56 m north to
+            south.
+        </p>
+        <p>
+            This is not a fault a better construction would remove. Any grid of fixed
+            cells has boundaries, and any code built on one inherits them. What a
+            format can do is put its seams on round lines, say where they are, and
+            cross them correctly. All three are checkable, so here they are.
+        </p>
+    </header>
+
+    <h2>The seams</h2>
+    <p>
+        The equator and the 45th parallels north and south. The prime meridian and
+        every 60th meridian east and west of it, which is 60°, 120° and the
+        antimeridian. Nothing else.
+    </p>
+
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>Seam</th>
+                    <th class="right">Across it</th>
+                    <th class="right">Shared</th>
+                    <th class="right">A quarter-degree away</th>
+                    <th class="right">Shared</th>
+                </tr>
+            </thead>
+            <tbody>
+                {measured.map(({ seam, across, elsewhere }) => (
+                    <tr>
+                        <th scope="row">{seam.name}</th>
+                        <td class="right">{metres(across.metres)}</td>
+                        <td class="right cost">{across.shared}</td>
+                        <td class="right">{metres(elsewhere.metres)}</td>
+                        <td class="right good">{elsewhere.shared}</td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    </div>
+    <p class="note quiet">
+        The same two steps, taken on a seam and taken anywhere else. The distance is
+        identical; the prefix is not. East–west crossings narrow toward the poles,
+        which is why the figures differ between one meridian and another.
+    </p>
+
+    <h2>Two doors</h2>
+    <p>{greenwich.seam.note}</p>
+
+    <div class="pair">
+        <div class="side">
+            <span class="label">West of the line</span>
+            <span class="code">{greenwich.across.west.code}</span>
+            <span class="where">
+                {greenwich.across.west.latitude.toFixed(5)}, {greenwich.across.west.longitude.toFixed(5)}
+            </span>
+            <a class="see" href={`/play?c=${greenwich.across.west.code.replace(/[^0-9A-Z]/g, '')}`}>
+                See it on the map
+            </a>
+        </div>
+        <div class="side">
+            <span class="label">East of the line</span>
+            <span class="code">{greenwich.across.east.code}</span>
+            <span class="where">
+                {greenwich.across.east.latitude.toFixed(5)}, {greenwich.across.east.longitude.toFixed(5)}
+            </span>
+            <a class="see" href={`/play?c=${greenwich.across.east.code.replace(/[^0-9A-Z]/g, '')}`}>
+                See it on the map
+            </a>
+        </div>
+    </div>
+
+    <p class="verdict">
+        {metres(greenwich.across.metres)} apart, and not one character in common.
+        A shared prefix proves proximity; proximity does not promise a shared
+        prefix, and the specification says so in as many words.
+    </p>
+
+    <h2>What it costs</h2>
+    <p>
+        Rarely anything. Over 20,000 pairs measured at exactly 100 m apart, drawn
+        uniformly over the sphere:
+    </p>
+
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr><th>Shared prefix</th><th class="right">Share of pairs</th></tr>
+            </thead>
+            <tbody>
+                <tr><th scope="row">6 characters or more</th><td class="right">91.45 %</td></tr>
+                <tr><th scope="row">5 characters or more</th><td class="right">98.31 %</td></tr>
+                <tr><th scope="row">4 characters or more</th><td class="right">99.64 %</td></tr>
+                <tr><th scope="row">Fewer than 4</th><td class="right cost">0.36 %</td></tr>
+                <tr><th scope="row">None at all</th><td class="right good">0.000 %</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="note quiet">
+        From <a href="/spec#102-the-guarantee-is-one-directional">section 10.2</a>.
+        The last row is the one worth reading twice: to share nothing you have to be
+        within a few metres of a seam, and at 100 m apart that did not happen once.
+    </p>
+
+    <h2>Crossing them anyway</h2>
+    <p>
+        A cell's neighbours are the eight around it, and at a seam that means eight
+        cells with a different first character. The operation crosses regardless —
+        at Greenwich, the cell west of the line lists the cell east of it:
+    </p>
+
+    <dl class="crossing">
+        <div>
+            <dt>West of the line</dt>
+            <dd><span class="code">{greenwich.neighbours.from}</span></dd>
+        </div>
+        <div>
+            <dt>Its eight neighbours</dt>
+            <dd class="around">
+                {greenwich.neighbours.around.map((cell) => (
+                    <span class="code" data-is-across={cell === greenwich.neighbours.to}>{cell}</span>
+                ))}
+            </dd>
+        </div>
+    </dl>
+    <p class="note quiet">
+        <span class="code">{greenwich.neighbours.to}</span> is the cell on the far
+        side, and it is in the list. This page fails to build if that ever stops
+        being true.
+    </p>
+</section>
+
+<style>
+    .seams {
+        max-width: 62rem;
+        margin: 0 auto;
+        padding: var(--space-5) var(--space-4);
+    }
+
+    /* The site's reset zeroes paragraph margins and each component supplies
+       its own rhythm; this one forgot, and shipped two paragraphs touching. */
+    .intro,
+    .seams p {
+        max-width: var(--measure);
+    }
+
+    .seams p {
+        margin: 0 0 var(--space-3);
+    }
+
+    .seams .note {
+        margin-bottom: var(--space-4);
+    }
+
+    h1 {
+        margin: 0 0 var(--space-3);
+    }
+
+    h2 {
+        margin: var(--space-5) 0 var(--space-2);
+        padding-top: var(--space-3);
+        border-top: 1px solid var(--rule-soft);
+    }
+
+    .table-scroll {
+        overflow-x: auto;
+        margin-bottom: var(--space-2);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--text-small-size);
+    }
+
+    :where(th, td) {
+        padding: var(--space-1) var(--space-2);
+        border-bottom: 1px solid var(--rule-soft);
+        text-align: left;
+        vertical-align: top;
+    }
+
+    thead th {
+        color: var(--ink-mid);
+        border-bottom-color: var(--rule);
+        white-space: nowrap;
+    }
+
+    tbody th {
+        font-weight: 400;
+    }
+
+    .right {
+        text-align: right;
+        font-family: var(--font-mono);
+    }
+
+    .cost { color: var(--crimson); }
+    .good { color: var(--verdigris); }
+
+    /* ── the worked pair ─────────────────────────────────────────────────── */
+    .pair {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+        gap: var(--space-3);
+        margin-bottom: var(--space-3);
+    }
+
+    .side {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+        padding: var(--space-3);
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-card);
+        background: var(--surface);
+    }
+
+    .side .code {
+        font-size: var(--text-title-size);
+    }
+
+    .where {
+        font-family: var(--font-mono);
+        font-size: var(--text-small-size);
+        color: var(--ink-soft);
+    }
+
+    .see {
+        margin-top: var(--space-1);
+        font-size: var(--text-small-size);
+        align-self: flex-start;
+    }
+
+    .verdict {
+        padding-left: var(--space-3);
+        border-left: 2px solid var(--crimson);
+    }
+
+    /* ── the neighbours ──────────────────────────────────────────────────── */
+    .crossing {
+        margin: 0 0 var(--space-2);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    .crossing dt {
+        font-family: var(--font-mono);
+        font-size: var(--text-label-size);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin-bottom: 2px;
+    }
+
+    .crossing dd {
+        margin: 0;
+    }
+
+    .around {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-1);
+    }
+
+    .around .code {
+        padding: 2px var(--space-1);
+        border: 1px solid var(--rule-soft);
+        border-radius: var(--radius-cell);
+        color: var(--ink-mid);
+    }
+
+    .around .code[data-is-across='true'] {
+        border-color: var(--verdigris);
+        color: var(--ink);
+    }
+</style>

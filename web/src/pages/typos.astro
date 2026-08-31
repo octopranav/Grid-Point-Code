@@ -1,0 +1,12 @@
+---
+import Base from '../layouts/Base.astro';
+import TypoLab from '../components/TypoLab.astro';
+
+const description =
+    'One wrong character in a Grid Point Code is refused once in 240 tries. The rest are '
+    + 'accepted, and three in ten name a plausible building somewhere else. Break one and see.';
+---
+
+<Base title="Typos" description={description}>
+    <TypoLab />
+</Base>
