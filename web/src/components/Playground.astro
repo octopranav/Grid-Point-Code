@@ -162,6 +162,35 @@ const code = GPC.encode(START.latitude, START.longitude);
             </details>
 
             <details class="group" name="playground">
+                <summary>Share this place</summary>
+                <div class="body">
+                    <p class="note quiet">
+                        A link to this exact cell. Scanning it opens the playground here,
+                        which is the whole of what is being shared — the coordinates are
+                        under "Also written as" for handing to a map instead.
+                    </p>
+                    <div class="share">
+                        <span class="code address" data-address>—</span>
+                        <button
+                            type="button"
+                            class="tiny"
+                            data-copy-address
+                            aria-label="Copy the link to this place"
+                            disabled
+                        >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="9" y="9" width="12" height="12" rx="1"></rect>
+                                <path d="M5 15V4a1 1 0 0 1 1-1h9"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <figure class="qr" data-qr hidden>
+                        <figcaption class="note quiet">Point a camera at it.</figcaption>
+                    </figure>
+                </div>
+            </details>
+
+            <details class="group" name="playground">
                 <summary>Anchor the short form</summary>
                 <div class="body">
                     <p class="note quiet">
@@ -217,6 +246,7 @@ const code = GPC.encode(START.latitude, START.longitude);
     import { resolve, neighbourhood, type LevelCell } from '../lib/levels';
     import { FORMS, COMPASS, aloud } from '../lib/forms';
     import { addressOf, codeIn, linkTo } from '../lib/permalink';
+    import { qrFor } from '../lib/qr';
     import {
         nearby,
         anchored,
@@ -277,6 +307,9 @@ const code = GPC.encode(START.latitude, START.longitude);
         const copyButton = section.querySelector<HTMLButtonElement>('[data-copy]')!;
         const linkButton = section.querySelector<HTMLButtonElement>('[data-copy-link]')!;
         const linkLabel = section.querySelector<HTMLElement>('[data-copy-link-label]')!;
+        const addressLine = section.querySelector<HTMLElement>('[data-address]')!;
+        const addressCopy = section.querySelector<HTMLButtonElement>('[data-copy-address]')!;
+        const qrFigure = section.querySelector<HTMLElement>('[data-qr]')!;
         const copyLabel = section.querySelector<HTMLElement>('[data-copy-label]')!;
         const basemapChooser = section.querySelector<HTMLSelectElement>('[data-basemap]')!;
         const aloudLine = section.querySelector<HTMLElement>('[data-aloud]')!;
@@ -334,6 +367,21 @@ const code = GPC.encode(START.latitude, START.longitude);
             copyLabel.textContent = 'Copy';
             linkButton.disabled = value === null;
             linkLabel.textContent = 'Link';
+
+            // The link and the square are the same fact twice, so they are
+            // written together, here, where everything else derived from the
+            // code is written. A QR that outlives its code is a scan that
+            // silently sends someone to the wrong place.
+            const address = value === null ? null : addressOf(value, location);
+            addressLine.textContent = address ?? '—';
+            addressCopy.disabled = address === null;
+            qrFigure.hidden = address === null;
+            if (address !== null) {
+                const caption = qrFigure.querySelector('figcaption')!;
+                qrFigure.replaceChildren();
+                qrFigure.insertAdjacentHTML('afterbegin', qrFor(address));
+                qrFigure.append(caption);
+            }
 
             // Everything below is derived from the code, so it is computed here
             // and nowhere else. Any form updated somewhere else is a form that
@@ -617,6 +665,15 @@ const code = GPC.encode(START.latitude, START.longitude);
                 forgetButton.hidden = true;
             });
         }
+
+        addressCopy.addEventListener('click', async () => {
+            if (code === null) return;
+            try {
+                await navigator.clipboard.writeText(addressOf(code, location));
+            } catch {
+                /* a refused clipboard is not worth a message; the link is shown */
+            }
+        });
 
         linkButton.addEventListener('click', async () => {
             if (code === null) return;
@@ -1739,6 +1796,45 @@ const code = GPC.encode(START.latitude, START.longitude);
         align-items: baseline;
         gap: var(--space-1);
         flex-wrap: wrap;
+    }
+
+    .share {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-2);
+    }
+
+    .address {
+        overflow-wrap: anywhere;
+        font-size: var(--text-label-size);
+        color: var(--ink-mid);
+    }
+
+    /* The white plate is the quiet zone made visible, and it stays white in
+       both themes: see lib/qr.ts. A scanner has never heard of this palette. */
+    .qr {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-2);
+    }
+
+    /* `:global` because the square is built by script, and Astro scopes both
+       halves of a descendant selector -- so a plain `.qr svg` would be looking
+       for an svg carrying a scope attribute that nothing gave it. That is the
+       third time this has caught something here: the anchor rows, the QR, and
+       the prose the markdown pipeline emits. */
+    .qr :global(svg) {
+        width: 100%;
+        max-width: 200px;
+        height: auto;
+        border-radius: var(--radius-cell);
+    }
+
+    .qr figcaption {
+        margin: 0;
     }
 
     /* ── anchoring a short form ──────────────────────────────────────────
