@@ -1,0 +1,423 @@
+---
+// Break a code on purpose and watch what it costs.
+//
+// The point of this page is the uncomfortable half of section 15: one typo in
+// 240 is caught, twenty-nine per cent land somewhere plausible and silent, and
+// the specification says in as many words that an implementation MUST NOT be
+// documented as detecting typos. A format that hid this would be a format
+// asking to be trusted about the parts nobody checks.
+//
+// So it is demonstrated rather than admitted. Break a character, watch a valid
+// code appear that names a different building, and then watch the geography
+// give the right one back.
+
+import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
+
+const START = { latitude: 43.65, longitude: -79.38 };
+const code = GPC.encode(START.latitude, START.longitude);
+const symbols = GPC.normalise(code)[0];
+---
+
+<section class="lab" data-lab data-code={symbols}>
+    <header class="intro">
+        <h1>Break it on purpose</h1>
+        <p class="lede">
+            One wrong character in 240 is refused. The rest are accepted, and about
+            three in ten of those name a plausible building somewhere else. Nothing
+            in the format tells you. Press a character and see.
+        </p>
+    </header>
+
+    <div class="strip" role="group" aria-label="The code; choose a character to break">
+        {[...symbols].map((symbol, index) => (
+            <button
+                type="button"
+                class="cell"
+                data-level={index + 1}
+                data-position={index + 1}
+                aria-label={`Break character ${index + 1}, currently ${symbol}`}
+            >
+                <span class="glyph" data-glyph>{symbol}</span>
+                <span class="cost" data-cost>—</span>
+            </button>
+        ))}
+    </div>
+    <p class="note quiet">
+        Under each character: how far a single wrong symbol there would move this
+        code, taken as the middle of all twenty-four possibilities. Computed for
+        this code, not quoted.
+    </p>
+
+    <div class="outcome" data-outcome hidden>
+        <div class="pair">
+            <div class="side">
+                <span class="label">Meant</span>
+                <span class="code" data-truth>—</span>
+                <span class="where" data-truth-where>—</span>
+                <a class="see" data-see-truth href="/play">See it on the map</a>
+            </div>
+            <div class="side broken">
+                <span class="label">Typed</span>
+                <span class="code" data-broken>—</span>
+                <span class="where" data-broken-where>—</span>
+                <a class="see" data-see-broken href="/play">See where it landed</a>
+            </div>
+        </div>
+
+        <p class="verdict" data-verdict>—</p>
+
+        <div class="recovery" data-recovery>
+            <h2>Getting it back</h2>
+            <p class="note quiet">
+                The structure that hides the error also locates it. Given a rough idea
+                where you were — a device fix, a named suburb — the wrong code's
+                neighbourhood is searched for codes one keystroke away.
+            </p>
+            <p class="found" data-found>—</p>
+            <ol class="candidates" data-candidates></ol>
+        </div>
+    </div>
+</section>
+
+<script>
+    import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
+    import { damage, landing, apart, replace, typicalMistake } from '../lib/typos';
+    import { linkTo } from '../lib/permalink';
+
+    const section = document.querySelector<HTMLElement>('[data-lab]');
+    if (section) begin(section);
+
+    function begin(section: HTMLElement) {
+        const truthCode = section.dataset.code!;
+        const cells = [...section.querySelectorAll<HTMLButtonElement>('[data-position]')];
+        const outcome = section.querySelector<HTMLElement>('[data-outcome]')!;
+        const truthLine = section.querySelector<HTMLElement>('[data-truth]')!;
+        const truthWhere = section.querySelector<HTMLElement>('[data-truth-where]')!;
+        const brokenLine = section.querySelector<HTMLElement>('[data-broken]')!;
+        const brokenWhere = section.querySelector<HTMLElement>('[data-broken-where]')!;
+        const verdict = section.querySelector<HTMLElement>('[data-verdict]')!;
+        const found = section.querySelector<HTMLElement>('[data-found]')!;
+        const candidates = section.querySelector<HTMLElement>('[data-candidates]')!;
+        const seeTruth = section.querySelector<HTMLAnchorElement>('[data-see-truth]')!;
+        const seeBroken = section.querySelector<HTMLAnchorElement>('[data-see-broken]')!;
+
+        const truth = landing(truthCode)!;
+
+        /** Metres, said the way a person would say them. */
+        const span = (metres: number) =>
+            metres >= 1000
+                ? Math.round(metres / 1000).toLocaleString('en') + ' km'
+                : Math.round(metres) + ' m';
+
+        const place = (latitude: number, longitude: number) =>
+            latitude.toFixed(5) + ', ' + longitude.toFixed(5);
+
+        // ── what each position would cost ──────────────────────────────────
+        //
+        // Written once at load. The code does not change on this page: the
+        // reader breaks it and puts it back, and a moving target would make the
+        // point harder rather than richer.
+        const costs = damage(truthCode);
+        cells.forEach((cell, index) => {
+            const here = costs[index];
+            cell.querySelector<HTMLElement>('[data-cost]')!.textContent = span(here.median);
+            cell.title =
+                `A wrong character here moves the code about ${span(here.median)}` +
+                (here.caught > 0
+                    ? `. ${here.caught} of the 24 would be refused outright.`
+                    : '. None of the 24 would be refused.');
+        });
+
+        truthLine.textContent = GPC.formatGPC(truthCode);
+        truthWhere.textContent = place(truth.latitude, truth.longitude);
+
+        // Plausibility is the one claim on this page that a number cannot make.
+        // Rather than stand up a second map here, both codes open in the
+        // playground, which is the map, and does the descent, and is reached by
+        // the permalink this same site just learned to write.
+        seeTruth.href = '/play' + linkTo(truthCode);
+
+        // The cell's state is `data-wrong`, not `data-broken`: that name is
+        // already the typed code's, and giving it to eleven elements made a
+        // bare `[data-broken]` selector find a button. It worked only because
+        // the binding happens before the cells acquire the attribute, which is
+        // not a thing to leave for somebody to discover.
+        let broken: number | null = null;
+
+        function show(position: number) {
+            // Pressing the same character again puts it back, so the page can be
+            // left as it was found.
+            if (broken === position) return clear();
+            broken = position;
+
+            const wrong = typicalMistake(truthCode, position);
+            if (wrong === null) return clear();
+
+            const typed = replace(truthCode, position, wrong);
+            const where = landing(typed);
+
+            cells.forEach((cell, index) => {
+                const at = index + 1;
+                cell.dataset.wrong = String(at === position);
+                cell.querySelector<HTMLElement>('[data-glyph]')!.textContent =
+                    at === position ? wrong : truthCode[index];
+            });
+
+            outcome.hidden = false;
+            brokenLine.textContent = GPC.formatGPC(typed);
+            seeBroken.hidden = where === null;
+            if (where !== null) seeBroken.href = '/play' + linkTo(typed);
+
+            if (where === null) {
+                brokenWhere.textContent = 'nowhere';
+                verdict.textContent =
+                    'Refused before decoding — the one typo in 240 the structure catches, '
+                    + 'because no code that names a place begins with X.';
+                verdict.dataset.kind = 'caught';
+                candidates.replaceChildren();
+                found.textContent = 'Nothing to recover: this one never looked right.';
+                return;
+            }
+
+            const moved = apart(truth.latitude, truth.longitude, where.latitude, where.longitude);
+            brokenWhere.textContent = place(where.latitude, where.longitude);
+
+            // Three bands, which are the specification's own in §15.1 rather
+            // than a scale invented here. The alarming one is the middle: far
+            // enough to be the wrong place, near enough to look like the right
+            // one. Calling an eight-metre slip dangerous would spend the
+            // reader's alarm on the case that does not deserve it.
+            if (moved >= 50_000) {
+                verdict.dataset.kind = 'obvious';
+                verdict.textContent =
+                    `Valid, and ${span(moved)} away. Far enough that a map gives it away `
+                    + 'at a glance — the errors worth worrying about are the small ones.';
+            } else if (moved >= 500) {
+                verdict.dataset.kind = 'silent';
+                verdict.textContent =
+                    `Valid. ${span(moved)} away, and nothing said a word. This code is as `
+                    + 'well formed as the one you meant, and it names a different building '
+                    + 'in a plausible part of the same region. Three in ten typos land here.';
+            } else {
+                verdict.dataset.kind = 'near';
+                verdict.textContent =
+                    `Valid, ${span(moved)} away — near enough to be the same doorway. A `
+                    + 'wrong character this late costs almost nothing, which is the other '
+                    + 'half of what the nesting buys.';
+            }
+
+            recover(typed);
+        }
+
+        function recover(typed: string) {
+            // Level 6 is the specification's default: a window of 4.8 by 6.4 km,
+            // which suits a device fix or a named suburb, and returns one
+            // candidate in the median case.
+            let suggestions: string[] = [];
+            try {
+                suggestions = GPC.suggestCorrections(typed, truth.latitude, truth.longitude, 6, true);
+            } catch {
+                suggestions = [];
+            }
+
+            const formatted = GPC.formatGPC(truthCode);
+            const rank = suggestions.indexOf(formatted);
+
+            found.textContent =
+                suggestions.length === 0
+                    ? 'No candidate within the search window.'
+                    : `${suggestions.length} candidate${suggestions.length === 1 ? '' : 's'} `
+                      + `one keystroke away, in this neighbourhood` +
+                      (rank === 0
+                          ? ' — and the first is the code you meant.'
+                          : rank > 0
+                            ? ` — the code you meant is number ${rank + 1}.`
+                            : ', and the code you meant is not among them.') +
+                      (suggestions.length > 20
+                          ? ' A slip in the last characters barely moves the point, so half '
+                            + 'the neighbourhood is one keystroke away too. Precision costs '
+                            + 'what the error saved.'
+                          : '');
+
+            candidates.replaceChildren();
+            for (const suggestion of suggestions.slice(0, 8)) {
+                const item = document.createElement('li');
+                item.className = 'candidate';
+                item.textContent = suggestion;
+                if (suggestion === formatted) item.dataset.truth = 'true';
+                candidates.append(item);
+            }
+        }
+
+        function clear() {
+            broken = null;
+            outcome.hidden = true;
+            cells.forEach((cell, index) => {
+                cell.dataset.wrong = 'false';
+                cell.querySelector<HTMLElement>('[data-glyph]')!.textContent = truthCode[index];
+            });
+        }
+
+        for (const cell of cells) {
+            cell.addEventListener('click', () => show(Number(cell.dataset.position)));
+        }
+    }
+</script>
+
+<style>
+    .lab {
+        max-width: 62rem;
+        margin: 0 auto;
+        padding: var(--space-5) var(--space-4);
+    }
+
+    .intro {
+        max-width: var(--measure);
+        margin-bottom: var(--space-4);
+    }
+
+    h1 {
+        margin: 0 0 var(--space-3);
+    }
+
+    /* ── the code, as ten buttons ────────────────────────────────────────── */
+    .strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-1);
+        margin-bottom: var(--space-2);
+    }
+
+    .cell {
+        flex: 1 1 4.5rem;
+        min-width: 3.4rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: var(--space-2) var(--space-1);
+        border: 1px solid transparent;
+        border-radius: var(--radius-cell);
+        font: inherit;
+        cursor: pointer;
+    }
+
+    .cell[data-level='1']  { background: var(--level-1);  color: var(--level-1-ink); }
+    .cell[data-level='2']  { background: var(--level-2);  color: var(--level-2-ink); }
+    .cell[data-level='3']  { background: var(--level-3);  color: var(--level-3-ink); }
+    .cell[data-level='4']  { background: var(--level-4);  color: var(--level-4-ink); }
+    .cell[data-level='5']  { background: var(--level-5);  color: var(--level-5-ink); }
+    .cell[data-level='6']  { background: var(--level-6);  color: var(--level-6-ink); }
+    .cell[data-level='7']  { background: var(--level-7);  color: var(--level-7-ink); }
+    .cell[data-level='8']  { background: var(--level-8);  color: var(--level-8-ink); }
+    .cell[data-level='9']  { background: var(--level-9);  color: var(--level-9-ink); }
+    .cell[data-level='10'] { background: var(--level-10); color: var(--level-10-ink); }
+
+    .cell[data-wrong='true'] {
+        border-color: var(--crimson);
+        box-shadow: 0 0 0 2px var(--crimson);
+    }
+
+    .glyph {
+        font-family: var(--font-mono);
+        font-size: var(--text-title-size);
+        font-weight: 500;
+    }
+
+    .cost {
+        font-family: var(--font-mono);
+        font-size: var(--text-label-size);
+        opacity: 0.8;
+    }
+
+    /* ── what it cost ────────────────────────────────────────────────────── */
+    .outcome {
+        margin-top: var(--space-4);
+    }
+
+    .pair {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+        gap: var(--space-3);
+        margin-bottom: var(--space-3);
+    }
+
+    .side {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+        padding: var(--space-3);
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-card);
+        background: var(--surface);
+    }
+
+    .side.broken {
+        border-color: var(--crimson);
+    }
+
+    .side .code {
+        font-size: var(--text-title-size);
+    }
+
+    .where {
+        font-family: var(--font-mono);
+        font-size: var(--text-small-size);
+        color: var(--ink-soft);
+    }
+
+    .see {
+        margin-top: var(--space-1);
+        font-size: var(--text-small-size);
+        align-self: flex-start;
+    }
+
+    .verdict {
+        max-width: var(--measure);
+        padding-left: var(--space-3);
+        border-left: 2px solid var(--rule);
+    }
+
+    .verdict[data-kind='silent'] { border-left-color: var(--crimson); }
+    .verdict[data-kind='caught'] { border-left-color: var(--verdigris); }
+    .verdict[data-kind='near']   { border-left-color: var(--verdigris); }
+    .verdict[data-kind='obvious'] { border-left-color: var(--brass); }
+
+    /* ── recovery ────────────────────────────────────────────────────────── */
+    .recovery {
+        margin-top: var(--space-4);
+        padding-top: var(--space-3);
+        border-top: 1px solid var(--rule-soft);
+    }
+
+    .recovery h2 {
+        margin: 0 0 var(--space-2);
+    }
+
+    .found {
+        max-width: var(--measure);
+    }
+
+    .candidates {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-1);
+    }
+
+    .candidates :global(.candidate) {
+        font-family: var(--font-mono);
+        font-size: var(--text-small-size);
+        padding: var(--space-1) var(--space-2);
+        border: 1px solid var(--rule-soft);
+        border-radius: var(--radius-cell);
+        color: var(--ink-mid);
+    }
+
+    .candidates :global(.candidate[data-truth]) {
+        border-color: var(--verdigris);
+        color: var(--ink);
+    }
+</style>
