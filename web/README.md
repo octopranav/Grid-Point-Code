@@ -180,11 +180,20 @@ differently.
 | --- | --- | --- |
 | pages | network first | a deployment should be picked up the moment there is a network to pick it up from |
 | hashed assets | cache first | Astro puts a hash in the name, so a copy is never the wrong one |
-| landmark shards | cache first, named for the build | shard names do not change between builds, only their contents |
+| kept shards | cache first, named for the build | what a reader asked for by name; read first, and the worker never writes to it |
+| seen shards | cache first, named for the build | whatever the worker served along the way, so a place already visited still works |
 
 That last row is what the `built` stamp in `landmarks/manifest.json` is for.
 Without it a held copy would be served for as long as the browser felt like
 keeping it.
+
+The two shard stores are separate on purpose. Counting them together made the
+panel say `1 shard held for this area` immediately after a reader pressed
+Forget — true, in that one shard was in a cache, and useless, because they had
+not asked for it and the area was not actually available. Only the kept store is
+ever counted or reported: telling someone an area is held because they once
+glanced at it is the same sentence as telling them it is ready for a journey.
+Forget empties both, and the seen store refills on its own, invisibly.
 
 Shards are also kept as they are looked up, and the playground offers to keep
 the area around a point — the cell one level above a shard, about 200 by 267 km,

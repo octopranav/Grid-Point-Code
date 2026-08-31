@@ -168,7 +168,19 @@ export function anchored(short: string, choice: Choice): string {
  */
 const ALPHABET = '0123456789CDFGHJKLMNPRTWX';
 
-const shardCacheName = (described: Manifest) => `gpc-landmarks-${described.built}`;
+/**
+ * Two stores, because two different things are being remembered.
+ *
+ * This one holds what a reader deliberately asked for, and is the only one this
+ * file writes or counts. The worker keeps a second store of whatever it served
+ * along the way -- a free convenience, and nobody's decision -- which is never
+ * reported, because telling someone an area is held when they merely glanced at
+ * it is the same sentence as telling them it is ready for a journey, and only
+ * one of those is true.
+ *
+ * Named for the build, so a new archive does not inherit an old one's copies.
+ */
+const keptName = (described: Manifest) => `gpc-kept-${described.built}`;
 
 /** Whether the browser will let anything be kept at all. */
 export const canKeep = () => typeof caches !== 'undefined';
@@ -200,7 +212,7 @@ export async function keepArea(latitude: number, longitude: number): Promise<Are
     if (!canKeep()) throw new Error('this browser will not keep anything');
 
     const area = GPC.cell(GPC.encode(latitude, longitude), described.level - 1);
-    const cache = await caches.open(shardCacheName(described));
+    const cache = await caches.open(keptName(described));
     const wanted = [...ALPHABET].map((symbol) => url(area + symbol));
 
     // Fetching happens together, because it is all network waiting and there
@@ -257,7 +269,7 @@ export async function heldArea(
     if (!described) return null;
 
     const area = GPC.cell(GPC.encode(latitude, longitude), described.level - 1);
-    const name = shardCacheName(described);
+    const name = keptName(described);
     if (!(await caches.keys()).includes(name)) return { cell: area, shards: 0 };
 
     const cache = await caches.open(name);
@@ -275,17 +287,28 @@ export async function kept(): Promise<{ shards: number } | null> {
     if (!described) return null;
 
     const names = await caches.keys();
-    const name = shardCacheName(described);
+    const name = keptName(described);
     if (!names.includes(name)) return { shards: 0 };
 
     const cache = await caches.open(name);
     return { shards: (await cache.keys()).length };
 }
 
-/** Give it all back. Every build's worth, not just the current one. */
+/**
+ * Give it all back: what was kept and what was merely passed through, from
+ * every build rather than only the current one.
+ *
+ * Both, because a reader pressing this wants the space back and does not care
+ * which of our two stores happens to hold it. The runtime store fills again on
+ * its own as they look around, which is invisible and costs nothing -- and,
+ * because only the kept store is ever counted, it will not be mistaken for
+ * something they asked for.
+ */
 export async function forget(): Promise<void> {
     if (!canKeep()) return;
     for (const name of await caches.keys()) {
-        if (name.startsWith('gpc-landmarks-')) await caches.delete(name);
+        if (name.startsWith('gpc-kept-') || name.startsWith('gpc-landmarks-')) {
+            await caches.delete(name);
+        }
     }
 }

@@ -6,7 +6,7 @@
 // a short form can be anchored to, and it would be a strange claim to make for
 // an offline format if that list were the thing that broke on a train.
 //
-// Three caches, because three kinds of thing expire differently.
+// Four stores, because four kinds of thing expire differently.
 //
 //   the shell     HTML asked for over the network first, so a deployment is
 //                 picked up the moment there is a network to pick it up from,
@@ -15,16 +15,26 @@
 //                 never wrong -- those are served from the cache first.
 //
 //   the manifest  Network first, same reasoning, and it is the thing that
-//                 names the current shard cache.
+//                 names the two stores below.
 //
-//   the shards    Cache first, and named for the moment the data was built.
-//                 Shard names do not change between builds, only what is
-//                 inside them, so without that stamp a held copy would be
-//                 served for as long as the browser felt like keeping it.
+//   kept shards   What a reader asked for by name, through the page. Read
+//                 first and never written from here: it is theirs.
+//
+//   seen shards   Whatever this worker served along the way, which is why a
+//                 place already looked at still works with the network cut.
+//
+// Both shard stores are named for the moment the archive was built. Shard
+// names do not change between builds, only what is inside them, so without
+// that stamp a held copy would be served for as long as the browser kept it.
 
 const SHELL = 'gpc-shell';
 const META = 'gpc-meta';
-const SHARDS = 'gpc-landmarks-';
+
+// What a reader deliberately kept, and what this worker cached along the way.
+// It reads both and writes only the second, so pressing Forget in the page
+// gives back an area for good rather than until the next lookup refills it.
+const KEPT = 'gpc-kept-';
+const RUNTIME = 'gpc-landmarks-';
 
 const MANIFEST = new URL('landmarks/manifest.json', self.registration.scope).pathname;
 
@@ -41,9 +51,11 @@ self.addEventListener('activate', (event) => {
 
 /** Forget shard caches from builds that are no longer the current one. */
 async function sweep() {
-    const current = await shardCache();
+    const current = await shardCaches();
     for (const name of await caches.keys()) {
-        if (name.startsWith(SHARDS) && name !== current) await caches.delete(name);
+        if (!name.startsWith(KEPT) && !name.startsWith(RUNTIME)) continue;
+        if (current && (name === current.kept || name === current.runtime)) continue;
+        await caches.delete(name);
     }
 }
 
@@ -67,9 +79,11 @@ async function manifest() {
     return held ? await held.json() : null;
 }
 
-function shardCache() {
+function shardCaches() {
     naming ??= manifest().then((described) =>
-        described && described.built ? SHARDS + described.built : null,
+        described && described.built
+            ? { kept: KEPT + described.built, runtime: RUNTIME + described.built }
+            : null,
     );
     return naming;
 }
@@ -118,18 +132,24 @@ async function freshest(request, name) {
 }
 
 async function shard(request) {
-    const name = await shardCache();
-    if (!name) return fetch(request);        // nothing deployed to cache against
+    const names = await shardCaches();
+    if (!names) return fetch(request);       // nothing deployed to cache against
 
-    const cache = await caches.open(name);
-    const hit = await cache.match(request);
-    if (hit) return hit;
+    // What the reader asked to keep is looked at first, then what happened to
+    // be cached before.
+    const keeping = await caches.open(names.kept);
+    const kept = await keeping.match(request);
+    if (kept) return kept;
+
+    const runtime = await caches.open(names.runtime);
+    const seen = await runtime.match(request);
+    if (seen) return seen;
 
     const response = await fetch(request);
 
     // A 404 is a real answer here -- most of the planet is ocean and has no
-    // shard -- but it is not one worth keeping, because the next build may put
-    // something there.
-    if (response.ok) await cache.put(request, response.clone());
+    // shard -- but not one worth keeping, since a later build may put something
+    // there. Kept areas are never written from here: they are the reader's.
+    if (response.ok) await runtime.put(request, response.clone());
     return response;
 }
