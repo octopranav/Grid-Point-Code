@@ -103,6 +103,20 @@ const repositoryLinks = {
             const href = node.properties?.href;
             if (typeof href !== 'string') return;
 
+            // The four READMEs each link to SPEC.md on GitHub, which was the
+            // only place it could be read when they were written. It is read
+            // here now, so a reader following that link should stay here rather
+            // than being sent out to a raw markdown file. Same document, better
+            // rendering, and the source keeps the link that works everywhere
+            // else.
+            const rendered = `${REPO}/blob/main/SPEC.md`;
+            if (href === rendered || href.startsWith(`${rendered}#`)) {
+                return {
+                    ...node,
+                    properties: { ...node.properties, href: href.replace(rendered, '/spec') },
+                };
+            }
+
             // Schemes, fragments and site-absolute paths are already right.
             if (/^([a-z][a-z0-9+.-]*:|#|\/)/i.test(href)) return;
 
