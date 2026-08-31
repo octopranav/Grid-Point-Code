@@ -1,0 +1,135 @@
+---
+// A long document from the repository, with its own contents beside it.
+//
+// The specification and the four port READMEs are all read from where they
+// live and rendered whole, so they all want the same frame: a list that stays
+// put while the document scrolls past it.
+
+import '../styles/prose.css';
+
+export interface Heading {
+    depth: number;
+    slug: string;
+    text: string;
+}
+
+interface Props {
+    headings: Heading[];
+    /**
+     * Slugs to leave out of the contents list.
+     *
+     * A markdown file read on GitHub has no sidebar, so several of these carry
+     * a contents table of their own. Listing it here would be the same list
+     * twice, with one of them called "Contents".
+     */
+    skip?: string[];
+    /** What the contents list is called, for screen readers arriving at it. */
+    label?: string;
+}
+
+const { headings, skip = [], label = 'Contents' } = Astro.props;
+
+const contents = headings.filter(
+    (heading) =>
+        (heading.depth === 2 || heading.depth === 3) && !skip.includes(heading.slug),
+);
+---
+
+<div class="frame">
+    <nav class="contents" aria-labelledby="contents-heading">
+        <h2 id="contents-heading">{label}</h2>
+        <ol>
+            {contents.map((heading) => (
+                <li data-depth={heading.depth}>
+                    <a href={`#${heading.slug}`}>{heading.text}</a>
+                </li>
+            ))}
+        </ol>
+    </nav>
+
+    <article class="document">
+        <slot />
+    </article>
+</div>
+
+<style>
+    /* The contents list is as tall as the document and these documents are
+       long, so it scrolls on its own rather than dragging the page with it. */
+    .frame {
+        display: grid;
+        grid-template-columns: 16rem minmax(0, 1fr);
+        gap: var(--space-5);
+        align-items: start;
+        padding: var(--space-5) var(--space-4);
+        max-width: 78rem;
+        margin: 0 auto;
+    }
+
+    .contents {
+        position: sticky;
+        top: var(--space-4);
+        max-height: calc(100vh - var(--space-6));
+        overflow-y: auto;
+        border-right: 1px solid var(--rule-soft);
+        padding-right: var(--space-3);
+    }
+
+    .contents h2 {
+        font-size: var(--text-label-size);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin: 0 0 var(--space-2);
+    }
+
+    .contents ol {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .contents a {
+        display: block;
+        padding: 3px 0;
+        font-size: var(--text-small-size);
+        color: var(--ink-mid);
+        text-decoration: none;
+        line-height: 1.35;
+    }
+
+    .contents a:hover {
+        color: var(--ink);
+    }
+
+    /* Subsections are indented and quieter; the numbering in the text already
+       says which is which, so this only has to stay out of its way. */
+    .contents li[data-depth='3'] a {
+        padding-left: var(--space-2);
+        color: var(--ink-soft);
+    }
+
+    .document {
+        min-width: 0;
+        max-width: var(--measure);
+    }
+
+    @media (max-width: 900px) {
+        .frame {
+            grid-template-columns: minmax(0, 1fr);
+            gap: var(--space-3);
+            padding: var(--space-4) var(--space-3);
+        }
+
+        /* Sticky is wrong on a phone: it would eat the screen. Collapsed to a
+           plain list at the top, which is what a contents list is anyway. */
+        .contents {
+            position: static;
+            max-height: none;
+            overflow: visible;
+            border-right: 0;
+            border-bottom: 1px solid var(--rule-soft);
+            padding-right: 0;
+            padding-bottom: var(--space-3);
+        }
+    }
+</style>

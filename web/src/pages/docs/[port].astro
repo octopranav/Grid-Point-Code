@@ -1,0 +1,107 @@
+---
+import { getEntry, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Document from '../../components/Document.astro';
+import { PORTS, port as find } from '../../lib/ports';
+
+export function getStaticPaths() {
+    // Imported here rather than at the top so the route list and the page body
+    // read from the same source of truth.
+    return PORTS.map((each) => ({ params: { port: each.id } }));
+}
+
+const { port: id } = Astro.params;
+const meta = find(id!);
+if (!meta) throw new Error(`no port called ${id}`);
+
+// The port's own README, rendered whole. What the API does is documented once,
+// beside the code, and this page is a view of that rather than a retelling.
+const entry = await getEntry('ports', `${meta.id}/readme`);
+if (!entry) throw new Error(`${meta.id}/README.md was not found`);
+
+const { Content, headings } = await render(entry);
+
+const description =
+    `Grid Point Code for ${meta.name}: install ${meta.packageName} from ${meta.registry}, `
+    + 'and the full API — encoding, decoding, cells, the short form and the check character.';
+---
+
+<Base title={`${meta.name} · Docs`} description={description}>
+    <div class="masthead">
+        <div class="inner">
+            <p class="crumb"><a href="/docs">Docs</a></p>
+            <h1>{meta.name}</h1>
+            <dl class="identity">
+                <div>
+                    <dt>Registry</dt>
+                    <dd>{meta.registry}</dd>
+                </div>
+                <div>
+                    <dt>Package</dt>
+                    <dd><code class="code">{meta.packageName}</code></dd>
+                </div>
+                <div>
+                    <dt>Version</dt>
+                    <dd><code class="code">{meta.version}</code></dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    <Document headings={headings} label={`${meta.name} contents`}>
+        <Content />
+    </Document>
+</Base>
+
+<style>
+    .masthead {
+        border-bottom: 1px solid var(--rule-soft);
+        background: var(--surface);
+    }
+
+    .inner {
+        max-width: 78rem;
+        margin: 0 auto;
+        padding: var(--space-4) var(--space-4) var(--space-3);
+    }
+
+    .crumb {
+        margin: 0 0 var(--space-1);
+        font-size: var(--text-small-size);
+    }
+
+    .crumb a {
+        color: var(--ink-soft);
+    }
+
+    h1 {
+        margin: 0 0 var(--space-3);
+    }
+
+    .identity {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2) var(--space-5);
+        margin: 0;
+    }
+
+    .identity dt {
+        font-family: var(--font-mono);
+        font-size: var(--text-label-size);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin-bottom: 2px;
+    }
+
+    .identity dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 900px) {
+        .inner {
+            padding: var(--space-3);
+        }
+    }
+</style>

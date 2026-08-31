@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'astro/config';
+import { satteri } from '@astrojs/markdown-satteri';
 
 // The site is a pile of static files and nothing else: no server, no database,
 // no API. Everything a visitor asks of it is arithmetic their own browser can
@@ -84,6 +85,77 @@ function landmarks() {
     };
 }
 
+const REPO = 'https://github.com/octopranav/Grid-Point-Code';
+
+/**
+ * Point the repository's own relative links at the repository.
+ *
+ * `SPEC.md` links to files beside it -- `reference/from_spec.py`, `test_data/`
+ * -- which resolve when the document is read on GitHub and resolve to nothing
+ * when it is read here. The document is not edited to suit the website; the
+ * website sends those links where they were always going.
+ */
+const repositoryLinks = {
+    name: 'repository-links',
+    element: {
+        filter: ['a'],
+        visit(node) {
+            const href = node.properties?.href;
+            if (typeof href !== 'string') return;
+
+            // The four READMEs each link to SPEC.md on GitHub, which was the
+            // only place it could be read when they were written. It is read
+            // here now, so a reader following that link should stay here rather
+            // than being sent out to a raw markdown file. Same document, better
+            // rendering, and the source keeps the link that works everywhere
+            // else.
+            const rendered = `${REPO}/blob/main/SPEC.md`;
+            if (href === rendered || href.startsWith(`${rendered}#`)) {
+                return {
+                    ...node,
+                    properties: { ...node.properties, href: href.replace(rendered, '/spec') },
+                };
+            }
+
+            // Schemes, fragments and site-absolute paths are already right.
+            if (/^([a-z][a-z0-9+.-]*:|#|\/)/i.test(href)) return;
+
+            const directory = href.endsWith('/');
+            const path = href.replace(/\/$/, '');
+            return {
+                ...node,
+                properties: {
+                    ...node.properties,
+                    href: `${REPO}/${directory ? 'tree' : 'blob'}/main/${path}`,
+                },
+            };
+        },
+    },
+};
+
+/**
+ * Let a wide table scroll inside its own box.
+ *
+ * The specification has tables that will not fit a phone -- the alias table,
+ * the seam measurements -- and a table cannot scroll by itself. Each is wrapped
+ * so the box scrolls and the page never does, which is the rule everywhere else
+ * on this site.
+ */
+const scrollableTables = {
+    name: 'scrollable-tables',
+    element: {
+        filter: ['table'],
+        visit(node, ctx) {
+            ctx.wrapNode(node, {
+                type: 'element',
+                tagName: 'div',
+                properties: { className: ['table-scroll'] },
+                children: [],
+            });
+        },
+    },
+};
+
 export default defineConfig({
     site: 'https://gridpointcode.com',
     trailingSlash: 'never',
@@ -94,6 +166,12 @@ export default defineConfig({
     },
     devToolbar: {
         enabled: false,
+    },
+    markdown: {
+        // Astro slugs headings the way GitHub does, so the ninety-six
+        // `#fragment` links already inside SPEC.md keep working here without
+        // the document being touched.
+        processor: satteri({ hastPlugins: [repositoryLinks, scrollableTables] }),
     },
     vite: {
         server: {

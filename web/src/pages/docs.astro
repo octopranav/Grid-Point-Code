@@ -1,0 +1,145 @@
+---
+import Base from '../layouts/Base.astro';
+import { PORTS } from '../lib/ports';
+
+const description =
+    'Grid Point Code in TypeScript, Python, Java and C#: the same arithmetic, the same '
+    + 'conformance vectors, and byte-identical output from every one.';
+
+// Every port is published at the same version, and that is the point rather
+// than a coincidence — so it is worth saying only if it is true.
+const versions = [...new Set(PORTS.map((each) => each.version))];
+const together = versions.length === 1 ? versions[0] : null;
+---
+
+<Base title="Docs" description={description}>
+    <div class="page">
+        <header class="intro">
+            <h1>Four ports, one answer</h1>
+            <p class="lede">
+                The same specification, implemented four times and checked against the same
+                conformance vectors. A coordinate encoded by any one of them is the same ten
+                characters as any other — not nearly, exactly.
+                {together && (
+                    <> Every port is published at <code class="code">{together}</code>.</>
+                )}
+            </p>
+            <p class="note">
+                Each page below is that port's own README, rendered from the repository rather
+                than retold here. What the API does is documented once, beside the code.
+            </p>
+        </header>
+
+        <ul class="ports">
+            {PORTS.map((each) => (
+                <li>
+                    <a href={`/docs/${each.id}`}>
+                        <span class="name">{each.name}</span>
+                        <span class="blurb">{each.blurb}</span>
+                        <span class="pkg">
+                            <span class="registry">{each.registry}</span>
+                            <code class="code">{each.packageName}</code>
+                        </span>
+                    </a>
+                </li>
+            ))}
+        </ul>
+
+        <p class="more">
+            The format itself is defined in the <a href="/spec">specification</a>, which every
+            one of these implements and none of them may contradict.
+        </p>
+    </div>
+</Base>
+
+<style>
+    .page {
+        max-width: 62rem;
+        margin: 0 auto;
+        padding: var(--space-5) var(--space-4);
+    }
+
+    .intro {
+        max-width: var(--measure);
+        margin-bottom: var(--space-5);
+    }
+
+    h1 {
+        margin: 0 0 var(--space-3);
+    }
+
+    .lede {
+        font-size: var(--text-lede-size, 1.15rem);
+        color: var(--ink);
+    }
+
+    .note {
+        color: var(--ink-mid);
+        font-size: var(--text-small-size);
+    }
+
+    .ports {
+        list-style: none;
+        margin: 0 0 var(--space-5);
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+        gap: var(--space-3);
+    }
+
+    .ports a {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        height: 100%;
+        padding: var(--space-3);
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-card);
+        background: var(--surface);
+        text-decoration: none;
+        color: var(--ink);
+    }
+
+    .ports a:hover {
+        border-color: var(--brass);
+    }
+
+    .name {
+        font-family: var(--font-display);
+        font-size: var(--text-title-size);
+        font-weight: var(--text-title-weight);
+    }
+
+    .blurb {
+        flex: 1;
+        font-size: var(--text-small-size);
+        color: var(--ink-mid);
+        line-height: 1.5;
+    }
+
+    .pkg {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        padding-top: var(--space-2);
+        border-top: 1px solid var(--rule-soft);
+    }
+
+    .registry {
+        font-family: var(--font-mono);
+        font-size: var(--text-label-size);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+    }
+
+    .pkg .code {
+        font-size: var(--text-small-size);
+        overflow-wrap: anywhere;
+    }
+
+    .more {
+        max-width: var(--measure);
+        color: var(--ink-mid);
+    }
+</style>

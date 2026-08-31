@@ -238,6 +238,36 @@ jobs:
       - name: The four ports must agree case by case
         run: python conformance/compare.py
 
+  documentation:
+    name: The documentation holds together
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+
+      # A checker nobody has watched fail is a checker nobody knows works, and
+      # one that silently passes everything looks exactly like a clean
+      # repository. Every check is given a document that breaks it first.
+      - name: The checks themselves work
+        run: python -m unittest discover --start-directory audit --top-level-directory audit
+
+      # Cross-references, relative links, table separators, and three dashes
+      # under a paragraph -- which is a heading underline, not a rule, and had
+      # silently turned the last line of three paragraphs in SPEC.md into a
+      # heading before anyone noticed.
+      - name: Every link resolves and every table holds
+        run: python audit/markdown.py
+
+      # Documentation rots quietly: a renamed method or a value that drifted by
+      # a digit shows up in no test suite, because nothing executes prose. This
+      # executes it, and checks what it claims.
+      - name: Every documented example runs and says what it does
+        run: python audit/examples.py
+
   website:
     name: The website builds
     runs-on: ubuntu-latest

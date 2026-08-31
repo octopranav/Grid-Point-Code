@@ -7,15 +7,16 @@ import ThemeToggle from './ThemeToggle.astro';
 // reader's address bar never shows. Compare against what they actually see.
 const route = Astro.url.pathname.replace(/index\.html$/, '').replace(/\.html$/, '');
 
+// Only pages that exist. This list was written ahead of them and shipped
+// pointing at six that did not, so every visitor to the live site could reach a
+// 404 from the masthead. Add a name here when its page lands, not before: a
+// navigation that lies is worse than a short one.
+//
+// Still to come: Learn, Typos, Seams, Proof and Compare.
 const sections = [
     { href: '/play', name: 'Play' },
-    { href: '/learn', name: 'Learn' },
-    { href: '/typos', name: 'Typos' },
-    { href: '/seams', name: 'Seams' },
-    { href: '/proof', name: 'Proof' },
     { href: '/spec', name: 'Spec' },
     { href: '/docs', name: 'Docs' },
-    { href: '/compare', name: 'Compare' },
 ];
 ---
 

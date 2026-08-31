@@ -1,0 +1,23 @@
+---
+import { getEntry, render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import Document from '../components/Document.astro';
+
+// Rendered from the repository's own SPEC.md, not a copy of it. A specification
+// that disagrees with the site describing it is worse than no site.
+const entry = await getEntry('specification', 'spec');
+if (!entry) throw new Error('SPEC.md was not found beside the repository root');
+
+const { Content, headings } = await render(entry);
+
+
+const description =
+    'The Grid Point Code specification: the grid, the alphabet, encoding and decoding, '
+    + 'the locality guarantee, the short form, the check character, and the seams.';
+---
+
+<Base title="Specification" description={description}>
+    <Document headings={headings} skip={['contents']} label="Specification contents">
+        <Content />
+    </Document>
+</Base>
