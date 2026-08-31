@@ -567,8 +567,15 @@ const code = GPC.encode(START.latitude, START.longitude);
         }
 
         if (canKeep()) {
-            offlineRow.hidden = false;
-            void showKept();
+            // Shown only once the archive is known to be there. Without it the
+            // button cannot do anything but fail, and offering an action that
+            // is certain to fail is the same sin as one that silently does
+            // nothing -- which is the reason this whole block is conditional.
+            void kept().then((holding) => {
+                if (!holding) return;
+                offlineRow.hidden = false;
+                forgetButton.hidden = holding.shards === 0;
+            });
 
             keepButton.addEventListener('click', async () => {
                 if (anchorAt === null) return;
