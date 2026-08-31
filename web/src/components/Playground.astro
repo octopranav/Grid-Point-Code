@@ -69,6 +69,13 @@ const code = GPC.encode(START.latitude, START.longitude);
                     </svg>
                     <span data-copy-label>Copy</span>
                 </button>
+                <button type="button" class="copy" data-copy-link>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"></path>
+                        <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"></path>
+                    </svg>
+                    <span data-copy-link-label>Link</span>
+                </button>
             </div>
 
             <p class="note" data-code-note></p>
@@ -209,6 +216,7 @@ const code = GPC.encode(START.latitude, START.longitude);
     import { GPC, CodeClass } from '@pranavpatel.ca/algo-gridpointcode';
     import { resolve, neighbourhood, type LevelCell } from '../lib/levels';
     import { FORMS, COMPASS, aloud } from '../lib/forms';
+    import { addressOf, codeIn, linkTo } from '../lib/permalink';
     import {
         nearby,
         anchored,
@@ -267,6 +275,8 @@ const code = GPC.encode(START.latitude, START.longitude);
         const glyphs = boxes.map((box) => box.querySelector<HTMLElement>('.symbol')!);
         const spoken = section.querySelector<HTMLElement>('.mark .visually-hidden')!;
         const copyButton = section.querySelector<HTMLButtonElement>('[data-copy]')!;
+        const linkButton = section.querySelector<HTMLButtonElement>('[data-copy-link]')!;
+        const linkLabel = section.querySelector<HTMLElement>('[data-copy-link-label]')!;
         const copyLabel = section.querySelector<HTMLElement>('[data-copy-label]')!;
         const basemapChooser = section.querySelector<HTMLSelectElement>('[data-basemap]')!;
         const aloudLine = section.querySelector<HTMLElement>('[data-aloud]')!;
@@ -322,6 +332,8 @@ const code = GPC.encode(START.latitude, START.longitude);
 
             copyButton.disabled = value === null;
             copyLabel.textContent = 'Copy';
+            linkButton.disabled = value === null;
+            linkLabel.textContent = 'Link';
 
             // Everything below is derived from the code, so it is computed here
             // and nowhere else. Any form updated somewhere else is a form that
@@ -605,6 +617,19 @@ const code = GPC.encode(START.latitude, START.longitude);
                 forgetButton.hidden = true;
             });
         }
+
+        linkButton.addEventListener('click', async () => {
+            if (code === null) return;
+            try {
+                await navigator.clipboard.writeText(addressOf(code, location));
+                linkLabel.textContent = 'Copied';
+            } catch {
+                // A refused clipboard is not an error worth a message: the
+                // address bar already holds the link, which is where it came
+                // from and where a reader can still get it.
+                linkLabel.textContent = 'In the address bar';
+            }
+        });
 
         /**
          * No code: nothing is half-shown.
@@ -978,6 +1003,21 @@ const code = GPC.encode(START.latitude, START.longitude);
          * The same rule the code itself follows -- one owner, everything
          * downstream written from it -- applied to the prose.
          */
+        /**
+         * Keep the address bar naming the point on screen.
+         *
+         * Replaced rather than pushed. A nudge is not somewhere a reader wants
+         * to go back to, and pushing would fill the history with a hundred of
+         * them and make Back useless for leaving the page at all.
+         */
+        function rememberInUrl(value: string) {
+            try {
+                history.replaceState(null, '', linkTo(value));
+            } catch {
+                /* a browser refusing history is no reason to stop working */
+            }
+        }
+
         function place(
             latitude: number,
             longitude: number,
@@ -985,6 +1025,7 @@ const code = GPC.encode(START.latitude, START.longitude);
             accuracy?: number,
         ) {
             code = GPC.encode(latitude, longitude);
+            rememberInUrl(code);
 
             // Decoding gives the cell centre, which is the point the code
             // actually names — not the arbitrary spot inside the cell that was
@@ -1246,7 +1287,36 @@ const code = GPC.encode(START.latitude, START.longitude);
             const ready = () => {
                 if (!map || section.dataset.mapState === 'ready') return;
                 section.dataset.mapState = 'ready';
-                place(start.latitude, start.longitude, 'elsewhere');
+
+                // A link names a place. Fed through the code field rather than
+                // decoded here, so a code that arrives broken is answered the
+                // same way a broken one typed in would be -- same verdict, same
+                // explanation of what the alias table made of it -- instead of
+                // getting a second, quieter opinion written just for URLs.
+                //
+                // A valid one descends from the world, which is what the code
+                // path already does. Arriving at somebody else's link and
+                // watching it resolve is the right way to be shown a place.
+                const shared = codeIn(location.search);
+                if (shared === null) {
+                    place(start.latitude, start.longitude, 'elsewhere');
+                    return;
+                }
+                // Shown the way the format writes it, when it can be. The
+                // field otherwise holds whatever the link happened to contain
+                // and the note explains that it was "read as" something else --
+                // which is the right thing to tell someone about what they
+                // typed, and noise about a link they merely followed. A code
+                // that will not normalise stays exactly as it arrived, so the
+                // message about it still describes the thing they have.
+                let shown = shared;
+                try {
+                    shown = GPC.formatGPC(GPC.normalise(shared)[0]);
+                } catch {
+                    /* unreadable: let the field show what the link said */
+                }
+                codeField.value = shown;
+                codeField.dispatchEvent(new Event('input', { bubbles: true }));
             };
 
             if (map.isStyleLoaded()) ready();
