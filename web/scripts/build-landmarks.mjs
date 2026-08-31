@@ -268,7 +268,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
         console.error('usage: node scripts/build-landmarks.mjs --geonames <dir> [--out <dir>]');
         process.exit(2);
     }
-    const out = argument('out', 'public/landmarks');
+    const out = argument('out', 'landmarks');
     const level = Number(argument('level', '4'));
     const slices = Number(argument('slices', '8'));
 

@@ -93,14 +93,14 @@ jobs:
         run: |
           node scripts/build-landmarks.mjs \
             --geonames ../geonames \
-            --out public/landmarks \
+            --out landmarks \
             --level '${{ inputs.level }}' \
             --slices '${{ inputs.slices }}' | tee ../report.txt
         working-directory: web
 
       - name: Pack them
         run: |
-          tar -czf landmarks.tar.gz -C web/public/landmarks .
+          tar -czf landmarks.tar.gz -C web/landmarks .
           ls -l landmarks.tar.gz
 
       # One moving tag rather than a dated one, so the Pages build has a fixed

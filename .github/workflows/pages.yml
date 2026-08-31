@@ -92,9 +92,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release download landmarks --pattern landmarks.tar.gz --dir .. --clobber; then
-            mkdir -p public/landmarks
-            tar -xzf ../landmarks.tar.gz -C public/landmarks
-            echo "landmark shards: $(find public/landmarks -name '*.json' | wc -l)" >> "$GITHUB_STEP_SUMMARY"
+            mkdir -p landmarks
+            tar -xzf ../landmarks.tar.gz -C landmarks
+            echo "landmark shards: $(find landmarks -name '*.json' | wc -l)" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "::warning::No landmark archive published; the reference list will be empty. Run the Landmarks workflow to build one."
           fi

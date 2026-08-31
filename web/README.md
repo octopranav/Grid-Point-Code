@@ -44,9 +44,8 @@ src/
   lib/            the level arithmetic, shared by the build and the browser
   styles/         global.css, and tokens.css generated from ../design
 scripts/          build-landmarks.mjs, which makes the landmark shards
-public/
-  sw.js           keeps the site and its shards working with the network cut
-  landmarks/      generated, never committed: see below
+public/sw.js      keeps the site and its shards working with the network cut
+landmarks/        generated, never committed: see below
 ```
 
 `src/styles/tokens.css` is generated. Edit
@@ -150,7 +149,20 @@ one coordinate is a centroid. And only descriptions unique inside their own
 region, because `Scarborough` is a district of Toronto and a settlement 1,900 km
 north, and a listener who picks the wrong one is not told they did.
 
-`public/landmarks/` is generated and **not committed**. It is built by
+**The archive lives beside `public/`, not inside it, and that is not a
+preference.** With 82,000 files in `public/` the dev server never finished
+starting — it gave up after thirty seconds, every time, while the same tree with
+the archive moved aside answered in under five. The production build never
+minded, which is what made it a trap: the site built and deployed perfectly and
+could not be worked on.
+
+Moving it out of `public/` is only half the fix, because Vite watches the whole
+project root — the archive has to be excluded from the watcher as well. Both
+halves are in [`astro.config.mjs`](astro.config.mjs), along with the small
+integration that serves the files in development and copies them into the output
+at the end of a build.
+
+`landmarks/` is generated and **not committed**. It is built by
 [`.github/workflows/landmarks.yml`](../.github/workflows/landmarks.yml), run by
 hand, and published as a release asset under the `landmarks` tag. The Pages
 build downloads that asset; if there is none it warns and carries on, and the

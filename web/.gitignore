@@ -8,4 +8,6 @@ node_modules/
 public/tiles/
 
 # Built from a GeoNames dump by scripts/build-landmarks.mjs, never committed.
-public/landmarks/
+# Beside public/ rather than in it on purpose: 82,000 files inside public/ stop
+# the dev server from ever finishing its start. See astro.config.mjs.
+landmarks/
