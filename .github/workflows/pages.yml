@@ -79,6 +79,26 @@ jobs:
       - name: Check the generated tokens match their source
         run: npm run tokens:check
 
+      # The landmark shards are built by the Landmarks workflow and published
+      # as a release asset rather than committed. Eighty-two thousand files and
+      # 260 MB would sit in every clone forever, for data that changes when
+      # GeoNames does and not when this site does.
+      #
+      # A missing archive is a warning, not a failure. The site works without
+      # it -- the reference list simply says it could not be loaded -- and
+      # throwing away a whole deployment over it would be the worse trade.
+      - name: Fetch the landmark shards
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release download landmarks --pattern landmarks.tar.gz --dir .. --clobber; then
+            mkdir -p landmarks
+            tar -xzf ../landmarks.tar.gz -C landmarks
+            echo "landmark shards: $(find landmarks -name '*.json' | wc -l)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::No landmark archive published; the reference list will be empty. Run the Landmarks workflow to build one."
+          fi
+
       - name: Build
         run: npx astro build
 

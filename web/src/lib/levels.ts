@@ -119,6 +119,59 @@ export function resolve(latitude: number, longitude: number): Resolution {
     return { code, centre: GPC.decode(code), levels };
 }
 
+// How many cells the world holds along each axis at the finest level. Derived
+// from the unit sizes rather than written out, so there is one fewer number
+// here that could drift away from the format.
+const ROWS = Math.round(180 / LATITUDE_UNIT);
+const COLUMNS = Math.round(360 / LONGITUDE_UNIT);
+
+export interface Neighbour {
+    south: number;
+    north: number;
+    west: number;
+    east: number;
+    /** True for the one the point actually falls in. */
+    under: boolean;
+}
+
+/**
+ * The cell a point falls in at some level, and the eight around it.
+ *
+ * Fewer than nine near an edge of the world: the grid does not wrap, so a cell
+ * on the antimeridian has no eastern neighbour and one at a pole has nothing
+ * above it. Returning a short list is honest; inventing a cell that does not
+ * exist would put a box on the map for a place there is no code for.
+ */
+export function neighbourhood(
+    latitude: number,
+    longitude: number,
+    level: number,
+): Neighbour[] {
+    const [row, column] = GPC.decodeToGrid(GPC.encode(latitude, longitude));
+    const span = 5 ** (LEVELS - level);
+    const firstRow = Math.floor(row / span) * span;
+    const firstColumn = Math.floor(column / span) * span;
+
+    const cells: Neighbour[] = [];
+
+    for (const downwards of [-1, 0, 1]) {
+        for (const across of [-1, 0, 1]) {
+            const r = firstRow + downwards * span;
+            const c = firstColumn + across * span;
+            if (r < 0 || r >= ROWS || c < 0 || c >= COLUMNS) continue;
+            cells.push({
+                south: r * LATITUDE_UNIT - 90,
+                north: (r + span) * LATITUDE_UNIT - 90,
+                west: c * LONGITUDE_UNIT - 180,
+                east: (c + span) * LONGITUDE_UNIT - 180,
+                under: downwards === 0 && across === 0,
+            });
+        }
+    }
+
+    return cells;
+}
+
 /**
  * The sample points from the specification, verified against it at build time.
  *

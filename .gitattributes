@@ -87,3 +87,14 @@ typescript/**/*.js text eol=lf
 # The differential drivers are compared byte for byte across four
 # toolchains on two platforms, so they are pinned like the vectors are.
 conformance/** text eol=lf
+
+###############################################################################
+# design/tokens.json and everything generated from it. The generator writes LF
+# and continuous integration compares its output against what is committed, so
+# a CRLF checkout would make every regeneration look like a change and the
+# drift check would be reporting line endings rather than design.
+###############################################################################
+design/tokens.json text eol=lf
+design/build-tokens.mjs text eol=lf
+design/generated/** text eol=lf
+web/src/styles/tokens.css text eol=lf

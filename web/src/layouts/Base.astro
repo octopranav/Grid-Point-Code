@@ -24,9 +24,16 @@ import Footer from '../components/Footer.astro';
 interface Props {
     title: string;
     description: string;
+    /**
+     * A page that is a tool rather than a document: it takes the whole frame
+     * below the masthead, scrolls nothing of its own, and goes without a footer.
+     * A footer under a full-height instrument is a row of links nobody can see
+     * without scrolling the instrument off the screen to reach them.
+     */
+    fills?: boolean;
 }
 
-const { title, description } = Astro.props;
+const { title, description, fills = false } = Astro.props;
 
 // Pages are written to disk as files rather than directories, so at build time
 // this reads /index.html and /play.html rather than / and /play. The address a
@@ -75,12 +82,60 @@ const canonical = new URL(route, Astro.site);
         </script>
     </head>
 
-    <body>
+    <body data-fills={fills ? 'true' : undefined}>
         <a class="skip-link" href="#main">Skip to content</a>
         <Header />
-        <main id="main">
+        <main id="main" data-fills={fills ? 'true' : undefined}>
             <slot />
         </main>
-        <Footer />
+        {!fills && <Footer />}
+
+        <script>
+            // Registered after load, and never awaited: the site is arithmetic
+            // and works without it. All this buys is the same site with the
+            // network cut -- which for a format whose whole claim is that a
+            // code needs no lookup seems the least it should manage.
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker
+                        .register(import.meta.env.BASE_URL + 'sw.js')
+                        .catch(() => {
+                            /* refused registration costs only the offline copy */
+                        });
+                });
+            }
+        </script>
     </body>
 </html>
+
+<style is:global>
+    /* A filling page owns everything below the masthead.
+
+       The body carries a DEFINITE height here, not the usual `min-height`. That
+       distinction is the whole thing: a minimum constrains nothing, so when the
+       tool's content grew the body grew with it, and `flex: 1` then handed the
+       main element MORE than the viewport's leftover rather than less. The page
+       scrolled and took the map with it -- which is the fault this mode exists
+       to prevent.
+
+       `min-height: 0` is the other half: a flex child will not shrink below its
+       content without it, so the panel inside could not scroll on its own. */
+    body[data-fills] {
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    main[data-fills] {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* Too little height to divide on a phone, so it goes back to a page that
+       scrolls normally and the tool takes a fixed slice of it. */
+    @media (max-width: 900px) {
+        body[data-fills] { height: auto; overflow: visible; }
+        main[data-fills] { display: block; overflow: visible; }
+    }
+</style>
