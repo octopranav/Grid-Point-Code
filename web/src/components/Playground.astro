@@ -214,6 +214,7 @@ const code = GPC.encode(START.latitude, START.longitude);
         anchored,
         canKeep,
         keepArea,
+        heldArea,
         kept,
         forget,
         type Choice,
@@ -461,6 +462,7 @@ const code = GPC.encode(START.latitude, START.longitude);
             choices = [];
             picked = null;
             anchorAt = null;
+            offlineNote.textContent = '';
             anchorNote.textContent = note;
             drawAnchors();
         }
@@ -485,6 +487,7 @@ const code = GPC.encode(START.latitude, START.longitude);
                             ? ''
                             : 'No landmark is near enough to anchor a short form here. Share the full ten characters instead \u2014 they resolve on their own.';
                     drawAnchors();
+                    void showHeldHere(latitude, longitude, mine);
                 },
                 () => {
                     if (mine !== asked) return;
@@ -521,9 +524,10 @@ const code = GPC.encode(START.latitude, START.longitude);
                 ? Math.round(bytes / 1024) + ' KB'
                 : (bytes / 1048576).toFixed(1) + ' MB';
 
-        // Reports how much is held; deliberately does not touch the note. It
-        // runs after a keep, and what the reader wants to read then is what
-        // that keep just did, not the running total it already knew.
+        // Reports how much is held anywhere, which is only what the Forget
+        // button needs. It deliberately does not touch the note: it runs after
+        // a keep, and what a reader wants to read then is what that keep just
+        // did, not a running total they already knew.
         async function showKept(): Promise<number> {
             const holding = await kept();
             const held = holding?.shards ?? 0;
@@ -531,14 +535,40 @@ const code = GPC.encode(START.latitude, START.longitude);
             return held;
         }
 
-        const heldSoFar = (held: number) =>
-            held + ' shard' + (held === 1 ? '' : 's') + ' held for use without a network.';
+        /**
+         * Say what is held *here*, for whichever point the panel is showing.
+         *
+         * The note used to be written only by the two buttons, which meant a
+         * message about one area survived a jump to the far side of the world:
+         * `Kept 25 shards around cell G3R` still sitting there while the reader
+         * looked at Jakarta. That is the panel's oldest fault -- a surface
+         * updated somewhere other than where the point changes -- and this is
+         * the fourth time it has appeared.
+         *
+         * So the note belongs to the point now, and is refreshed wherever the
+         * reference list is, under the same guard: a reply for a point the
+         * reader has already left is dropped rather than shown.
+         */
+        async function showHeldHere(latitude: number, longitude: number, mine: number) {
+            let here: Awaited<ReturnType<typeof heldArea>> = null;
+            try {
+                here = await heldArea(latitude, longitude);
+            } catch {
+                here = null;
+            }
+            if (mine !== asked) return;
+
+            offlineNote.textContent =
+                here && here.shards > 0
+                    ? here.shards + ' shard' + (here.shards === 1 ? '' : 's')
+                      + ' held for this area, ready without a network.'
+                    : '';
+            void showKept();
+        }
 
         if (canKeep()) {
             offlineRow.hidden = false;
-            void showKept().then((held) => {
-                if (held > 0) offlineNote.textContent = heldSoFar(held);
-            });
+            void showKept();
 
             keepButton.addEventListener('click', async () => {
                 if (anchorAt === null) return;

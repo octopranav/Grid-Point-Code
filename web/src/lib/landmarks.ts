@@ -239,6 +239,35 @@ export async function keepArea(latitude: number, longitude: number): Promise<Are
     return { cell: area, shards, bytes };
 }
 
+/**
+ * How much of the area around one point is already held.
+ *
+ * Separate from `kept` below, which counts everything anywhere. The difference
+ * matters to a reader: being told that twenty-five shards are held is no use
+ * when standing somewhere none of them cover, and is worse than no message at
+ * all, because it reads as reassurance.
+ */
+export async function heldArea(
+    latitude: number,
+    longitude: number,
+): Promise<{ cell: string; shards: number } | null> {
+    if (!canKeep()) return null;
+
+    const described = await manifest();
+    if (!described) return null;
+
+    const area = GPC.cell(GPC.encode(latitude, longitude), described.level - 1);
+    const name = shardCacheName(described);
+    if (!(await caches.keys()).includes(name)) return { cell: area, shards: 0 };
+
+    const cache = await caches.open(name);
+    let shards = 0;
+    for (const symbol of ALPHABET) {
+        if (await cache.match(url(area + symbol))) shards += 1;
+    }
+    return { cell: area, shards };
+}
+
 /** How much is being kept, across every area asked for so far. */
 export async function kept(): Promise<{ shards: number } | null> {
     if (!canKeep()) return null;
