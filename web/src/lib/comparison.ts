@@ -123,10 +123,14 @@ export const ROWS: Row[] = [
             + 'rather than a sphere is what lets sixteen symbols reach 3.8 m in ten '
             + 'characters, where twenty-five symbols are needed to reach 2.5 m over the '
             + 'whole Earth. That is an engineering trade, made deliberately, and not a '
-            + 'shortcoming of either.',
+            + 'shortcoming of either. '
+            + 'Every figure in this column is the published specification’s. Sites '
+            + 'unaffiliated with its authors offer a longer code extended to the whole '
+            + 'Earth; that is somebody else’s work and is not what the document defines, '
+            + 'so it is not reported here as though it were.',
         values: {
             gpc: 'Everywhere on Earth',
-            digipin: 'India and its maritime zone — 63.5°–99.5° E, 2.5°–38.5° N',
+            digipin: 'India and its maritime zone — 63.5°–99.5° E, 2.5°–38.5° N, as published',
             olc: 'Everywhere on Earth',
             geohash: 'Everywhere on Earth',
             w3w: 'Everywhere on Earth',
