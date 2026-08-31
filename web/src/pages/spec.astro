@@ -1,0 +1,129 @@
+---
+import { getEntry, render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import '../styles/prose.css';
+
+// Rendered from the repository's own SPEC.md, not a copy of it. A specification
+// that disagrees with the site describing it is worse than no site.
+const entry = await getEntry('specification', 'spec');
+if (!entry) throw new Error('SPEC.md was not found beside the repository root');
+
+const { Content, headings } = await render(entry);
+
+// The document numbers its own sections, so this list needs no numbers of its
+// own. Appendices are lettered and sit at the same level as sections.
+//
+// The specification carries its own Contents table, because a markdown file
+// read on GitHub has no sidebar to put one in. Here it would be the same list
+// twice, so the heading is dropped from this one and the table is hidden in the
+// document — hidden rather than removed, because the source is rendered whole
+// and this page does not get to edit it.
+const contents = headings.filter(
+    (h) => (h.depth === 2 || h.depth === 3) && h.slug !== 'contents',
+);
+
+const description =
+    'The Grid Point Code specification: the grid, the alphabet, encoding and decoding, '
+    + 'the locality guarantee, the short form, the check character, and the seams.';
+---
+
+<Base title="Specification" description={description}>
+    <div class="spec">
+        <nav class="contents" aria-labelledby="contents-heading">
+            <h2 id="contents-heading">Contents</h2>
+            <ol>
+                {contents.map((heading) => (
+                    <li data-depth={heading.depth}>
+                        <a href={`#${heading.slug}`}>{heading.text}</a>
+                    </li>
+                ))}
+            </ol>
+        </nav>
+
+        <article class="document">
+            <Content />
+        </article>
+    </div>
+</Base>
+
+<style>
+    /* The contents list is as tall as the specification and the specification is
+       long, so it scrolls on its own rather than dragging the page with it. */
+    .spec {
+        display: grid;
+        grid-template-columns: 16rem minmax(0, 1fr);
+        gap: var(--space-5);
+        align-items: start;
+        padding: var(--space-5) var(--space-4);
+        max-width: 78rem;
+        margin: 0 auto;
+    }
+
+    .contents {
+        position: sticky;
+        top: var(--space-4);
+        max-height: calc(100vh - var(--space-6));
+        overflow-y: auto;
+        border-right: 1px solid var(--rule-soft);
+        padding-right: var(--space-3);
+    }
+
+    .contents h2 {
+        font-size: var(--text-label-size);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin: 0 0 var(--space-2);
+    }
+
+    .contents ol {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .contents a {
+        display: block;
+        padding: 3px 0;
+        font-size: var(--text-small-size);
+        color: var(--ink-mid);
+        text-decoration: none;
+        line-height: 1.35;
+    }
+
+    .contents a:hover {
+        color: var(--ink);
+    }
+
+    /* Subsections are indented and quieter; the numbering in the text already
+       says which is which, so this only has to stay out of its way. */
+    .contents li[data-depth='3'] a {
+        padding-left: var(--space-2);
+        color: var(--ink-soft);
+    }
+
+    .document {
+        min-width: 0;
+        max-width: var(--measure);
+    }
+
+    @media (max-width: 900px) {
+        .spec {
+            grid-template-columns: minmax(0, 1fr);
+            gap: var(--space-3);
+            padding: var(--space-4) var(--space-3);
+        }
+
+        /* Sticky is wrong on a phone: it would eat the screen. Collapsed to a
+           plain list at the top, which is what a contents list is anyway. */
+        .contents {
+            position: static;
+            max-height: none;
+            overflow: visible;
+            border-right: 0;
+            border-bottom: 1px solid var(--rule-soft);
+            padding-right: 0;
+            padding-bottom: var(--space-3);
+        }
+    }
+</style>

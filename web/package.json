@@ -13,6 +13,7 @@
     "check": "astro check"
   },
   "dependencies": {
+    "@astrojs/markdown-satteri": "^0.3.8",
     "@fontsource/bitter": "^5.2.5",
     "@fontsource/ibm-plex-mono": "^5.2.5",
     "@fontsource/ibm-plex-sans": "^5.2.5",

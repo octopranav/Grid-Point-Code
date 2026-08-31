@@ -1,0 +1,167 @@
+/* Documents rendered from the repository's own markdown.
+ *
+ * These rules are global on purpose. The markdown is compiled to plain HTML with
+ * no component scope on it, so a scoped rule would never match — the same trap
+ * the playground's script-built rows fell into. Confined under `.document`, so
+ * the loosening reaches no further than the pages that render markdown. */
+
+.document {
+    color: var(--ink);
+    line-height: 1.65;
+}
+
+/* Every heading is a link target: the specification carries ninety-six of its
+   own `#fragment` links, and a reader arriving on one should not land with the
+   heading jammed against the masthead. */
+.document :where(h1, h2, h3, h4, h5, h6) {
+    scroll-margin-top: var(--space-4);
+}
+
+.document h1 {
+    margin: 0 0 var(--space-3);
+}
+
+.document h2 {
+    margin: var(--space-5) 0 var(--space-2);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--rule-soft);
+}
+
+.document h3 {
+    margin: var(--space-4) 0 var(--space-2);
+}
+
+.document h4 {
+    margin: var(--space-3) 0 var(--space-1);
+    font-family: var(--font-body);
+    font-size: var(--text-body-size);
+    font-weight: 600;
+}
+
+.document :target {
+    /* Marked, quietly, so a reader who followed a cross-reference can see which
+       of two adjacent headings they were sent to. */
+    border-left: 2px solid var(--brass);
+    padding-left: var(--space-2);
+    margin-left: calc(-1 * var(--space-2) - 2px);
+}
+
+.document p,
+.document ul,
+.document ol {
+    margin: 0 0 var(--space-3);
+}
+
+.document :where(ul, ol) {
+    padding-left: var(--space-4);
+}
+
+.document li {
+    margin-bottom: var(--space-1);
+}
+
+.document li > :where(ul, ol) {
+    margin-top: var(--space-1);
+}
+
+/* ── code ──────────────────────────────────────────────────────────────────
+   A code is set in mono everywhere on this site; inside prose it also needs to
+   be told apart from the words around it without shouting. */
+.document :not(pre) > code {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    padding: 0.1em 0.35em;
+    border-radius: var(--radius-cell);
+    background: var(--sunken);
+    color: var(--ink);
+}
+
+.document pre {
+    margin: 0 0 var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--rule-soft);
+    border-radius: var(--radius-card);
+    background: var(--sunken);
+    /* The specification's worked examples include lines that will not wrap
+       sensibly — grid arithmetic, alignment diagrams — so they scroll rather
+       than fold. The container scrolls; the page never does. */
+    overflow-x: auto;
+}
+
+.document pre code {
+    font-family: var(--font-mono);
+    font-size: var(--text-small-size);
+    line-height: 1.55;
+    background: none;
+    padding: 0;
+}
+
+/* ── tables ────────────────────────────────────────────────────────────────
+   The specification is full of them: the alphabet, the alias table, the seam
+   measurements, the callout words. */
+.document .table-scroll,
+.document table {
+    margin: 0 0 var(--space-3);
+}
+
+.document table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-small-size);
+}
+
+.document :where(th, td) {
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--rule-soft);
+    text-align: left;
+    vertical-align: top;
+}
+
+.document th {
+    font-weight: 600;
+    color: var(--ink-mid);
+    border-bottom-color: var(--rule);
+    white-space: nowrap;
+}
+
+.document td code {
+    white-space: nowrap;
+}
+
+.document blockquote {
+    margin: 0 0 var(--space-3);
+    padding-left: var(--space-3);
+    border-left: 2px solid var(--brass);
+    color: var(--ink-mid);
+}
+
+.document hr {
+    margin: var(--space-4) 0;
+    border: 0;
+    border-top: 1px solid var(--rule-soft);
+}
+
+.document img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* A table wider than the measure scrolls inside its own box rather than pushing
+   the page sideways. The wrapper is added by the markdown pipeline, because a
+   table cannot scroll on its own. */
+.document .table-scroll {
+    overflow-x: auto;
+    margin: 0 0 var(--space-3);
+}
+
+.document .table-scroll table {
+    margin: 0;
+}
+
+/* The specification's own contents table, which the page renders as a sidebar
+   instead. Hidden rather than stripped: the document is rendered whole, and a
+   reader without this stylesheet still gets every link in it. */
+.document #contents,
+.document #contents + .table-scroll {
+    display: none;
+}
