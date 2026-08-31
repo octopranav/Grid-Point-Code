@@ -43,6 +43,15 @@ export const SYSTEMS: System[] = [
         },
     },
     {
+        id: 'digipin',
+        name: 'DIGIPIN',
+        kind: 'Coordinate encoding',
+        source: {
+            label: 'DIGIPIN Technical Document, Department of Posts, March 2025',
+            url: 'https://www.indiapost.gov.in/documents/offerings/intiatives/DIGIPIN_Technical_document.pdf',
+        },
+    },
+    {
         id: 'olc',
         name: 'Open Location Code',
         kind: 'Coordinate encoding',
@@ -85,6 +94,7 @@ export const ROWS: Row[] = [
         dimension: 'What the address is',
         values: {
             gpc: 'Ten characters, always ten',
+            digipin: 'Ten characters, always ten',
             olc: 'Ten digits by default, eleven for a finer cell, plus a “+”',
             geohash: 'As many characters as the precision needs',
             w3w: 'Three words',
@@ -100,9 +110,26 @@ export const ROWS: Row[] = [
             + 'be picking the flattering half.',
         values: {
             gpc: '8.8 m² — 2.56 by 3.42 m at the equator',
+            digipin: '14 m² — 3.8 by 3.8 m; its document notes this varies with latitude',
             olc: '193 m² at ten digits; 9.8 m² at eleven',
             geohash: 'Varies with length; ±0.61 km at six characters',
             w3w: '9 m² — 3 by 3 m',
+        },
+    },
+    {
+        dimension: 'Where it works',
+        note:
+            'The row that makes the rest of this column legible. Covering one country '
+            + 'rather than a sphere is what lets sixteen symbols reach 3.8 m in ten '
+            + 'characters, where twenty-five symbols are needed to reach 2.5 m over the '
+            + 'whole Earth. That is an engineering trade, made deliberately, and not a '
+            + 'shortcoming of either.',
+        values: {
+            gpc: 'Everywhere on Earth',
+            digipin: 'India and its maritime zone — 63.5°–99.5° E, 2.5°–38.5° N',
+            olc: 'Everywhere on Earth',
+            geohash: 'Everywhere on Earth',
+            w3w: 'Everywhere on Earth',
         },
     },
     {
@@ -112,6 +139,7 @@ export const ROWS: Row[] = [
             + 'shape, and stored in a fixed field.',
         values: {
             gpc: 'Yes',
+            digipin: 'Yes',
             olc: 'No — length is chosen for precision',
             geohash: 'No — length is chosen for precision',
             w3w: 'Three words, of varying character length',
@@ -120,20 +148,39 @@ export const ROWS: Row[] = [
     {
         dimension: 'A shared prefix means nearby',
         note:
-            'Both grid encodings that claim this also state the converse does not hold, '
-            + 'and both are right to. It is a property of fixed grids rather than of any '
-            + 'one design, and the seams page here measures what it costs.',
+            'Every grid encoding here that claims this is right to, and the two whose '
+            + 'documents discuss the converse both say it does not hold: two points can '
+            + 'be metres apart and share nothing. That is a property of fixed grids rather '
+            + 'than of any one design, and the seams page measures what it costs.',
         values: {
             gpc: 'Yes, and the converse is stated not to hold',
+            digipin: 'Yes — “identifying the cells is done in a hierarchical fashion”',
             olc: null,
             geohash: 'Yes; “the reverse of this is not guaranteed”',
             w3w: 'No — the words are unrelated by design',
         },
     },
     {
+        dimension: 'Symbols it is written in',
+        note:
+            'Two of these independently removed the characters a reader confuses. This '
+            + 'one has no vowels, so a code cannot spell a word; DIGIPIN’s document '
+            + 'records replacing G, W and X “to maintain the phonetic and visual clarity”. '
+            + 'Arriving at the same precaution separately is a point in favour of the '
+            + 'precaution, not of either party.',
+        values: {
+            gpc: '25 symbols, no vowels',
+            digipin: '16 symbols',
+            olc: '20 digits',
+            geohash: '32 characters, base-32',
+            w3w: 'Words from a curated list',
+        },
+    },
+    {
         dimension: 'Converts without a network or a table',
         values: {
             gpc: 'Yes — arithmetic only',
+            digipin: 'Yes — described as an offline grid system',
             olc: 'Yes — arithmetic only',
             geohash: 'Yes — arithmetic only',
             w3w: 'The published interface is an API',
@@ -143,6 +190,7 @@ export const ROWS: Row[] = [
         dimension: 'Terms',
         values: {
             gpc: 'Apache-2.0',
+            digipin: 'Open source, published by the Department of Posts',
             olc: 'Apache-2.0',
             geohash: 'Placed in the public domain by its inventor, 2008',
             w3w: 'Commercial; an API key is required',
@@ -157,6 +205,7 @@ export const ROWS: Row[] = [
             + 'measure this one is worth very little so far.',
         values: {
             gpc: 'Not adopted anywhere',
+            digipin: 'National addressing infrastructure, backed by India Post',
             olc: 'Integrated in widely used mapping products',
             geohash: 'Long-standing use in databases and search systems',
             w3w: 'Integrated by many navigation and emergency services',
@@ -173,6 +222,6 @@ export const ROWS: Row[] = [
 export const PROMISES = [
     'Every figure about another system comes from that system’s own documentation, linked beside it.',
     'Where a document does not answer a question, the cell says so rather than guessing.',
-    'The dimensions include the ones this format loses, because choosing the axes is how a comparison lies while every fact in it stays true.',
+    'The dimensions include the ones this format loses, because choosing the axes is how a comparison lies while every fact in it stays true — and so does choosing who appears at all, which is why the closest system to this one is here rather than absent.',
     'No system here is described as bad, and none of them is. They answer different questions, and several answer theirs better than this one answers anything yet.',
 ];
