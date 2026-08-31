@@ -167,11 +167,12 @@ export const ROWS: Row[] = [
     {
         dimension: 'Symbols it is written in',
         note:
-            'Two of these independently removed the characters a reader confuses. This '
-            + 'one has no vowels, so a code cannot spell a word; DIGIPIN’s document '
-            + 'records replacing G, W and X “to maintain the phonetic and visual clarity”. '
-            + 'Arriving at the same precaution separately is a point in favour of the '
-            + 'precaution, not of either party.',
+            'Every system here guards against this, which is worth saying plainly: it is '
+            + 'settled practice rather than anybody’s idea. Open Location Code’s symbols '
+            + 'are “selected to reduce writing errors and prevent accidentally spelling '
+            + 'words”; DIGIPIN’s document records replacing G, W and X “to maintain the '
+            + 'phonetic and visual clarity”; geohash drops a, i, l and o; the word lists '
+            + 'are curated. This one has no vowels, so a code cannot spell a word.',
         values: {
             gpc: '25 symbols, no vowels',
             digipin: '16 symbols',
@@ -188,6 +189,70 @@ export const ROWS: Row[] = [
             olc: 'Yes — arithmetic only',
             geohash: 'Yes — arithmetic only',
             w3w: 'The published interface is an API',
+        },
+    },
+    {
+        dimension: 'A way to tell a mistyped one',
+        note:
+            'Read carefully: “its document does not define one” is not the same as “it '
+            + 'cannot”. These cells report what each specification sets out, and a system '
+            + 'may well do something its document leaves unsaid. The check character here '
+            + 'is optional and absent unless somebody asks for it, which is worth '
+            + 'admitting in the same breath as claiming it.',
+        values: {
+            gpc: 'An optional check character, added on request',
+            digipin: 'Its document does not define one',
+            olc: 'Its specification does not define one',
+            geohash: 'Not described',
+            w3w: 'Homophones and spelling variants removed from the lists',
+        },
+    },
+    {
+        dimension: 'A way to recover a mistyped one',
+        note:
+            'The row where this format has something the others’ documents do not '
+            + 'describe. The structure that hides an error also locates it: the wrong '
+            + 'code’s neighbourhood is searched for codes one keystroke away, ranked '
+            + 'against a rough idea of where you were. The typos page here does it in '
+            + 'front of the reader.',
+        values: {
+            gpc: 'Yes — candidates one keystroke away, ranked by distance',
+            digipin: 'Its document does not define one',
+            olc: 'Its specification does not define one',
+            geohash: 'Not described',
+            w3w: 'Not described',
+        },
+    },
+    {
+        dimension: 'Codes that read badly',
+        note:
+            'Two approaches, and the difference is which way each can be corrected later. '
+            + 'The word lists were built with native speakers and rude words removed, but '
+            + 'because the addresses are permanent the lists cannot be revised. The list '
+            + 'here is advisory and versioned instead: it can be updated without changing '
+            + 'a single code, and it screens rather than forbids.',
+        values: {
+            gpc: 'An advisory, versioned list; screening, not blocking',
+            digipin: 'Its document does not mention this',
+            olc: 'Its specification does not mention this',
+            geohash: 'Not described',
+            w3w: 'Rude and offensive words removed when each list is built',
+        },
+    },
+    {
+        dimension: 'Saying it out loud',
+        note:
+            'The row this format loses on its own evidence. Its appendix states that read '
+            + 'out in English, C, D, G, P, T and the digit three all rhyme, and that the '
+            + 'alphabet was not chosen for phonetic distinctness and cannot be now. Three '
+            + 'words chosen with native speakers are easier to say down a telephone than '
+            + 'ten characters, and no amount of callout words closes that gap entirely.',
+        values: {
+            gpc: 'Ten characters; callout words, and a rhyming set it admits to',
+            digipin: 'Ten characters, chosen partly for phonetic clarity',
+            olc: 'Ten or eleven characters',
+            geohash: 'A string of base-32 characters',
+            w3w: 'Three words, chosen with native speakers',
         },
     },
     {
@@ -225,7 +290,7 @@ export const ROWS: Row[] = [
  */
 export const PROMISES = [
     'Every figure about another system comes from that system’s own documentation, linked beside it.',
-    'Where a document does not answer a question, the cell says so rather than guessing.',
-    'The dimensions include the ones this format loses, because choosing the axes is how a comparison lies while every fact in it stays true — and so does choosing who appears at all, which is why the closest system to this one is here rather than absent.',
+    'Where a document does not answer a question, the cell says so rather than guessing — and “its document does not define one” is never a claim that a system cannot do the thing.',
+    'The dimensions include the ones this format loses — adoption, and saying an address out loud — because choosing the axes is how a comparison lies while every fact in it stays true. So does choosing who appears at all, which is why the closest system to this one is here rather than absent.',
     'No system here is described as bad, and none of them is. They answer different questions, and several answer theirs better than this one answers anything yet.',
 ];
