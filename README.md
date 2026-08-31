@@ -611,6 +611,11 @@ makes. [`reference/`](reference/) is its executable companion: it checks every
 exact claim the document makes and reproduces every measured figure in it, and
 it runs in CI, so the document and the code cannot drift apart quietly.
 
+[`audit/`](audit/) does the same for the prose. It checks that every
+cross-reference resolves, that every relative link points at something, that no
+table has lost a column, and that every documented Python example still runs and
+still returns what it claims. These are the failures reading does not catch.
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
