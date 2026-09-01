@@ -1,0 +1,338 @@
+---
+// How fast, on the reader's own machine.
+//
+// The claim the format makes is that finding a place is arithmetic rather than
+// a request, and arithmetic is cheap. That is easy to assert and easy to
+// demonstrate, so it is demonstrated -- on their hardware, in their browser,
+// with the published package the rest of the site already loaded.
+//
+// The page is about trusting the number as much as it is about the number.
+// Every guard is in `lib/bench.ts`, and the two a reader can actually check are
+// on the page: the running total that proves the work was not optimised away,
+// and the spread of every batch behind the median.
+
+const OPERATIONS = [
+    { id: 'encode', name: 'encode', what: 'A latitude and longitude to ten characters' },
+    { id: 'decode', name: 'decode', what: 'Ten characters back to a latitude and longitude' },
+    { id: 'isValid', name: 'isValid', what: 'Whether a string is a code that decodes' },
+    { id: 'neighbours', name: 'neighbours', what: 'The eight cells surrounding one' },
+];
+---
+
+<section class="bench" data-bench>
+    <header class="intro">
+        <h1>How fast, on your machine</h1>
+        <p class="lede">
+            Finding a place with a Grid Point Code is arithmetic, not a request. This
+            page runs that arithmetic on your own hardware, in your own browser, using
+            the published package every other page here already loaded.
+        </p>
+        <p>
+            Nothing is sent anywhere and nothing is fetched. The measurement is of this
+            machine at this moment, so it is not a number to compare against somebody
+            else's — it is a number you watched happen.
+        </p>
+    </header>
+
+    <div class="controls">
+        <button type="button" class="go" data-run hidden>
+            Measure — about five seconds
+        </button>
+        <p class="state" data-state>
+            Measuring needs JavaScript, which is the one thing on this site that
+            genuinely does. Everything else here works without it.
+        </p>
+    </div>
+
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th scope="col">Operation</th>
+                    <th scope="col">What it does</th>
+                    <th scope="col">Rate</th>
+                    <th scope="col">Each</th>
+                    <th scope="col">Every batch</th>
+                </tr>
+            </thead>
+            <tbody>
+                {OPERATIONS.map((operation) => (
+                    <tr data-row={operation.id}>
+                        <th scope="row"><code>{operation.name}</code></th>
+                        <td class="what">{operation.what}</td>
+                        <td class="rate" data-rate>—</td>
+                        <td class="each" data-each>—</td>
+                        <td class="spread"><span class="bars" data-bars></span></td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    </div>
+
+    <p class="note quiet" data-total hidden></p>
+
+    <h2>Four ways a benchmark lies, and what is done about each</h2>
+
+    <dl class="guards">
+        <dt>The work gets deleted</dt>
+        <dd>
+            An engine that can see a result is never used may remove the call that
+            produced it, and then the page is timing an empty loop. Every operation
+            returns a number that is summed, and the total is printed above — a figure
+            that could only exist if the work was done.
+        </dd>
+
+        <dt>The clock is too blunt</dt>
+        <dd>
+            <code>performance.now()</code> is deliberately coarsened against timing
+            attacks, in some browsers to tens of microseconds. Timing one operation
+            would measure the clock, so batches are doubled until each lasts at least
+            50 ms and the resolution stops mattering.
+        </dd>
+
+        <dt>The first run is not the steady state</dt>
+        <dd>
+            Code starts interpreted and is compiled once it looks worth compiling, so
+            early iterations can be an order of magnitude slower than settled ones.
+            Three batches are run and thrown away before any are kept.
+        </dd>
+
+        <dt>One number hides the spread</dt>
+        <dd>
+            A busy tab, a thermal limit or a collection pause widens the distribution,
+            and a single figure drawn from it is a guess. Fifteen batches are timed,
+            the median is reported rather than the best, and every batch is drawn in
+            the last column so you can see what the median came from.
+        </dd>
+    </dl>
+
+    <p class="note">
+        The points are the same on every machine — a thousand of them, from a seeded
+        generator, so what differs between two runs is the hardware and not the work.
+    </p>
+</section>
+
+<script>
+    import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
+    import { measure, scatter, rate, duration, type Task } from '../lib/bench';
+
+    const section = document.querySelector<HTMLElement>('[data-bench]');
+    if (section) begin(section);
+
+    function begin(section: HTMLElement) {
+        const button = section.querySelector<HTMLButtonElement>('[data-run]')!;
+        const state = section.querySelector<HTMLElement>('[data-state]')!;
+        const total = section.querySelector<HTMLElement>('[data-total]')!;
+
+        // A power of two, so cycling through them is a mask rather than a
+        // division. The benchmark should measure the library and not the
+        // arithmetic used to feed it.
+        const points = scatter(1024);
+        const codes = points.map(([latitude, longitude]) =>
+            GPC.encode(latitude, longitude, false),
+        );
+        const mask = 1023;
+
+        const tasks: Task[] = [
+            {
+                id: 'encode',
+                name: 'encode',
+                what: 'coordinates to a code',
+                step: (i) => {
+                    const point = points[i & mask];
+                    return GPC.encode(point[0], point[1], false).charCodeAt(0);
+                },
+            },
+            {
+                id: 'decode',
+                name: 'decode',
+                what: 'a code to coordinates',
+                step: (i) => GPC.decode(codes[i & mask])[0],
+            },
+            {
+                id: 'isValid',
+                name: 'isValid',
+                what: 'whether a code decodes',
+                step: (i) => (GPC.isValid(codes[i & mask]) ? 1 : 0),
+            },
+            {
+                id: 'neighbours',
+                name: 'neighbours',
+                what: 'the eight cells around one',
+                step: (i) => GPC.neighbours(codes[i & mask]).length,
+            },
+        ];
+
+        state.textContent = 'Ready.';
+        button.hidden = false;
+        button.addEventListener('click', () => void run());
+
+        async function run() {
+            button.disabled = true;
+            total.hidden = true;
+            let carried = 0;
+
+            for (const task of tasks) {
+                const row = section.querySelector<HTMLElement>(`[data-row="${task.id}"]`)!;
+                const rateCell = row.querySelector<HTMLElement>('[data-rate]')!;
+                const eachCell = row.querySelector<HTMLElement>('[data-each]')!;
+                const bars = row.querySelector<HTMLElement>('[data-bars]')!;
+
+                rateCell.textContent = 'running';
+                row.dataset.status = 'running';
+
+                const measured = await measure(task, (done, of) => {
+                    rateCell.textContent = `${done}/${of}`;
+                });
+
+                rateCell.textContent = rate(measured.perSecond);
+                eachCell.textContent = duration(measured.nanos);
+                row.dataset.status = 'done';
+                carried += measured.guard;
+
+                // Every batch, drawn against the fastest of them, so a wide
+                // spread looks wide instead of being averaged into silence.
+                bars.replaceChildren();
+                for (const batch of measured.batches) {
+                    const bar = document.createElement('span');
+                    bar.className = 'bar';
+                    bar.style.height =
+                        Math.max(6, (batch / measured.fastest) * 100).toFixed(0) + '%';
+                    bar.title = rate(batch);
+                    bars.append(bar);
+                }
+            }
+
+            total.textContent =
+                'The operations were summed as they ran, and came to '
+                + carried.toLocaleString('en')
+                + '. That total is here because a result nothing uses is a result an '
+                + 'engine may stop computing — a benchmark of nothing at all runs '
+                + 'very fast indeed.';
+            total.hidden = false;
+            button.disabled = false;
+            button.textContent = 'Measure again';
+        }
+    }
+</script>
+
+<style>
+    .bench {
+        max-width: 72rem;
+        margin: 0 auto;
+        padding: var(--space-5) var(--space-4);
+    }
+
+    .intro { max-width: var(--measure); }
+
+    .bench p { margin: 0 0 var(--space-3); max-width: var(--measure); }
+
+    h1 { margin: 0 0 var(--space-3); }
+
+    h2 {
+        margin: var(--space-5) 0 var(--space-3);
+        padding-top: var(--space-3);
+        border-top: 1px solid var(--rule-soft);
+        font-size: var(--text-title-size);
+    }
+
+    .controls {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        margin-bottom: var(--space-4);
+        flex-wrap: wrap;
+    }
+
+    .go {
+        height: 40px;
+        padding: 0 var(--space-3);
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-cell);
+        background: var(--surface);
+        color: var(--ink);
+        font: inherit;
+        cursor: pointer;
+    }
+
+    .go:hover:not(:disabled) { border-color: var(--brass); }
+    .go:disabled { color: var(--ink-soft); cursor: default; }
+
+    .state {
+        margin: 0 !important;
+        font-size: var(--text-small-size);
+        color: var(--ink-soft);
+    }
+
+    /* ── the table ───────────────────────────────────────────────────────── */
+    .table-scroll { overflow-x: auto; }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--text-small-size);
+    }
+
+    :where(th, td) {
+        padding: var(--space-2);
+        border-bottom: 1px solid var(--rule-soft);
+        text-align: left;
+        vertical-align: middle;
+    }
+
+    thead th { color: var(--ink-mid); border-bottom-color: var(--rule); }
+
+    tbody th { font-weight: 400; white-space: nowrap; }
+
+    .what { color: var(--ink-mid); }
+
+    .rate, .each {
+        font-family: var(--font-mono);
+        white-space: nowrap;
+    }
+
+    tr[data-status='running'] .rate { color: var(--ink-soft); }
+    tr[data-status='done'] .rate { color: var(--verdigris); }
+
+    .spread { width: 9rem; }
+
+    /* Built by script, so it carries no scope attribute of its own. */
+    .bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 1px;
+        height: 1.6rem;
+    }
+
+    .bars :global(.bar) {
+        flex: 1;
+        min-width: 2px;
+        background: var(--rule);
+        border-radius: 1px;
+    }
+
+    /* ── the four guards ─────────────────────────────────────────────────── */
+    .guards {
+        margin: 0;
+        max-width: var(--measure);
+        display: grid;
+        gap: var(--space-1) 0;
+    }
+
+    .guards dt {
+        font-weight: 600;
+        margin-top: var(--space-3);
+    }
+
+    .guards dd {
+        margin: 0;
+        color: var(--ink-mid);
+    }
+
+    .quiet { color: var(--ink-soft); font-size: var(--text-small-size); }
+
+    .note {
+        padding-left: var(--space-3);
+        border-left: 2px solid var(--rule);
+    }
+</style>

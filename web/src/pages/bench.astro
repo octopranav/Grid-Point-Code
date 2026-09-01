@@ -1,0 +1,12 @@
+---
+import Base from '../layouts/Base.astro';
+import Benchmark from '../components/Benchmark.astro';
+
+const description =
+    'Encoding a coordinate is arithmetic, not a request. Measure it on your own '
+    + 'machine, with the guards that stop a browser benchmark from lying about itself.';
+---
+
+<Base title="Speed" description={description}>
+    <Benchmark />
+</Base>
