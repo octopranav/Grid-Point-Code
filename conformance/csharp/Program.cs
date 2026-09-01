@@ -10,6 +10,15 @@ static string F(double d) => d.ToString("R", CultureInfo.InvariantCulture);
 void T(string label, Func<string> fn) {
     try { outp.Add(label + "|" + fn()); }
     catch (GPCException e) { outp.Add(label + "|ERR:" + e.Reason); }
+    // The parameter name is the reason in disguise. This port reports an
+    // argument out of range the way the language does, rather than through the
+    // typed error, and without the name there is no way to tell a bad level
+    // from a bad latitude -- they arrive as the same exception type. Reported
+    // flat, the harness read every one of them as a level fault and compared
+    // the wrong thing.
+    catch (ArgumentOutOfRangeException e) {
+        outp.Add(label + "|EXC:ArgumentOutOfRangeException:" + e.ParamName);
+    }
     catch (Exception e) { outp.Add(label + "|EXC:" + e.GetType().Name); }
 }
 
@@ -117,6 +126,41 @@ T("encodeAll(two)", () => string.Join(" ",
 
 T("withCheck", () => GPC.WithCheck(C));
 T("withCheck(reserved)", () => GPC.WithCheck(X));
+
+// --- generated cases, when the harness hands over a file of them
+//
+// The battery above is fixed and written by hand. These arrive from fuzz.py,
+// which produces far more of them than anyone would sit and type. Same
+// formatting and the same error discipline, so one diff covers both.
+string casefile = Environment.GetEnvironmentVariable("GPC_FUZZ_CASES");
+if (!string.IsNullOrEmpty(casefile)) {
+    foreach (string one in File.ReadAllLines(casefile)) {
+        if (one.Length == 0) continue;
+        string[] part = one.Split('|');
+        string label = part[0];
+        switch (part[1]) {
+            case "encode": {
+                double lat = double.Parse(part[2], CultureInfo.InvariantCulture);
+                double lng = double.Parse(part[3], CultureInfo.InvariantCulture);
+                T(label, () => GPC.Encode(lat, lng));
+                break;
+            }
+            case "decode": {
+                string code = part[2];
+                T(label, () => { var c = GPC.Decode(code); return F(c.Latitude) + "," + F(c.Longitude); });
+                break;
+            }
+            case "isvalid": {
+                string code = part[2];
+                T(label, () => GPC.IsValid(code) ? "true" : "false");
+                break;
+            }
+            default:
+                outp.Add(label + "|EXC:UnknownOperation");
+                break;
+        }
+    }
+}
 
 Console.OutputEncoding = new UTF8Encoding(false);
 Console.Out.Write(string.Join("\n", outp) + "\n");

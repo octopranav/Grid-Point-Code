@@ -120,6 +120,59 @@ the harness would be comparing two different questions.
 
 It needs `npm` and `mvn` on top of the usual four toolchains, and a network.
 
+## Generated cases, and why they are generated the way they are
+
+```bash
+python conformance/fuzz.py
+python conformance/fuzz.py --cases 5000 --rounds 6
+python conformance/fuzz.py --released
+python conformance/fuzz.py --seed 20260901
+```
+
+The battery pins what somebody thought to write down. `fuzz.py` generates what
+nobody did, puts it to the same four drivers, and holds them to three things
+the battery cannot check on its own.
+
+**What it generates is drawn from what actually went wrong.** 1.1.0 was a repair
+release, and its four faults are the shape of the whole generator:
+
+| What broke in 1.0 | What the generator does about it |
+| --- | --- |
+| `encode(89.9999999999999, 0)` went out of domain, was accepted, and decoded half a world away | Coordinates are pressed hard up against whole degrees and the edges of the world, down to the last bit a double holds. Uniform sampling would never once have produced that number. |
+| Three ports converted a double to decimal three different ways | Every case goes to all four and is diffed |
+| `isValid("CCCC-CCCC-CCC")` said yes, and decoding it then raised | Every generated code is asked both questions, and a port that says yes and then throws has contradicted itself |
+| `encode(-0.0, -0.0)` differed from `encode(0.0, 0.0)` | Negative zero is generated on purpose |
+
+**Agreement is not correctness.** Four ports that all crash agree perfectly. The
+drivers already separate a documented error (`ERR:`) from an unexpected one
+(`EXC:`), so an `EXC:` fails on its own account whether or not the others
+produced it too. The valid-then-undecodable check is the same idea: all four
+could have been wrong together, and diffing them would have said nothing.
+
+**Round-trip is judged against a cell, not against five decimal places.** Encode
+picks the cell a point is in and decode hands back a point in that cell, so the
+two may differ by up to `180/(4*5^9)` of latitude and `360/(6*5^9)` of
+longitude and nothing is wrong. Judged against one unit in the fifth decimal
+place instead, the first run reported twenty-two faults that were the
+arithmetic working exactly as specified. Longitude is compared the short way
+round, or a point on the antimeridian encodes perfectly and measures as 360
+degrees of error.
+
+Every run prints its seed, and passing it back regenerates that run exactly.
+
+Two limits, stated rather than hidden. NaN and the infinities are not
+generated: the case file carries numbers as text, and the four languages
+disagree about what text means those values, so sending them would test the
+harness rather than the ports. And a string carrying a bar or a line break
+cannot be sent, because the case file splits on bars -- those are dropped
+rather than escaped, since four drivers would each need the same unescaping and
+a bar is only one more invalid character among many the generator can already
+produce.
+
+`test_fuzz.py` gives every one of those checks answers that break it. A fuzzer
+nobody has watched fail is a fuzzer nobody knows works, and ninety thousand
+clean cases read exactly like ninety thousand cases and no working checks.
+
 ## In CI
 
 The `differential` job runs this on every push. It is the only job that needs
@@ -127,7 +180,13 @@ all four toolchains at once, which is why it is slower than the per-port jobs an
 why those still exist: when a port breaks, its own job says so in a language its
 maintainer recognises, and this one says the four no longer agree.
 
-The `Released` workflow runs `--released` weekly and on request. It is
-**deliberately not a pull-request check**: what is published has nothing to do
-with the diff under review, and a bad release must not block unrelated work. Run
-it by hand after publishing.
+The `differential` job also runs `test_fuzz.py` and then a fuzzing pass on a
+fresh seed every time, so each run reaches somewhere the battery does not. It
+rides on that job because the job has already paid for the four toolchains,
+which is the expensive part; the fuzzing itself is seconds. A failure prints
+the seed that reproduces it.
+
+The `Released` workflow runs `--released` weekly and on request, both the
+battery and a fuzzing pass. It is **deliberately not a pull-request check**:
+what is published has nothing to do with the diff under review, and a bad
+release must not block unrelated work. Run it by hand after publishing.

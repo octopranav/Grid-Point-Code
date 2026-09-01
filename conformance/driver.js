@@ -114,4 +114,22 @@ t('encodeAll(two)', () => GPC.encodeAll([[43.65, -79.38], [0.0, 0.0]]).join(' ')
 t('withCheck', () => GPC.withCheck(C));
 t('withCheck(reserved)', () => GPC.withCheck(X));
 
+// --- generated cases, when the harness hands over a file of them
+//
+// The battery above is fixed and written by hand. These arrive from fuzz.py,
+// which produces far more of them than anyone would sit and type. Same
+// formatting and the same error discipline, so one diff covers both.
+const cases = process.env.GPC_FUZZ_CASES;
+if (cases) {
+    const fs = require('fs');
+    for (const line of fs.readFileSync(cases, 'utf8').split('\n')) {
+        if (!line) continue;
+        const [label, op, ...args] = line.split('|');
+        if (op === 'encode') t(label, () => GPC.encode(Number(args[0]), Number(args[1])));
+        else if (op === 'decode') t(label, () => GPC.decode(args[0]));
+        else if (op === 'isvalid') t(label, () => GPC.isValid(args[0]));
+        else out.push(`${label}|EXC:UnknownOperation`);
+    }
+}
+
 process.stdout.write(out.join('\n') + '\n');

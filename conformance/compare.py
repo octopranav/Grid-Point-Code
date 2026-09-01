@@ -42,8 +42,10 @@ produced.
 import json
 import os
 import re
+import atexit
 import shutil
 import subprocess
+import tempfile
 import sys
 import urllib.request
 from pathlib import Path
@@ -52,19 +54,34 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 BUILD = HERE / ".build"
 
-# The one difference the four ports are allowed, and why it exists.
+# What the four ports are allowed to say differently, and why each is allowed.
 #
-# A level outside 1 to 10 is an argument error. Java's typed error derives from
-# IllegalArgumentException and Python's from ValueError, so both carry the
-# GPC_LEVEL reason and stay idiomatic. C#'s derives from FormatException, which
-# is the wrong parent for an argument that is out of range, so C# raises
-# ArgumentOutOfRangeException and GPC_LEVEL is unreachable there. Deliberate,
-# and recorded in SPEC.md section 18.1.
+# **A level outside 1 to 10.** Section 18.1 makes this the one place conforming
+# implementations are expected to differ: a level is an argument rather than a
+# malformed code, and each language should report it the way that language
+# already does. Java's typed error derives from IllegalArgumentException and
+# Python's from ValueError, so both carry GPC_LEVEL and stay idiomatic. C#'s
+# derives from FormatException, the wrong parent for an argument out of range,
+# so C# raises ArgumentOutOfRangeException and GPC_LEVEL is unreachable there.
+#
+# **A coordinate outside the domain.** C# reports this the same way, for the
+# same reason, and puts the reason in the parameter name -- so these two entries
+# are a translation rather than a dispensation: all four ports are saying
+# LATITUDE, and one of them is saying it in C#.
+#
+# This map was a single blanket entry until fuzzing walked into it. Every
+# ArgumentOutOfRangeException was rewritten to GPC_LEVEL whatever it was about,
+# so an out-of-domain latitude was compared as though it were a bad level and
+# reported as a divergence that did not exist. Worse, it would have hidden a
+# real one: any future case where C# threw that exception in a place it should
+# not would have been quietly relabelled and matched against nothing.
 #
 # Anything not listed here is a divergence and fails. Making C# uniform would
-# mean deleting this entry, not adding to it.
+# mean deleting the first entry, not adding to it.
 SANCTIONED = {
-    "EXC:ArgumentOutOfRangeException": "ERR:GPC_LEVEL",
+    "EXC:ArgumentOutOfRangeException:level": "ERR:GPC_LEVEL",
+    "EXC:ArgumentOutOfRangeException:LATITUDE": "ERR:LATITUDE",
+    "EXC:ArgumentOutOfRangeException:LONGITUDE": "ERR:LONGITUDE",
 }
 
 # A value that is entirely numbers, or a comma-separated list of them.
@@ -82,7 +99,18 @@ REGISTRIES = {
     "csharp": ("NuGet", "Ca.Pranavpatel.Algo.GridPointCode"),
 }
 
-RELEASED = HERE / ".released"
+def workspace():
+    """A throwaway directory for the published packages.
+
+    Deliberately outside the repository. It was inside, and on Windows a sync
+    client held a handle to it: the cleanup failed silently, the next run
+    inherited a half-installed package, and the port failed to import from a
+    directory the harness believed it had just created. Nothing here needs to
+    survive a run, so nothing here should live somewhere that syncs.
+    """
+    made = Path(tempfile.mkdtemp(prefix="gpc-released-"))
+    atexit.register(shutil.rmtree, made, True)
+    return made
 
 
 def ask(url, parse):
@@ -139,8 +167,7 @@ def fetch(versions):
     resolved anything locally it would be answering the question the default
     mode already answers.
     """
-    shutil.rmtree(RELEASED, ignore_errors=True)
-    RELEASED.mkdir(parents=True)
+    released = workspace()
 
     print("fetching the published packages")
     for port, version in versions.items():
@@ -148,7 +175,7 @@ def fetch(versions):
 
     where = {}
 
-    into = RELEASED / "python"
+    into = released / "python"
     done = subprocess.run(
         [sys.executable, "-m", "pip", "install", "--quiet", "--target", str(into),
          f"{REGISTRIES['python'][1]}=={versions['python']}"],
@@ -159,7 +186,7 @@ def fetch(versions):
                  + done.stderr.decode("utf-8", "replace"))
     where["python"] = str(into)
 
-    into = RELEASED / "typescript"
+    into = released / "typescript"
     into.mkdir()
     done = subprocess.run(
         ["npm", "install", "--silent", "--no-audit", "--no-fund",
@@ -183,7 +210,7 @@ def fetch(versions):
                  + found.stderr.decode("utf-8", "replace"))
     where["typescript"] = found.stdout.decode("utf-8").strip()
 
-    into = RELEASED / "java"
+    into = released / "java"
     group, artifact = REGISTRIES["java"][1].split(":")
     done = subprocess.run(
         ["mvn", "-B", "-q", "dependency:copy",
@@ -207,7 +234,7 @@ def fetch(versions):
     return where
 
 
-def run(label, argv, cwd=None):
+def run(label, argv, cwd=None, quiet=False):
     """Run one driver and return its output, or exit with what went wrong.
 
     Every driver is asked for UTF-8 and decoded strictly. Left to itself a
@@ -216,7 +243,8 @@ def run(label, argv, cwd=None):
     character -- which then reads as a divergence between ports that agree.
     Better to fail on the encoding than to chase a phantom.
     """
-    print(f"  {label:12} {Path(str(argv[0])).name} ...", flush=True)
+    if not quiet:
+        print(f"  {label:12} {Path(str(argv[0])).name} ...", flush=True)
     environment = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
     done = subprocess.run(argv, cwd=cwd or REPO, capture_output=True,
                           env=environment)
@@ -265,6 +293,40 @@ def canonical(text):
         out[label] = normalise_numbers(SANCTIONED.get(value, value))
         order.append(label)
     return out, order
+
+
+def run_all(classes, csharp_source, quiet=False):
+    """Run the four drivers once and return each one's raw output.
+
+    Extracted so the fuzzer can ask the same question of the same four
+    processes. A second copy of this would be a second thing to keep in step,
+    and the first time it drifted the two harnesses would be comparing
+    different ports while both reported success.
+
+    The Java leg compiles once per call, which is what makes a fuzzing round
+    cost what it does. It is left that way deliberately: a stale class file
+    that silently answers for a source that has changed is a worse failure
+    than a slow one.
+    """
+    BUILD.mkdir(exist_ok=True)
+    separator = ";" if sys.platform == "win32" else ":"
+
+    if not quiet:
+        print("running the four drivers")
+    results = {}
+    results["python"] = run("python", [sys.executable, HERE / "driver.py"], quiet=quiet)
+    results["typescript"] = run("typescript", ["node", HERE / "driver.js"], quiet=quiet)
+    run("java(javac)", ["javac", "-encoding", "UTF-8", "-cp", str(classes),
+                        "-d", str(BUILD), str(HERE / "Driver.java")], quiet=quiet)
+    results["java"] = run("java", ["java", "-Dfile.encoding=UTF-8",
+                                   "-Dstdout.encoding=UTF-8",
+                                   "-cp", separator.join([str(classes), str(BUILD)]),
+                                   "Driver"], quiet=quiet)
+    results["csharp"] = run("csharp", ["dotnet", "run", "--project",
+                                       str(HERE / "csharp" / "driver.csproj"),
+                                       "-v", "quiet", "--nologo"] + csharp_source,
+                            quiet=quiet)
+    return results
 
 
 def main():
@@ -316,22 +378,7 @@ def main():
         classes = REPO / "java" / "target" / "classes"
         csharp_source = []
 
-    BUILD.mkdir(exist_ok=True)
-    separator = ";" if sys.platform == "win32" else ":"
-
-    print("running the four drivers")
-    results = {}
-    results["python"] = run("python", [sys.executable, HERE / "driver.py"])
-    results["typescript"] = run("typescript", ["node", HERE / "driver.js"])
-    run("java(javac)", ["javac", "-encoding", "UTF-8", "-cp", str(classes),
-                        "-d", str(BUILD), str(HERE / "Driver.java")])
-    results["java"] = run("java", ["java", "-Dfile.encoding=UTF-8",
-                                   "-Dstdout.encoding=UTF-8",
-                                   "-cp", separator.join([str(classes), str(BUILD)]),
-                                   "Driver"])
-    results["csharp"] = run("csharp", ["dotnet", "run", "--project",
-                                       str(HERE / "csharp" / "driver.csproj"),
-                                       "-v", "quiet", "--nologo"] + csharp_source)
+    results = run_all(classes, csharp_source)
 
     parsed = {}
     orders = {}

@@ -103,6 +103,18 @@ jobs:
         run: |
           python conformance/compare.py --released $PINS | tee report.txt
 
+      # The same generated pressure, put to the published packages. The fixed
+      # battery asks what somebody thought to write down; this asks what nobody
+      # did, of the artifacts people actually install.
+      #
+      # No pins here: the generator always asks the registries for the newest,
+      # which is the same question the step above answers and the only one
+      # worth putting fresh cases to.
+      - name: Generated cases, put to the published packages
+        shell: bash
+        run: |
+          python conformance/fuzz.py --released --cases 4000 --rounds 2 | tee -a report.txt
+
       - name: Say what was tested
         if: always()
         run: |

@@ -238,6 +238,23 @@ jobs:
       - name: The four ports must agree case by case
         run: python conformance/compare.py
 
+      # A fuzzer nobody has watched fail is a fuzzer nobody knows works, so its
+      # own judgement is tested first and separately. These need no toolchains
+      # and take a fraction of a second.
+      - name: The fuzzer's checks must themselves work
+        run: python -m unittest discover --start-directory conformance --top-level-directory conformance
+
+      # Generated cases rather than written ones, on a fresh seed every run, so
+      # this reaches somewhere new each time rather than re-asking what the
+      # battery already pins. The seed is printed: a failure here is reproduced
+      # exactly by passing it back.
+      #
+      # It rides on this job because the job already has all four toolchains
+      # built and ready, which is the expensive part. The fuzzing itself is
+      # seconds.
+      - name: Generated cases must not divide the ports either
+        run: python conformance/fuzz.py --cases 4000 --rounds 3
+
   documentation:
     name: The documentation holds together
     runs-on: ubuntu-latest

@@ -1,4 +1,4 @@
 .build/
 bin/
 obj/
-.released/
+.fuzz-cases.txt
