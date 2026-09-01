@@ -98,3 +98,14 @@ design/tokens.json text eol=lf
 design/build-tokens.mjs text eol=lf
 design/generated/** text eol=lf
 web/src/styles/tokens.css text eol=lf
+
+###############################################################################
+# Generated files that are also checked byte for byte.
+#
+# design/build-icons.mjs writes these with LF and `--check` compares the bytes,
+# so a checkout that helpfully converted them to CRLF would fail its own build
+# on Windows and pass on Linux. Pinning the ending keeps the check meaningful
+# on both. The PNGs need no rule: git already sees them as binary.
+###############################################################################
+web/public/favicon.svg      text eol=lf
+web/public/site.webmanifest text eol=lf

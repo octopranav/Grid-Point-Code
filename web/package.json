@@ -7,8 +7,10 @@
   "scripts": {
     "tokens": "node ../design/build-tokens.mjs",
     "tokens:check": "node ../design/build-tokens.mjs --check",
+    "icons": "node ../design/build-icons.mjs",
+    "icons:check": "node ../design/build-icons.mjs --check",
     "dev": "astro dev",
-    "build": "npm run tokens:check && astro build",
+    "build": "npm run tokens:check && npm run icons:check && astro build",
     "preview": "astro preview",
     "check": "astro check"
   },

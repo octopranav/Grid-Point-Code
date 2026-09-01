@@ -79,6 +79,12 @@ jobs:
       - name: Check the generated tokens match their source
         run: npm run tokens:check
 
+      # The icons and the manifest are drawn from the same tokens, so a colour
+      # changed in one place and not regenerated is a check rather than a
+      # discovery on somebody's home screen.
+      - name: The icons match the tokens
+        run: npm run icons:check
+
       # The landmark shards are built by the Landmarks workflow and published
       # as a release asset rather than committed. Eighty-two thousand files and
       # 260 MB would sit in every clone forever, for data that changes when
