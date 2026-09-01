@@ -309,6 +309,12 @@ jobs:
       # be silently undone the next time the generator ran.
       - name: The generated design tokens must match their source
         run: npm run tokens:check
+
+      # The icons and the manifest are drawn from the same tokens, so a colour
+      # changed in one place and not regenerated is a check rather than a
+      # discovery on somebody's home screen.
+      - name: The icons match the tokens
+        run: npm run icons:check
       # The site imports the package from the registry, not the source next
       # door. So this job is also a standing test of the published artifact: if
       # a release ever shipped a broken build or dropped an operation the site

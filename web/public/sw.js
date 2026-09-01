@@ -88,6 +88,21 @@ function shardCaches() {
     return naming;
 }
 
+/**
+ * The icons and the web app manifest.
+ *
+ * These are generated from the design tokens and keep the same names forever,
+ * which is exactly what `held` says it must not be given: cache-first would
+ * pin the first favicon a reader ever saw and no later deploy would move it.
+ * Network first, cached as it goes, so they are still there with the network
+ * cut and still correct when it comes back.
+ */
+const STABLE = new Set(
+    ['favicon.svg', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png',
+     'site.webmanifest']
+        .map((name) => new URL(name, self.registration.scope).pathname),
+);
+
 const isShard = (path) => path.includes('/landmarks/') && path !== MANIFEST;
 const isHashed = (path) => path.includes('/_astro/') || /\.(woff2?|png|svg|webp)$/.test(path);
 const isPage = (request) =>
@@ -102,6 +117,7 @@ self.addEventListener('fetch', (event) => {
 
     if (url.pathname === MANIFEST) return event.respondWith(freshest(request, META));
     if (isShard(url.pathname)) return event.respondWith(shard(request));
+    if (STABLE.has(url.pathname)) return event.respondWith(freshest(request, SHELL));
     if (isHashed(url.pathname)) return event.respondWith(held(request, SHELL));
     if (isPage(request)) return event.respondWith(freshest(request, SHELL));
 });

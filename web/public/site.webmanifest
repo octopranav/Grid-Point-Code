@@ -1,0 +1,29 @@
+{
+    "id": "/",
+    "name": "Grid Point Code",
+    "short_name": "GPC",
+    "description": "Ten characters for any place on Earth. Encode, decode and correct them with no network and no account.",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#E9EEEF",
+    "theme_color": "#1D4E68",
+    "categories": [
+        "navigation",
+        "utilities"
+    ],
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

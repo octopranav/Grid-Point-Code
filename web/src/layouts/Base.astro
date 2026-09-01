@@ -18,8 +18,15 @@ import '@fontsource/ibm-plex-mono/latin-600.css';
 
 import '../styles/global.css';
 
+import tokens from '../../../design/tokens.json';
+
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+
+const ground = {
+    light: tokens.colour.light.ground,
+    dark: tokens.colour.dark.ground,
+};
 
 interface Props {
     title: string;
@@ -61,6 +68,19 @@ const canonical = new URL(route, Astro.site);
         <meta property="og:title" content={fullTitle} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={canonical} />
+
+        <!-- The mark reduced to four level tints. SVG for anything modern; the
+             PNGs are for the home screen, where they are masked to whatever
+             shape the platform prefers. -->
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/site.webmanifest" />
+
+        <!-- The browser's own chrome, painted the same colour as the page under
+             it. Both are declared because a phone in dark mode with a pale bar
+             above the page looks like a rendering fault. -->
+        <meta name="theme-color" content={ground.light} media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content={ground.dark} media="(prefers-color-scheme: dark)" />
 
         <!-- Runs before the first paint. Reading the stored choice after the
              page has drawn would show the wrong theme and then correct it,
