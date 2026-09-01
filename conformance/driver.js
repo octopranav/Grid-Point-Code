@@ -1,7 +1,13 @@
 // The TypeScript leg of the differential harness. See README.md.
 // Reads the built package, so `npm run build` in typescript/ has to have run.
+//
+// `compare.py --released` points GPC_TYPESCRIPT_MAIN at a directory it has
+// installed the published package into, so the same driver can be asked about
+// either without a second copy of it existing.
 const path = require('path');
-const { GPC } = require(path.join(__dirname, '..', 'typescript', 'dist', 'index.js'));
+const main = process.env.GPC_TYPESCRIPT_MAIN
+    || path.join(__dirname, '..', 'typescript', 'dist', 'index.js');
+const { GPC } = require(main);
 
 const out = [];
 function fmt(x) {

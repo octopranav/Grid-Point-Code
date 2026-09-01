@@ -87,9 +87,47 @@ which is missing. It checks that the built output is *there*, not that it is
 current, so rebuild after changing a port or the harness will faithfully report
 a divergence between your new source and yesterday's `dist/`.
 
+## The same battery, put to the published packages
+
+```bash
+python conformance/compare.py --released
+python conformance/compare.py --released python=2.0.0 java=2.0.0
+```
+
+Everything above proves the four *implementations* agree. Both the shared
+vectors and the default mode of this harness build from the tree, which leaves
+one step unexamined: everything between a commit passing and a stranger typing
+`pip install`.
+
+That gap is not hypothetical. A package can ship the wrong files, be cut from
+the wrong commit, resolve to a version nobody meant, or lose a module to a
+packaging exclusion that no test in this repository can see. The source can be
+perfect and the artifact wrong.
+
+So `--released` installs from npm, PyPI, Maven Central and NuGet, and puts the
+same battery to those. Nothing is built from the tree; if anything were, this
+would only be answering the question the default mode already answers. It takes
+the newest published version of each unless told otherwise, because the standing
+question is whether what somebody can install *today* agrees — a pin could only
+ever confirm what was true when the pin was written. Pins exist for reproducing
+a past run.
+
+The drivers are the same four files. Two of them take an environment variable
+naming where their port lives, the C# project takes a `Released` property, and
+the Java classpath is a jar instead of a classes directory. A second set of
+drivers would be a second thing to keep in step, and the first time they drifted
+the harness would be comparing two different questions.
+
+It needs `npm` and `mvn` on top of the usual four toolchains, and a network.
+
 ## In CI
 
 The `differential` job runs this on every push. It is the only job that needs
 all four toolchains at once, which is why it is slower than the per-port jobs and
 why those still exist: when a port breaks, its own job says so in a language its
 maintainer recognises, and this one says the four no longer agree.
+
+The `Released` workflow runs `--released` weekly and on request. It is
+**deliberately not a pull-request check**: what is published has nothing to do
+with the diff under review, and a bad release must not block unrelated work. Run
+it by hand after publishing.

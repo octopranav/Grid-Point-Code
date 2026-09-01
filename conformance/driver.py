@@ -4,10 +4,17 @@ Prints one `label|result` line per case. Every port prints the same labels in
 the same order; conformance/compare.py runs all four and diffs.
 """
 
+import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "python" / "src"))
+# The source next door by default. `compare.py --released` points this at a
+# directory it has installed the published wheel into, so the same driver can
+# be asked about either without a second copy of it existing.
+SOURCE = os.environ.get("GPC_PYTHON_PATH") or str(
+    Path(__file__).resolve().parent.parent / "python" / "src"
+)
+sys.path.insert(0, SOURCE)
 
 from gridpointcode_algo_pranavpatel_ca import GPC  # noqa: E402
 from gridpointcode_algo_pranavpatel_ca.errors import GPCError
