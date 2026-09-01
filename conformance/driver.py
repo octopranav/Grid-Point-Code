@@ -143,4 +143,26 @@ t("encodeAll(two)", lambda: GPC.encode_all([(43.65, -79.38), (0.0, 0.0)]))
 t("withCheck", lambda: GPC.with_check(C))
 t("withCheck(reserved)", lambda: GPC.with_check(X))
 
+# --- generated cases, when the harness hands over a file of them
+#
+# The battery above is fixed and written by hand. These arrive from fuzz.py,
+# which produces far more of them than anyone would sit and type. Same
+# formatting and the same error discipline, so one diff covers both.
+CASES = os.environ.get("GPC_FUZZ_CASES")
+if CASES:
+    with open(CASES, encoding="utf-8") as handle:
+        for case in handle:
+            case = case.rstrip("\n")
+            if not case:
+                continue
+            label, op, *args = case.split("|")
+            if op == "encode":
+                t(label, lambda a=args: GPC.encode(float(a[0]), float(a[1])))
+            elif op == "decode":
+                t(label, lambda a=args: GPC.decode(a[0]))
+            elif op == "isvalid":
+                t(label, lambda a=args: GPC.is_valid(a[0]))
+            else:
+                out.append(label + "|EXC:UnknownOperation")
+
 print("\n".join(out))

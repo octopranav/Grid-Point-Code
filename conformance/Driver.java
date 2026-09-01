@@ -129,6 +129,51 @@ public class Driver {
         t("withCheck", () -> GPC.WithCheck(C));
         t("withCheck(reserved)", () -> GPC.WithCheck(X));
 
+        // --- generated cases, when the harness hands over a file of them
+        //
+        // The battery above is fixed and written by hand. These arrive from
+        // fuzz.py, which produces far more of them than anyone would sit and
+        // type. Same formatting and the same error discipline, so one diff
+        // covers both.
+        String casefile = System.getenv("GPC_FUZZ_CASES");
+        if (casefile != null && !casefile.isEmpty()) {
+            List<String> cases;
+            try {
+                cases = java.nio.file.Files.readAllLines(
+                    java.nio.file.Paths.get(casefile),
+                    java.nio.charset.StandardCharsets.UTF_8);
+            } catch (java.io.IOException e) {
+                System.err.println("cannot read " + casefile + ": " + e);
+                System.exit(2);
+                return;
+            }
+            for (String one : cases) {
+                if (one.isEmpty()) continue;
+                String[] part = one.split("[|]", -1);
+                final String label = part[0];
+                switch (part[1]) {
+                    case "encode": {
+                        final double lat = Double.parseDouble(part[2]);
+                        final double lng = Double.parseDouble(part[3]);
+                        t(label, () -> GPC.Encode(lat, lng));
+                        break;
+                    }
+                    case "decode": {
+                        final String code = part[2];
+                        t(label, () -> GPC.Decode(code));
+                        break;
+                    }
+                    case "isvalid": {
+                        final String code = part[2];
+                        t(label, () -> GPC.IsValid(code));
+                        break;
+                    }
+                    default:
+                        out.add(label + "|EXC:UnknownOperation");
+                }
+            }
+        }
+
         StringBuilder sb = new StringBuilder();
         for (String s : out) sb.append(s).append("\n");
         System.out.print(sb);
