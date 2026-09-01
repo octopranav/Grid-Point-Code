@@ -15,6 +15,7 @@
 """Runs the four drivers and requires them to agree.
 
     python conformance/compare.py
+    python conformance/compare.py --released [--pin python=2.0.0 ...]
 
 The shared vectors in test_data/ pin what the four ports agree on. They cannot
 pin what nobody thought to write down, and a case absent from the corpus is a
@@ -22,15 +23,29 @@ case where four implementations may quietly differ. This closes that gap from
 the other side: one battery of awkward inputs, compiled against each port, and
 diffed. See README.md.
 
+With --released the same battery is put to the four *published* packages --
+what npm, PyPI, Maven Central and NuGet serve -- instead of the source in this
+repository. The default mode proves the four implementations agree; this proves
+that what people actually install does, which is a different claim and the one
+that reaches anybody. It covers the packaging and publishing step: a build that
+ships the wrong files, a release cut from the wrong commit, a package that
+resolves to a different version than intended.
+
+Latest published version of each, unless --pin says otherwise. Testing what is
+published means asking what is published, so a release that breaks agreement
+should turn this red without anybody editing a pin first.
+
 Exits non-zero on any disagreement, naming the case and printing what each port
 produced.
 """
 
+import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -55,6 +70,141 @@ SANCTIONED = {
 # A value that is entirely numbers, or a comma-separated list of them.
 NUMERIC = re.compile(r"^-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?"
                      r"(?:,-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)*$")
+
+
+# Where each port is published, and how to ask that registry what the newest
+# version is. Names rather than URLs in the failure messages: the point of the
+# released run is to say which artifact was tested.
+REGISTRIES = {
+    "python": ("PyPI", "gridpointcode-algo-pranavpatel-ca"),
+    "typescript": ("npm", "@pranavpatel.ca/algo-gridpointcode"),
+    "java": ("Maven Central", "ca.pranavpatel.algo:gridpointcode"),
+    "csharp": ("NuGet", "Ca.Pranavpatel.Algo.GridPointCode"),
+}
+
+RELEASED = HERE / ".released"
+
+
+def ask(url, parse):
+    try:
+        with urllib.request.urlopen(url, timeout=30) as answer:
+            return parse(answer.read().decode("utf-8"))
+    except Exception as bad:                                  # noqa: BLE001
+        sys.exit(f"could not ask {url}: {bad}")
+
+
+def latest(port):
+    """What the registry says is newest, asked of the registry."""
+    name = REGISTRIES[port][1]
+    if port == "python":
+        return ask(f"https://pypi.org/pypi/{name}/json",
+                   lambda body: json.loads(body)["info"]["version"])
+    if port == "typescript":
+        quoted = name.replace("/", "%2F")
+        return ask(f"https://registry.npmjs.org/{quoted}/latest",
+                   lambda body: json.loads(body)["version"])
+    if port == "java":
+        group, artifact = name.split(":")
+        path = group.replace(".", "/")
+        return ask(
+            f"https://repo1.maven.org/maven2/{path}/{artifact}/maven-metadata.xml",
+            lambda body: re.search(r"<release>([^<]+)</release>", body).group(1),
+        )
+    return ask(
+        f"https://api.nuget.org/v3-flatcontainer/{name.lower()}/index.json",
+        lambda body: json.loads(body)["versions"][-1],
+    )
+
+
+def maven_environment():
+    """Java carries its own trust store rather than the operating system's.
+
+    On Windows that can mean Maven Central is unreachable here while curl, npm
+    and pip all reach it -- a PKIX failure that looks like the artifact is
+    missing. Pointing Java at the OS store fixes it and changes nothing where
+    it was already working.
+    """
+    environment = dict(os.environ)
+    if sys.platform == "win32":
+        options = environment.get("MAVEN_OPTS", "")
+        environment["MAVEN_OPTS"] = (
+            options + " -Djavax.net.ssl.trustStoreType=Windows-ROOT").strip()
+    return environment
+
+
+def fetch(versions):
+    """Install the four published packages and say how to reach each.
+
+    Nothing here is built from the tree. That is the entire point: if this
+    resolved anything locally it would be answering the question the default
+    mode already answers.
+    """
+    shutil.rmtree(RELEASED, ignore_errors=True)
+    RELEASED.mkdir(parents=True)
+
+    print("fetching the published packages")
+    for port, version in versions.items():
+        print(f"  {REGISTRIES[port][0]:14} {REGISTRIES[port][1]} {version}")
+
+    where = {}
+
+    into = RELEASED / "python"
+    done = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--quiet", "--target", str(into),
+         f"{REGISTRIES['python'][1]}=={versions['python']}"],
+        capture_output=True,
+    )
+    if done.returncode != 0:
+        sys.exit("pip could not install the wheel: "
+                 + done.stderr.decode("utf-8", "replace"))
+    where["python"] = str(into)
+
+    into = RELEASED / "typescript"
+    into.mkdir()
+    done = subprocess.run(
+        ["npm", "install", "--silent", "--no-audit", "--no-fund",
+         "--prefix", str(into),
+         f"{REGISTRIES['typescript'][1]}@{versions['typescript']}"],
+        capture_output=True, shell=(sys.platform == "win32"),
+    )
+    if done.returncode != 0:
+        sys.exit("npm could not install the package: "
+                 + done.stderr.decode("utf-8", "replace"))
+    # Asked of node rather than guessed: the package says in its own manifest
+    # which file is its entry point, and that is not this harness's business.
+    found = subprocess.run(
+        ["node", "-p",
+         "require.resolve(process.argv[1], {paths: [process.argv[2]]})",
+         REGISTRIES["typescript"][1], str(into)],
+        capture_output=True, shell=(sys.platform == "win32"),
+    )
+    if found.returncode != 0:
+        sys.exit("could not resolve the installed package: "
+                 + found.stderr.decode("utf-8", "replace"))
+    where["typescript"] = found.stdout.decode("utf-8").strip()
+
+    into = RELEASED / "java"
+    group, artifact = REGISTRIES["java"][1].split(":")
+    done = subprocess.run(
+        ["mvn", "-B", "-q", "dependency:copy",
+         f"-Dartifact={group}:{artifact}:{versions['java']}",
+         f"-DoutputDirectory={into}"],
+        capture_output=True, shell=(sys.platform == "win32"),
+        env=maven_environment(),
+    )
+    if done.returncode != 0:
+        sys.exit("maven could not fetch the jar: "
+                 + done.stdout.decode("utf-8", "replace")[-3000:]
+                 + done.stderr.decode("utf-8", "replace")[-2000:])
+    jars = list(into.glob("*.jar"))
+    if not jars:
+        sys.exit(f"maven reported success but left no jar in {into}")
+    where["java"] = str(jars[0])
+
+    # C# needs no fetching of its own: the driver takes the version and lets
+    # restore do it.
+    where["csharp"] = versions["csharp"]
+    return where
 
 
 def run(label, argv, cwd=None):
@@ -125,16 +275,48 @@ def main():
     except (AttributeError, ValueError):
         pass
 
-    if not (REPO / "typescript" / "dist" / "index.js").exists():
-        sys.exit("typescript/dist is missing. Run `npm run build` in typescript/ first.")
-    if not (REPO / "java" / "target" / "classes").is_dir():
-        sys.exit("java/target/classes is missing. Run `mvn -q compile` in java/ first.")
+    released = "--released" in sys.argv
+
     for tool in ("node", "javac", "java", "dotnet"):
         if shutil.which(tool) is None:
             sys.exit(f"{tool} is not on PATH; this harness needs all four toolchains.")
 
+    if released:
+        if shutil.which("npm") is None or shutil.which("mvn") is None:
+            sys.exit("--released needs npm and mvn to fetch what the registries serve.")
+
+        # Newest published, unless told otherwise. A pin is for reproducing a
+        # past run; the standing question is whether what people can install
+        # today agrees.
+        pinned = {}
+        for argument in sys.argv[sys.argv.index("--released") + 1:]:
+            if "=" not in argument:
+                continue
+            port, _, version = argument.partition("=")
+            port = port.lstrip("-")
+            if port not in REGISTRIES:
+                sys.exit(f"--pin {argument}: no port called {port!r}. "
+                         f"One of {', '.join(REGISTRIES)}.")
+            pinned[port] = version
+        for port in REGISTRIES:
+            if port in pinned:
+                continue
+            pinned[port] = latest(port)
+
+        where = fetch(pinned)
+        os.environ["GPC_PYTHON_PATH"] = where["python"]
+        os.environ["GPC_TYPESCRIPT_MAIN"] = where["typescript"]
+        classes = Path(where["java"])
+        csharp_source = ["-p:Released=" + where["csharp"]]
+    else:
+        if not (REPO / "typescript" / "dist" / "index.js").exists():
+            sys.exit("typescript/dist is missing. Run `npm run build` in typescript/ first.")
+        if not (REPO / "java" / "target" / "classes").is_dir():
+            sys.exit("java/target/classes is missing. Run `mvn -q compile` in java/ first.")
+        classes = REPO / "java" / "target" / "classes"
+        csharp_source = []
+
     BUILD.mkdir(exist_ok=True)
-    classes = REPO / "java" / "target" / "classes"
     separator = ";" if sys.platform == "win32" else ":"
 
     print("running the four drivers")
@@ -149,7 +331,7 @@ def main():
                                    "Driver"])
     results["csharp"] = run("csharp", ["dotnet", "run", "--project",
                                        str(HERE / "csharp" / "driver.csproj"),
-                                       "-v", "quiet", "--nologo"])
+                                       "-v", "quiet", "--nologo"] + csharp_source)
 
     parsed = {}
     orders = {}
@@ -185,7 +367,9 @@ def main():
     if failures:
         print(f"{failures} divergences. The four ports do not agree.")
         return 1
-    print(f"no divergence: all four ports agree on every one of the {len(reference)} cases")
+    subject = "published packages" if released else "ports"
+    print(f"no divergence: all four {subject} agree on every one of "
+          f"the {len(reference)} cases")
     return 0
 
 

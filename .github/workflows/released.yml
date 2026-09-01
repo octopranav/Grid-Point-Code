@@ -1,0 +1,115 @@
+#  Copyright 2017 Pranavkumar Patel
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Puts the differential battery to the four *published* packages.
+#
+# CI already proves the four implementations agree: the shared vectors pin what
+# they were known to agree on, and the differential job compiles all four from
+# this repository and diffs them case by case. Both build from source, which
+# leaves one step unexamined -- everything between a commit passing and a
+# stranger typing `pip install`.
+#
+# That gap is not hypothetical. A package can ship the wrong files, be cut from
+# the wrong commit, carry a version that resolves to something else, or lose a
+# file to a packaging exclusion that no test in the tree can see. The source can
+# be perfect and the artifact wrong, and the only way to find out is to install
+# what everybody else installs and ask it the same questions.
+#
+# It takes the newest published version of each rather than a pin, because the
+# standing question is whether what somebody can install *today* agrees. A pin
+# would mean this could only ever confirm what was true when the pin was
+# written.
+#
+# **Deliberately not a pull-request check.** What is published has nothing to do
+# with the diff under review, and a bad release must not block unrelated work.
+# It runs weekly, and should be run by hand after publishing.
+#
+# Actions are pinned to a commit rather than a tag: a tag can be moved to point
+# at different code, a commit cannot.
+
+name: Released
+
+on:
+  workflow_dispatch:
+    inputs:
+      pins:
+        description: 'Versions to force, e.g. "python=2.0.0 java=2.0.0" (default: newest)'
+        required: false
+        default: ''
+  schedule:
+    # Mondays, early. Nothing here depends on the time; it wants to be regular
+    # and out of the way.
+    - cron: '17 6 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: released
+  cancel-in-progress: false
+
+jobs:
+
+  agree:
+    name: The four published packages agree
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.x'
+
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      # Nothing in the tree is built. The harness installs from npm, PyPI,
+      # Maven Central and NuGet and runs the same drivers against those, so a
+      # local build would only answer the question CI already answers.
+      # The input goes through the environment rather than into the script.
+      # Interpolating a dispatch input straight into a shell line is how a
+      # workflow ends up running whatever somebody typed into a form.
+      #
+      # `shell: bash` is what sets pipefail. Without it the exit status of a
+      # pipeline is tee's, so a divergence would be reported and the job would
+      # still pass -- a check that cannot fail is worse than no check.
+      - name: Ask the registries, then ask the packages
+        shell: bash
+        env:
+          PINS: ${{ inputs.pins }}
+        run: |
+          python conformance/compare.py --released $PINS | tee report.txt
+
+      - name: Say what was tested
+        if: always()
+        run: |
+          {
+            echo '### The four published packages'
+            echo
+            echo '```'
+            cat report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

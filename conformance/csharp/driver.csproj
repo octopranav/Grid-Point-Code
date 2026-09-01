@@ -10,8 +10,15 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- The project next door by default. The released mode of compare.py passes
+       a Released property to ask this same driver about what NuGet serves
+       instead, so there is no second copy of the driver to keep in step. -->
+  <ItemGroup Condition="'$(Released)' == ''">
     <ProjectReference Include="..\..\csharp\gpc\gpc.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Released)' != ''">
+    <PackageReference Include="Ca.Pranavpatel.Algo.GridPointCode" Version="$(Released)" />
   </ItemGroup>
 
 </Project>
