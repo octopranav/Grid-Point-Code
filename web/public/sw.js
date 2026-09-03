@@ -214,7 +214,7 @@ const refused = () =>
 /** Cache first. For things whose name changes when their contents do. */
 async function held(request, name) {
     const cache = await caches.open(name);
-    const hit = await cache.match(request);
+    const hit = await cache.match(request, { ignoreVary: true });
     if (hit) return hit;
 
     const response = await reach(request);
@@ -230,10 +230,77 @@ async function freshest(request, name) {
         if (response.ok) await cache.put(request, response.clone());
         return response;
     } catch (offline) {
-        const hit = await cache.match(request);
+        // `ignoreVary` because the fallback is the whole point. A response
+        // stored with a Vary header will not match a later request whose
+        // headers differ by so much as an encoding, and a shell that misses
+        // for that reason is a shell that was never there.
+        const hit = await cache.match(request, { ignoreVary: true });
         if (hit) return hit;
+
+        // A page, with the door shut and nothing held: this is the one case
+        // that must not become the browser's own error screen. There would be
+        // no way back from it -- every page on this origin is refused, so
+        // nothing can load to offer the switch again, and the reader would be
+        // left with a site that looks broken by us rather than by them.
+        if (shut && isPage(request)) return wayBack();
         throw offline;
     }
+}
+
+/**
+ * The page that exists so the switch can never strand anybody.
+ *
+ * Self-contained on purpose: no stylesheet, no module, nothing that would have
+ * to be fetched through a worker that is currently refusing to fetch.
+ */
+function wayBack() {
+    const body = `<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The network is switched off</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center;
+         background: #E9EEEF; color: #0E1F28; padding: 1.5rem;
+         font: 16px/1.6 "IBM Plex Sans", system-ui, sans-serif; }
+  main { max-width: 34rem; }
+  h1 { font-family: Bitter, Georgia, serif; font-size: 1.4rem; margin: 0 0 .75rem; }
+  p { margin: 0 0 1rem; color: #47606B; }
+  button { font: inherit; padding: .5rem 1rem; border: 1px solid #C2CED3;
+           border-radius: 3px; background: #FDFEFE; color: #0E1F28; cursor: pointer; }
+  button:hover { border-color: #8A6110; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0A151B; color: #DFE9EC; }
+    p { color: #9FB4BC; }
+    button { background: #102028; color: #DFE9EC; border-color: #273C46; }
+  }
+</style>
+<main>
+  <h1>The network is switched off</h1>
+  <p>
+    You switched it off on this site to see what still works. This page was not
+    one of the ones already held, so there was nothing to show you — which is
+    exactly what would have happened on a train.
+  </p>
+  <p>Letting the network back in needs no network of its own.</p>
+  <button type="button" id="back">Let the network back in</button>
+</main>
+<script>
+  document.getElementById('back').addEventListener('click', async () => {
+    const registration = await navigator.serviceWorker.ready;
+    (navigator.serviceWorker.controller || registration.active)
+        .postMessage({ gpc: 'network', off: false });
+    try { localStorage.setItem('gpc-network', 'on'); } catch (blocked) {}
+    setTimeout(() => location.reload(), 250);
+  });
+</script>
+</html>`;
+
+    return new Response(body, {
+        status: 503,
+        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+    });
 }
 
 async function shard(request) {
