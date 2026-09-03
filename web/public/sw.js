@@ -30,6 +30,33 @@
 const SHELL = 'gpc-shell';
 const META = 'gpc-meta';
 
+/**
+ * The basemap: tiles, glyphs, sprites and the style that names them.
+ *
+ * Everything the map needs comes from one host, and it is the only part of this
+ * site that is not arithmetic. Kept as it is used rather than pre-packed: the
+ * provider publishes its planet for self-hosting only as an image of the whole
+ * world, so there is no honest way to hand a reader one region -- but there is
+ * an obvious way to hand them back the places they have already been.
+ *
+ * The tile path carries the date the provider built it
+ * (`/planet/20260830_080001_pt/...`), so a tile URL names its contents and can
+ * be kept indefinitely. The style and the tile index are not versioned that
+ * way, so those are asked for first and only fall back to what is held.
+ */
+const MAP = 'gpc-map';
+const BASEMAP = 'https://tiles.openfreemap.org';
+
+/**
+ * How many basemap responses to keep.
+ *
+ * A reader who pans across a country would otherwise fill their disk quietly.
+ * The Cache API hands back keys in the order they were written, so the oldest
+ * are the ones that go -- an approximation of least-recently-used that costs no
+ * bookkeeping of its own.
+ */
+const MAP_MOST = 1500;
+
 // What a reader deliberately kept, and what this worker cached along the way.
 // It reads both and writes only the second, so pressing Forget in the page
 // gives back an area for good rather than until the next lookup refills it.
@@ -187,11 +214,22 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(request.url);
 
-    // Another origin: the basemap, and nothing else. Left alone entirely while
-    // the door is open, and refused while it is shut -- because the tiles are
-    // the one thing on this site that genuinely needs a network, and a switch
-    // that left them loading would let a reader conclude something the page
-    // does not claim.
+    // The basemap. Held as it is used, so a place already looked at is still
+    // drawn with the network cut -- and so the switch refuses tiles only after
+    // the cache has been asked, rather than instead of asking it.
+    if (url.origin === BASEMAP) {
+
+        // The style and the tile index are not versioned, so they are asked
+        // for first; everything else names its own contents in its path.
+        const named = url.pathname.startsWith('/styles/') || url.pathname === '/planet';
+        return event.respondWith(
+            named ? freshest(request, MAP) : held(request, MAP),
+        );
+    }
+
+    // Any other origin: nothing on this site uses one, and a switch that let an
+    // unknown third party through would be reporting something it had not
+    // tested.
     if (url.origin !== self.location.origin) {
         if (shut) event.respondWith(refused());
         return;
@@ -218,8 +256,26 @@ async function held(request, name) {
     if (hit) return hit;
 
     const response = await reach(request);
-    if (response.ok) await cache.put(request, response.clone());
+    if (response.ok) {
+        await cache.put(request, response.clone());
+        if (name === MAP) await keepBounded(cache);
+    }
     return response;
+}
+
+/**
+ * Drop the oldest entries once a store has grown past what it is allowed.
+ *
+ * Only counted every so often: `keys()` walks the whole store, and doing that
+ * on every tile would cost more than the tiles.
+ */
+let puts = 0;
+
+async function keepBounded(cache) {
+    if (++puts % 50 !== 0) return;
+    const keys = await cache.keys();
+    if (keys.length <= MAP_MOST) return;
+    for (const old of keys.slice(0, keys.length - MAP_MOST)) await cache.delete(old);
 }
 
 /** Network first, falling back to whatever was kept. */
