@@ -1,0 +1,33 @@
+{
+  "note": "Cost of each operation as a multiple of that port's own calibration loop. Taken on a CI runner, not a workstation: the same ratios differ by up to 2.6x between the two, which is why the check reads a file measured where it runs. Rewrite with bench.py --update.",
+  "cost": {
+    "csharp": {
+      "encode": 2.46,
+      "decode": 10.65,
+      "gridToCode": 1.54,
+      "codeToGrid": 0.79,
+      "normalise": 1.82
+    },
+    "java": {
+      "encode": 1.55,
+      "decode": 8.04,
+      "gridToCode": 1.14,
+      "codeToGrid": 0.87,
+      "normalise": 2.41
+    },
+    "python": {
+      "encode": 0.38,
+      "decode": 1.31,
+      "gridToCode": 0.27,
+      "codeToGrid": 0.28,
+      "normalise": 0.36
+    },
+    "typescript": {
+      "encode": 2.74,
+      "decode": 22.15,
+      "gridToCode": 2.49,
+      "codeToGrid": 1.82,
+      "normalise": 6.12
+    }
+  }
+}
