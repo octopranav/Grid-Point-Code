@@ -324,10 +324,13 @@ const symbols = GPC.normalise(code)[0];
         font-weight: 500;
     }
 
+    /* No opacity here. Each level tint has an ink chosen to be legible on it
+       -- that is what the `level.*.ink` tokens are for -- and fading that ink
+       toward the tint threw the guarantee away: measured at 3.16 to 4.03
+       against a required 4.5. */
     .cost {
         font-family: var(--font-mono);
         font-size: var(--text-label-size);
-        opacity: 0.8;
     }
 
     /* ── what it cost ────────────────────────────────────────────────────── */

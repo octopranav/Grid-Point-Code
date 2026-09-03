@@ -15,13 +15,13 @@
     <color name="crimson">#8C2B2B</color>
 
     <color name="level_1">#1D4E68</color>
-    <color name="level_2">#2D5B73</color>
-    <color name="level_3">#3E687E</color>
-    <color name="level_4">#4E7488</color>
-    <color name="level_5">#5E8193</color>
+    <color name="level_2">#2C5870</color>
+    <color name="level_3">#3A6278</color>
+    <color name="level_4">#486D80</color>
+    <color name="level_5">#577788</color>
     <color name="level_6">#6F8E9E</color>
     <color name="level_7">#7F9BA9</color>
-    <color name="level_8">#8FA8B4</color>
+    <color name="level_8">#90A8B4</color>
     <color name="level_9">#A0B4BE</color>
     <color name="level_10">#B0C1C9</color>
 

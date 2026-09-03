@@ -134,6 +134,39 @@ const repositoryLinks = {
 };
 
 /**
+ * A header cell with nothing in it heads nothing.
+ *
+ * The specification's tables use an empty corner, which is a data cell wearing
+ * the wrong tag -- and a screen reader announces it as a column heading all the
+ * same. Fixed here rather than in `SPEC.md`, because the document is normative
+ * and this is a rendering detail rather than a change to what it says.
+ */
+const emptyHeaders = {
+    name: 'empty-headers',
+    element: {
+        filter: ['th'],
+        visit(node) {
+            // A header cell with nothing in it heads nothing, and is announced
+            // as a column heading all the same. The specification's tables use
+            // an empty corner, which is a data cell wearing the wrong tag.
+            const words = (from) =>
+                from.type === 'text'
+                    ? from.value
+                    : (from.children ?? []).map(words).join('');
+
+            if (words(node).trim() !== '') return;
+
+            // Returned rather than mutated: this pipeline takes the visitor's
+            // return value as the replacement, and a node edited in place is
+            // quietly discarded. Eight header cells stayed headers until this
+            // was written the way the plugin beside it is.
+            const { scope, ...rest } = node.properties ?? {};
+            return { ...node, tagName: 'td', properties: rest };
+        },
+    },
+};
+
+/**
  * Let a wide table scroll inside its own box.
  *
  * The specification has tables that will not fit a phone -- the alias table,
@@ -149,7 +182,11 @@ const scrollableTables = {
             ctx.wrapNode(node, {
                 type: 'element',
                 tagName: 'div',
-                properties: { className: ['table-scroll'] },
+                // Focusable, because a region that scrolls sideways has to be
+                // reachable by somebody who is not holding a mouse. Without this
+                // the specification alone had eighteen tables a keyboard could
+                // not scroll.
+                properties: { className: ['table-scroll'], tabIndex: 0 },
                 children: [],
             });
         },
@@ -171,7 +208,7 @@ export default defineConfig({
         // Astro slugs headings the way GitHub does, so the ninety-six
         // `#fragment` links already inside SPEC.md keep working here without
         // the document being touched.
-        processor: satteri({ hastPlugins: [repositoryLinks, scrollableTables] }),
+        processor: satteri({ hastPlugins: [repositoryLinks, emptyHeaders, scrollableTables] }),
     },
     vite: {
         server: {

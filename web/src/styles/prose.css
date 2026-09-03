@@ -165,3 +165,16 @@
 .document #contents + .table-scroll {
     display: none;
 }
+
+/* ── comments in code samples ────────────────────────────────────────────────
+   The highlighter's own comment grey is #6A737D on its #24292E ground, which
+   measures 3.05:1 -- and a comment is the part of a sample that explains what
+   the rest of it means, so it is the worst part to make hard to read. Forty-nine
+   of them on the Python page alone.
+
+   Overriding needs `!important` because the highlighter writes the colour as an
+   inline style on every span; there is nothing else to outrank. #8B949E is the
+   same family's dimmed comment colour and measures 4.77:1. */
+.document .astro-code span[style*='#6A737D' i] {
+    color: #8b949e !important;
+}
