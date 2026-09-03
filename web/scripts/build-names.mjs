@@ -37,6 +37,11 @@
 // **The code is the coordinate**, so a hit needs nothing else fetched to put a
 // pin on a map. That is the property the whole format exists for, spent here.
 //
+// A line is `folded, importance, name, code, region`, and importance is written
+// inverted so that plain lexicographic order is already the answer order: names
+// alphabetically, and within one name the largest place first. The reader sorts
+// nothing, which matters because it only ever sees the first few kilobytes.
+//
 // Names are indexed by their ASCII form, which GeoNames supplies for every row
 // -- verified, not assumed: 100% of admissible rows in a sample country carry
 // one. That keeps the sort, the search and the file itself in one script, and
@@ -56,7 +61,7 @@ const web = path.resolve(here, '..');
 /** The columns this reads, by their position in the dump. */
 const field = {
     name: 1, ascii: 2, latitude: 4, longitude: 5,
-    class: 6, code: 7, country: 8, admin1: 10,
+    class: 6, code: 7, country: 8, admin1: 10, population: 14,
 };
 
 /** The same three kinds the landmark archive keeps. */
@@ -88,6 +93,38 @@ export function fold(name) {
         .replace(/[̀-ͯ]/g, '')
         .replace(/[^a-z0-9]+/g, ' ')
         .trim();
+}
+
+/**
+ * How much a place deserves to be the first answer.
+ *
+ * Twenty-four places are called Toronto. Ordered by name alone the one in
+ * Ontario came nineteenth, behind five identical rows in New South Wales --
+ * a search that works and is still wrong. Population puts them in the order
+ * somebody typing the word meant, and a seat of government stands in for a
+ * count where the count is missing.
+ *
+ * Nine is the most important. It is written into the line inverted, so that
+ * sorting the file the ordinary way puts the biggest place first within each
+ * name and the file needs no second pass -- and the reader none at all.
+ */
+function rank(row) {
+    const people = Number(row[field.population]) || 0;
+    if (people >= 1_000_000) return 9;
+    if (people >= 300_000) return 8;
+    if (people >= 100_000) return 7;
+    if (people >= 30_000) return 6;
+    if (people >= 10_000) return 5;
+    if (people >= 3_000) return 4;
+    if (people >= 1_000) return 3;
+    if (people > 0) return 2;
+
+    // No count at all: a capital or an administrative seat is still the place
+    // somebody meant, and everything else falls back to what kind of thing
+    // it is -- a town above a hill above a building.
+    const code = row[field.code];
+    if (code === 'PPLC' || code === 'PPLA') return 2;
+    return row[field.class] === 'P' ? 1 : 0;
 }
 
 function admissible(row) {
@@ -150,6 +187,7 @@ export async function build({ geonames, out, dumps }) {
     const regionIds = new Map();
     let counted = 0;
     let skipped = 0;
+    let doubled = 0;
 
     const writerFor = (bucket) => {
         let handle = writers.get(bucket);
@@ -196,7 +234,7 @@ export async function build({ geonames, out, dumps }) {
             // one would split a line into the wrong columns.
             const display = row[field.name].replace(/\t/g, ' ');
             writerFor(bucketOf(folded)).write(
-                `${folded}\t${display}\t${code}\t${regionIds.get(where)}\n`,
+                `${folded}\t${9 - rank(row)}\t${display}\t${code}\t${regionIds.get(where)}\n`,
             );
             counted++;
         }
@@ -214,13 +252,30 @@ export async function build({ geonames, out, dumps }) {
     let offset = 0;
     let lines = 0;
 
+    // One place, one line. Five rows read `Toronto, New South Wales, Australia`
+    // and nothing on screen tells them apart, so four of them are noise in the
+    // twelve answers a reader gets. Dropped here rather than in the browser:
+    // the reader cannot drop what its byte range never reached. The landmark
+    // archive still holds every one -- this is the search index, not the record.
+    let group = null;
+    let seen = new Set();
+
     for (const bucket of [...writers.keys()].sort()) {
         const body = await readFile(path.join(spill, `${bucket}.tsv`), 'utf8');
         const rows = body.split('\n').filter(Boolean);
         rows.sort();
 
         for (const row of rows) {
-            if (lines % STRIDE === 0) sparse.push([row.slice(0, row.indexOf('\t')), offset]);
+            const parts = row.split('\t');
+            if (parts[0] !== group) {
+                group = parts[0];
+                seen = new Set();
+            }
+            const same = `${parts[2]}\t${parts[4]}`;   // what it says, and where
+            if (seen.has(same)) { doubled++; continue; }
+            seen.add(same);
+
+            if (lines % STRIDE === 0) sparse.push([parts[0], offset]);
             const chunk = Buffer.byteLength(row) + 1;
             if (!output.write(row + '\n')) {
                 await new Promise((drained) => output.once('drain', drained));
@@ -246,7 +301,7 @@ export async function build({ geonames, out, dumps }) {
         'utf8',
     );
 
-    return { counted, skipped, lines, bytes: offset, marks: sparse.length };
+    return { counted, skipped, doubled, lines, bytes: offset, marks: sparse.length };
 }
 
 async function main() {
@@ -278,6 +333,9 @@ async function main() {
     console.log(`indexed ${report.counted.toLocaleString('en')} names in ${seconds} s`);
     console.log(`  ${(report.bytes / 1e6).toFixed(1)} MB in names.txt`);
     console.log(`  ${report.marks.toLocaleString('en')} marks in names.index.json`);
+    if (report.doubled) {
+        console.log(`  ${report.doubled.toLocaleString('en')} said the same name in the same place`);
+    }
     if (report.skipped) {
         console.log(`  ${report.skipped.toLocaleString('en')} rows had no usable name or point`);
     }

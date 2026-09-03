@@ -330,6 +330,12 @@ jobs:
       # a place does not exist.
       - name: Both halves of the search fold a name the same way
         run: node scripts/test-search.mjs
+
+      # Twenty-four places are called Toronto and the first index put Ontario
+      # nineteenth, behind five rows a reader could not tell apart. Nothing
+      # failed: every row was right and the answer was wrong.
+      - name: The name index answers with the place that was meant
+        run: node scripts/test-names.mjs
       # The site imports the package from the registry, not the source next
       # door. So this job is also a standing test of the published artifact: if
       # a release ever shipped a broken build or dropped an operation the site
