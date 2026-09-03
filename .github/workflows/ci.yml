@@ -255,6 +255,48 @@ jobs:
       - name: Generated cases must not divide the ports either
         run: python conformance/fuzz.py --cases 4000 --rounds 3
 
+  throughput:
+    name: Throughput holds up in all four ports
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.x'
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build the TypeScript package
+        run: npm ci && npm run build
+        working-directory: typescript
+      - name: Compile the Java classes
+        run: mvn -B -ntp -q compile
+        working-directory: java
+
+      # A shared runner is a bad clock, so nothing here compares one run's
+      # absolute figures with another's. Every leg also times a fixed
+      # arithmetic loop the library has nothing to do with, and the check reads
+      # the ratio -- a runner having a slow morning is slow at both.
+      #
+      # The band is wide on purpose. This is not here to notice fifteen percent;
+      # it is here to notice a regular expression compiled inside a loop, which
+      # is five times and would otherwise ship. The table goes to the job
+      # summary either way, which is where drift is meant to be read.
+      - name: The four ports must not have got slower
+        run: python bench/bench.py --check
+
   documentation:
     name: The documentation holds together
     runs-on: ubuntu-latest
