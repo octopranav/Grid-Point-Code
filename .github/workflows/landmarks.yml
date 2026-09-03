@@ -98,10 +98,20 @@ jobs:
             --slices '${{ inputs.slices }}' | tee ../report.txt
         working-directory: web
 
+      # The other direction. The archive answers "what is near this point"; this
+      # answers "where is the place called this", which is the first thing
+      # anybody reaches for. Built from the same dump in the same job, because
+      # the download is the expensive part and it is already paid for.
+      - name: Build the name index
+        run: |
+          node scripts/build-names.mjs             --geonames ../geonames             --out names | tee -a ../report.txt
+        working-directory: web
+
       - name: Pack them
         run: |
           tar -czf landmarks.tar.gz -C web/landmarks .
-          ls -l landmarks.tar.gz
+          tar -czf names.tar.gz -C web/names .
+          ls -l landmarks.tar.gz names.tar.gz
 
       # One moving tag rather than a dated one, so the Pages build has a fixed
       # name to ask for. Asking for `latest` would hand it whichever release is
@@ -114,10 +124,11 @@ jobs:
             --title 'Landmark shards' \
             --notes 'Built by the Landmarks workflow.'
 
-          gh release upload landmarks landmarks.tar.gz --clobber
+          gh release upload landmarks landmarks.tar.gz names.tar.gz --clobber
 
           {
-            echo 'Places a short form can be anchored to, sharded by cell.'
+            echo 'Places a short form can be anchored to, sharded by cell --'
+            echo 'and a sorted index of their names, read by byte range.'
             echo
             echo 'Built by the Landmarks workflow from a GeoNames dump.'
             echo

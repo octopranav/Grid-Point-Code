@@ -323,6 +323,13 @@ jobs:
       # discovery on somebody's home screen.
       - name: The icons match the tokens
         run: npm run icons:check
+
+      # The index is sorted by one `fold` and searched by another, in two
+      # languages. A disagreement is not a wrong answer, it is a binary search
+      # landing in the wrong part of a quarter-gigabyte file and reporting that
+      # a place does not exist.
+      - name: Both halves of the search fold a name the same way
+        run: node scripts/test-search.mjs
       # The site imports the package from the registry, not the source next
       # door. So this job is also a standing test of the published artifact: if
       # a release ever shipped a broken build or dropped an operation the site

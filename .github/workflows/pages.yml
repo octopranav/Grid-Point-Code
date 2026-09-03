@@ -122,6 +122,21 @@ jobs:
             echo "::warning::No landmark archive published; the reference list will be empty. Run the Landmarks workflow to build one."
           fi
 
+      # The name index rides in the same release. Two files rather than tens of
+      # thousands, so unlike the shards these can live in `public/` and be
+      # served without an integration of their own.
+      - name: Fetch the name index
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release download landmarks --pattern names.tar.gz --dir .. --clobber; then
+            mkdir -p public/names
+            tar -xzf ../names.tar.gz -C public/names
+            echo "name index: $(du -h public/names/names.txt | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::No name index published; search by place name will say so. Run the Landmarks workflow to build one."
+          fi
+
       - name: Build
         run: npx astro build
 

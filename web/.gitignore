@@ -11,3 +11,9 @@ public/tiles/
 # Beside public/ rather than in it on purpose: 82,000 files inside public/ stop
 # the dev server from ever finishing its start. See astro.config.mjs.
 landmarks/
+
+# The name index, built by the Landmarks workflow and published as a release
+# asset. A quarter of a gigabyte that changes when GeoNames does, not when this
+# site does -- the same reasoning as the landmark shards above.
+names/
+public/names/
