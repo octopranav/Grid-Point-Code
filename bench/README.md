@@ -44,19 +44,36 @@ on one would fire at random until somebody switched it off.
 
 So each leg also times a fixed arithmetic loop that has nothing to do with the
 library, and every figure is quoted as a multiple of it. A runner having a slow
-morning is slow at both, and the ratio stands still. Measured on one
-workstation, an `encode` figure moved 48 % between two runs minutes apart while
-its calibrated cost moved 20 % — noise the ratio removes, and noise it does not.
+morning is slow at both, and the ratio stands still.
+
+That is measurable, so it was measured. Two runs of this job on the same commit,
+minutes apart, on the same service:
+
+| | worst movement between the two runs |
+| --- | --- |
+| operations a second | 1.62× — Java `decode`, 2.01 M then 3.26 M |
+| calibrated cost | 1.22× — Python `gridToCode`, 0.27 then 0.33 |
+
+Nothing about the library changed between those runs. The first column is what a
+check on absolute throughput would have had to tolerate; the second is what this
+one tolerates.
 
 That ratio is **not** comparable between languages. Sixty-four interpreted
 operations in Python cost about a hundred times what they cost in Java, so the
 unit itself is different in each column. Compare a column with itself over time.
 
+It is not perfectly comparable between *machines* either. The same ratios taken
+on a workstation and on the runner differ by as much as 2.6× — TypeScript
+`codeToGrid` is 4.76 calibration units on one and 1.82 on the other. The loop
+removes a machine's speed, not its architecture or its just-in-time compiler,
+which is why the baseline is taken where the check runs.
+
 ## Why the band is wide
 
 `--check` fails when an operation costs more than twice its baseline. That is
-deliberately loose. Twenty percent of drift is inside what a busy runner
-explains, and a check that fails on a busy runner is a check that gets ignored.
+deliberately loose, and the measurement above says how loose: the worst
+run-to-run movement observed with nothing changed was 1.22×, so the threshold
+sits with about 60 % of headroom above the noise rather than being a guess.
 
 What this catches is the kind of regression that is otherwise invisible until a
 user reports it: a regular expression compiled inside a loop, a lookup table
@@ -96,6 +113,6 @@ branch predictor from learning the answer.
 ## The baseline
 
 `baseline.json` holds the calibrated cost of each operation, taken on a CI
-runner rather than a workstation — the ratio is stable across machines but not
-perfectly, and the check runs there. Rewrite it with `--update` when a change
-makes something legitimately slower or faster, and say why in the commit.
+runner rather than a workstation, for the reason given above. Rewrite it with
+`--update` when a change makes something legitimately slower or faster, and say
+why in the commit.
