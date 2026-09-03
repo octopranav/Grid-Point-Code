@@ -152,6 +152,59 @@ ${scheme(dark, tokens.level.dark, 'Dark')}
 
 // ── write, or check ──────────────────────────────────────────────────────────
 
+/**
+ * Every level tint must carry its own ink at 4.5:1.
+ *
+ * This is checked rather than trusted because it is exactly the kind of thing
+ * that looks fine and is not: an even ramp from prussian to the ground has to
+ * pass through a band of middle lightness that is too light for the light ink
+ * and too dark for the dark one at the same time, and whichever level lands
+ * inside it fails silently. Three did, on the live site, until an audit said so.
+ *
+ * The ramp now steps across that band rather than into it. If a tint is ever
+ * edited back into it, this says so here rather than leaving it to be found by
+ * somebody who could not read the page.
+ */
+function contrastHolds() {
+    const channel = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+    const luminance = (hex) => {
+        const [r, g, b] = [1, 3, 5].map((i) => channel(parseInt(hex.slice(i, i + 2), 16) / 255));
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const ratio = (a, b) => {
+        const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m);
+        return (x + 0.05) / (y + 0.05);
+    };
+
+    const WANTED = 4.5;
+    const failures = [];
+
+    for (const theme of ['light', 'dark']) {
+        const { tint, ink } = tokens.level[theme];
+        tint.forEach((colour, i) => {
+            const measured = ratio(colour, ink[i]);
+            if (measured < WANTED) {
+                failures.push(
+                    `  ${theme} level ${i + 1}: ${colour} on ${ink[i]}`
+                    + ` is ${measured.toFixed(2)}:1, wanted ${WANTED}`,
+                );
+            }
+        });
+    }
+
+    if (failures.length > 0) {
+        console.error('Level tints that type cannot be read on:');
+        for (const line of failures) console.error(line);
+        console.error('');
+        console.error('A tint can fail against both inks at once -- see the'
+            + ' note in tokens.json. Move it out of the middle band rather'
+            + ' than looking for a better ink.');
+        process.exit(1);
+    }
+}
+
+contrastHolds();
+
 const targets = [
     ['web/src/styles/tokens.css', css()],
     ['design/generated/android/values/colors.xml', androidColours(real(tokens.colour.light), tokens.level.light)],
