@@ -25,6 +25,11 @@ const code = GPC.encode(START.latitude, START.longitude);
 ---
 
 <section class="playground" data-playground data-start={JSON.stringify(START)}>
+    <!-- The page has a name even though the design has nowhere to draw one: a
+         full-height instrument has no room for a masthead heading, and a page
+         with no h1 leaves anyone navigating by heading with nothing to land on. -->
+    <h1 class="visually-hidden">Playground</h1>
+
     <div class="stage">
         <div class="map" data-map></div>
         <p class="hint" data-hint>Move over the map to see the cells; click to choose one.</p>
@@ -37,7 +42,10 @@ const code = GPC.encode(START.latitude, START.longitude);
         </label>
     </div>
 
-    <aside class="panel">
+    <!-- Not an `aside`. This panel is the working surface -- the code, the
+         forms, the landmarks -- and calling it complementary told a screen
+         reader it was an aside to the map, which is the wrong way round. -->
+    <div class="panel">
         <div class="result">
             <div class="row">
                 <span class="label">Grid Point Code</span>
@@ -238,7 +246,7 @@ const code = GPC.encode(START.latitude, START.longitude);
                 </div>
             </details>
         </div>
-    </aside>
+    </div>
 </section>
 
 <script>

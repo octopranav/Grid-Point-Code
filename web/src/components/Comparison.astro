@@ -29,11 +29,14 @@ const ours = SYSTEMS[0];
         {PROMISES.map((promise) => <li>{promise}</li>)}
     </ul>
 
-    <div class="table-scroll">
+    <div class="table-scroll" tabindex="0">
         <table>
             <thead>
                 <tr>
-                    <th scope="col">&nbsp;</th>
+                    <!-- The corner of a comparison table heads nothing. A
+                         header cell with no text is a header in name only, and
+                         a screen reader announces it as one. -->
+                    <td class="corner"></td>
                     {SYSTEMS.map((system) => (
                         <th scope="col" data-ours={system.id === ours.id}>
                             <span class="name">{system.name}</span>
