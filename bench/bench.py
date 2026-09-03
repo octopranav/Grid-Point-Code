@@ -298,7 +298,10 @@ def main():
     if not ports:
         raise SystemExit(f"--only must name some of: {', '.join(PORTS)}")
 
-    band = float(option("--band", "2.0"))
+    # Three runs on one commit put the worst movement at 1.51x, so a threshold
+    # at twice the baseline would have had about a third of headroom over
+    # measured noise and would eventually have fired at nothing. See README.md.
+    band = float(option("--band", "3.0"))
 
     print(f"measuring {len(ports)} port{'' if len(ports) == 1 else 's'}")
     results = measure(ports)

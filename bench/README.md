@@ -46,17 +46,21 @@ So each leg also times a fixed arithmetic loop that has nothing to do with the
 library, and every figure is quoted as a multiple of it. A runner having a slow
 morning is slow at both, and the ratio stands still.
 
-That is measurable, so it was measured. Two runs of this job on the same commit,
-minutes apart, on the same service:
+That is measurable, so it was measured. Three runs of this job on the same
+commit, minutes apart, on the same service:
 
-| | worst movement between the two runs |
+| | worst movement across the three runs |
 | --- | --- |
 | operations a second | 1.62× — Java `decode`, 2.01 M then 3.26 M |
-| calibrated cost | 1.22× — Python `gridToCode`, 0.27 then 0.33 |
+| calibrated cost | 1.51× — TypeScript `codeToGrid`, 1.82 then 2.75 |
 
 Nothing about the library changed between those runs. The first column is what a
 check on absolute throughput would have had to tolerate; the second is what this
 one tolerates.
+
+Two runs had put the second figure at 1.22×. The third moved it to 1.51×, which
+is the ordinary lesson about small samples and the reason the threshold below is
+not set close to it.
 
 That ratio is **not** comparable between languages. Sixty-four interpreted
 operations in Python cost about a hundred times what they cost in Java, so the
@@ -70,15 +74,20 @@ which is why the baseline is taken where the check runs.
 
 ## Why the band is wide
 
-`--check` fails when an operation costs more than twice its baseline. That is
-deliberately loose, and the measurement above says how loose: the worst
-run-to-run movement observed with nothing changed was 1.22×, so the threshold
-sits with about 60 % of headroom above the noise rather than being a guess.
+`--check` fails when an operation costs more than three times its baseline. That
+is deliberately loose, and the measurement above is why: the worst movement seen
+with nothing changed at all was 1.51×, and three runs are not enough to know the
+tail. A threshold at twice the baseline would have sat about a third above
+observed noise and would eventually have failed on nothing, which is how a check
+gets switched off.
 
-What this catches is the kind of regression that is otherwise invisible until a
+So this is a catastrophe detector, not a drift detector, and it is worth being
+plain about that.
+
+What it catches is the kind of regression that is otherwise invisible until a
 user reports it: a regular expression compiled inside a loop, a lookup table
 rebuilt per call, an accidental linear scan through the alphabet. Those are not
-twenty percent, they are five times, and they show up immediately.
+twenty percent, they are five times and upwards, and they show up immediately.
 
 Gradual drift is what the table is for. It is printed on every run and it goes
 into the job summary, where a person reads it.
