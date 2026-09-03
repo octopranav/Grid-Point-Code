@@ -1,0 +1,510 @@
+---
+// How a code is built.
+//
+// The other pages show what the format does. This one shows why it is shaped
+// the way it is, for the reader who wants to know whether the construction is
+// principled or merely arbitrary. Three ideas carry the whole format -- a
+// serpentine, a reflection, and one reset -- and each of them is worth a
+// picture rather than a paragraph.
+//
+// Every figure is computed at build time by the library itself, and the claims
+// the prose makes are checked in `verify()` rather than asserted. Nothing here
+// needs a script: a page about construction should still be readable when
+// everything that could fail has failed.
+
+import {
+    BLOCK_COLUMNS, BLOCK_ROWS,
+    blocks, children, parent, traversal, breaks, twins, steps, verify,
+} from '../lib/construction';
+import { SAMPLES } from '../lib/levels';
+
+const checked = verify();
+
+const world = blocks();
+const serpentine = [...world].sort((one, other) => one.order - other.order);
+
+// Two neighbouring blocks, so the mirror between them is visible side by side.
+const left = parent(2, 3);
+const right = parent(2, 4);
+const quilts = [
+    // The traversal runs west to east along this row of the world, so it leaves
+    // the left block by its last cell and enters the right one at its first.
+    { of: left, rows: children(left.row, left.column, 2), mark: 'X' },
+    { of: right, rows: children(right.row, right.column, 2), mark: '0' },
+];
+
+const path = traversal(2, 3);
+const broken = breaks(path);
+
+const pair = twins(['G3RJM', 'KDC8X'], '98NM9');
+const move = steps();
+
+// Sorted as strings, which is the only thing being claimed.
+const inOrder = [...SAMPLES]
+    .map((place) => ({ ...place, bare: place.code.replace(/[^0-9A-Z]/g, '') }))
+    .sort((one, other) => (one.bare < other.bare ? -1 : 1))
+    .map((place) => {
+        const block = world.find((one) => one.symbol === place.bare[0]);
+        return {
+            ...place,
+            block,
+            // Even rows of the serpentine run west to east, odd rows east to
+            // west. That alternation is what makes it one unbroken sweep.
+            heading: block && block.row % 2 === 0 ? 'west to east' : 'east to west',
+        };
+    });
+
+// A block's tint, taken along the level ramp so the serpentine reads as a
+// gradient rather than twenty-four unrelated colours.
+const tintOf = (order: number) => 1 + Math.round((order / 23) * 9);
+
+const CELL = 100;
+const centreOf = (block: { row: number; column: number }) => ({
+    x: block.column * CELL + CELL / 2,
+    // The grid counts rows from the south and a screen counts from the top.
+    y: (BLOCK_ROWS - 1 - block.row) * CELL + CELL / 2,
+});
+
+const snake = serpentine
+    .map((block) => { const { x, y } = centreOf(block); return `${x},${y}`; })
+    .join(' ');
+
+const STEP = 20;
+const curve = path
+    .map(({ up, across }) => `${across * STEP + STEP / 2},${(24 - up) * STEP + STEP / 2}`)
+    .join(' ');
+
+const metres = (value: number) =>
+    value >= 1000
+        ? `${(value / 1000).toLocaleString('en', {
+            minimumFractionDigits: 1, maximumFractionDigits: 1,
+        })} km`
+        : `${value.toLocaleString('en', { maximumFractionDigits: 2 })} m`;
+---
+
+<section class="learn">
+    <header class="intro">
+        <h1>How it is built</h1>
+        <p class="lede">
+            Ten characters, each one naming a cell inside the cell the character
+            before it named. What decides which cell gets which character is three
+            ideas: a serpentine over the world, a reflection at every level below
+            it, and one reset in the middle. Between them they are the reason a
+            plain string sort puts places in spatial order.
+        </p>
+        <p>
+            Every figure below is worked out by the library at build time, and the
+            claims are checked rather than stated — the page fails to build if the
+            construction stops behaving as it is described here.
+        </p>
+    </header>
+
+    <h2>The world in twenty-four blocks</h2>
+    <p>
+        The first character divides the world four ways by six. Six columns of 60°
+        and four rows of 45°, which absorbs Earth's two-to-one aspect ratio in a
+        single step and leaves every level below it dividing its parent evenly,
+        five by five.
+    </p>
+    <p>
+        The blocks are lettered in a serpentine: west to east along the bottom row,
+        then east to west along the next, snaking northward. Not left to right and
+        back to the start — that would put the end of one row and the start of the
+        next at opposite edges of the world.
+    </p>
+
+    <figure class="plate">
+        <svg viewBox={`0 0 ${BLOCK_COLUMNS * CELL} ${BLOCK_ROWS * CELL}`} role="img"
+             aria-label="The twenty-four level-one blocks and the serpentine through them">
+            {world.map((block) => {
+                const { x, y } = centreOf(block);
+                const tint = tintOf(block.order);
+                return (
+                    <g>
+                        <rect
+                            x={block.column * CELL} y={(BLOCK_ROWS - 1 - block.row) * CELL}
+                            width={CELL} height={CELL}
+                            fill={`var(--level-${tint})`} stroke="var(--surface)" stroke-width="1"
+                        />
+                        <text x={x} y={y} fill={`var(--level-${tint}-ink)`}
+                              text-anchor="middle" dominant-baseline="central">{block.symbol}</text>
+                    </g>
+                );
+            })}
+            <polyline points={snake} fill="none" stroke="var(--brass)" stroke-width="2.5"
+                      stroke-linejoin="round" stroke-linecap="round" opacity="0.9" />
+            <circle cx={centreOf(serpentine[0]).x} cy={centreOf(serpentine[0]).y} r="7"
+                    fill="none" stroke="var(--brass)" stroke-width="2.5" />
+        </svg>
+        <figcaption>
+            The path runs from <span class="code">0</span> at 90°S, 180°W
+            to <span class="code">W</span> at 45°N, 180°W. Twenty-four blocks and
+            twenty-five symbols, so one is never used at this
+            position: <span class="code">X</span> begins no code, which is what
+            leaves a reserved namespace nothing can collide with.
+        </figcaption>
+    </figure>
+
+    <h2>Inside a block: the reflection</h2>
+    <p>
+        Every level after the first divides its cell into a 5 × 5 grid, and the
+        twenty-five symbols are laid into it in an order that depends on where the
+        cell sits. Each axis is mirrored according to the parity of the digits
+        accumulated in the other. That is the whole rule, and this is what it looks
+        like — two neighbouring blocks of the world, at the level below them:
+    </p>
+
+    <div class="quilts">
+        {quilts.map(({ of, rows, mark }) => (
+            <figure class="quilt">
+                <div class="grid" role="img"
+                     aria-label={`The twenty-five level-two cells of block ${of.symbol}`}>
+                    {[...rows].reverse().map((line) => line.map((symbol) => (
+                        <span class="cell" data-corner={symbol === mark}>{symbol}</span>
+                    )))}
+                </div>
+                <figcaption>
+                    <span class="code">{of.symbol}</span> — {of.where}
+                </figcaption>
+            </figure>
+        ))}
+    </div>
+
+    <p class="note">
+        The right-hand block is the left one turned over, and that is what keeps
+        the order joined up. The traversal runs west to east along this row of the
+        world: it leaves the left block by <span class="code">X</span> in the
+        {checked.leaves}-right corner, and takes up the right block
+        at <span class="code">0</span> in the {checked.leaves}-left — the two cells touching
+        across the boundary, marked above. Without the mirror it would have to fly
+        back to the far corner of the world at the end of every cell.
+    </p>
+
+    <h2>One unbroken curve</h2>
+    <p>
+        Two levels of that, drawn: the 625 cells of one block, connected in the
+        order their codes sort. Every step is to a cell sharing an edge with the
+        one before it.
+    </p>
+
+    <figure class="plate">
+        <svg viewBox={`0 0 ${25 * STEP} ${25 * STEP}`} role="img"
+             aria-label="The order of 625 cells inside one block, drawn as a single continuous line">
+            <rect width={25 * STEP} height={25 * STEP} fill="var(--sunken)" />
+            <polyline points={curve} fill="none" stroke="var(--prussian)" stroke-width="2"
+                      stroke-linejoin="round" stroke-linecap="round" />
+        </svg>
+        <figcaption>
+            {checked.steps.toLocaleString('en')} steps, of which {broken} land
+            anywhere but next door. That count is taken at build time from the
+            drawing itself, not from the specification, and anything above zero
+            stops the build.
+        </figcaption>
+    </figure>
+
+    <h2>The reset at level 6</h2>
+    <p>
+        Entering the sixth character, the accumulated parities are set back to
+        zero. Without that, what characters six to ten mean would depend on the
+        five before them, and they would name nothing on their own. With it, the
+        last five characters depend only on the position inside the level-5 cell —
+        so they mean the same thing everywhere on Earth:
+    </p>
+
+    <div class="pair">
+        {pair.map((twin) => (
+            <div class="side">
+                <span class="code big">{twin.code}</span>
+                <span class="where">
+                    {twin.latitude.toFixed(4)}, {twin.longitude.toFixed(4)}
+                </span>
+                <span class="offset">
+                    {twin.up.toLocaleString('en')} up, {twin.across.toLocaleString('en')} across
+                    <span class="quiet"> — inside its own cell</span>
+                </span>
+            </div>
+        ))}
+    </div>
+    <p class="note quiet">
+        The same five characters after the dash, one in Ontario and one in Gujarat,
+        and the same position within the cell to the metre. That is what makes the
+        short form recoverable rather than merely suggestive: five characters and a
+        rough idea of where you are is enough to rebuild the whole code.
+    </p>
+
+    <h3>What it costs</h3>
+    <p>
+        The curve stays continuous inside every level-5 cell, but the traversal of
+        one cell ends at its far corner while the next begins at its near one. So
+        every crossing between level-5 cells is a jump, and it is a large one:
+    </p>
+
+    <div class="table-scroll" tabindex="0">
+        <table>
+            <thead>
+                <tr>
+                    <th>One step along the order</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th class="right">Apart</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <th scope="row">Anywhere inside a level-5 cell</th>
+                    <td><span class="code">{move.ordinary.from}</span></td>
+                    <td><span class="code">{move.ordinary.to}</span></td>
+                    <td class="right good">{metres(move.ordinary.metres)}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Out of one level-5 cell into the next</th>
+                    <td><span class="code">{move.across.from}</span></td>
+                    <td><span class="code">{move.across.to}</span></td>
+                    <td class="right cost">{metres(move.across.metres)}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="note quiet">
+        There are 9,374,999 of those jumps in the 91,552,734,374,999 steps of the
+        full traversal, which leaves 99.99999 % of consecutive codes in touching
+        cells. The trade was deliberate: a recoverable short form is worth more
+        than the last decimal place of continuity, and a range query never notices
+        because a window small enough to query lies inside one level-5 cell almost
+        always.
+    </p>
+
+    <h2>Why any of it matters</h2>
+    <p>
+        Because the alphabet ascends in ASCII and the earlier characters are the
+        more significant, comparing two codes as plain strings gives the same
+        answer as comparing their positions along that curve. Sorting codes sorts
+        places. Here are the specification's own sample points, sorted as text and
+        nothing else:
+    </p>
+
+    <div class="table-scroll" tabindex="0">
+        <table>
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Place</th>
+                    <th class="right">Latitude</th>
+                    <th>Band</th>
+                </tr>
+            </thead>
+            <tbody>
+                {inOrder.map((place) => (
+                    <tr>
+                        <td><span class="code">{place.code}</span></td>
+                        <th scope="row">{place.name}</th>
+                        <td class="right">{place.latitude.toFixed(2)}</td>
+                        <td class="quiet">
+                            {place.block?.south}° to {place.block?.north}°, {place.heading}
+                        </td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    </div>
+    <p>
+        South to north by band, and inside each band along the serpentine — which
+        is why Toronto precedes Ahmedabad though it is further north, and why
+        Sydney precedes Machu Picchu though it is further east. The two Toronto
+        points share nine characters and land side by side.
+    </p>
+    <p class="note quiet">
+        No decoding, no custom collation, no separate index column. A database can
+        answer <span class="code">ORDER BY code</span> spatially with the ordinary
+        string index it already has. This is why the digits come first in the
+        alphabet: the other convention would have
+        sorted <span class="code">C</span> before <span class="code">0</span>, and every
+        index built on a raw code would have been silently unordered.
+    </p>
+
+    <p class="onward">
+        The rules themselves are in <a href="/spec">the specification</a> — the
+        serpentine and the reflection in section 5, the ordering in section 11.
+        <a href="/play">The playground</a> will resolve any point through all ten
+        levels, and <a href="/seams">the seams page</a> shows where this
+        construction costs something.
+    </p>
+</section>
+
+<style>
+    .learn {
+        max-width: 62rem;
+        margin: 0 auto;
+        padding: var(--space-5) var(--space-4);
+    }
+
+    .intro,
+    .learn p {
+        max-width: var(--measure);
+    }
+
+    .learn p {
+        margin: 0 0 var(--space-3);
+    }
+
+    .learn .note {
+        margin-bottom: var(--space-4);
+    }
+
+    h1 {
+        margin: 0 0 var(--space-3);
+    }
+
+    h2 {
+        margin: var(--space-5) 0 var(--space-2);
+        padding-top: var(--space-3);
+        border-top: 1px solid var(--rule-soft);
+    }
+
+    h3 {
+        margin: var(--space-4) 0 var(--space-2);
+    }
+
+    /* ── the drawn figures ───────────────────────────────────────────────── */
+    .plate {
+        margin: 0 0 var(--space-4);
+    }
+
+    .plate svg {
+        display: block;
+        width: 100%;
+        max-width: 40rem;
+        height: auto;
+        border-radius: var(--radius-card);
+        background: var(--surface);
+    }
+
+    .plate text {
+        font-family: var(--font-mono);
+        font-size: 34px;
+        font-weight: 500;
+    }
+
+    figcaption {
+        max-width: var(--measure);
+        margin-top: var(--space-2);
+        font-size: var(--text-small-size);
+        line-height: var(--text-small-line);
+        color: var(--ink-soft);
+    }
+
+    /* ── the two quilts ──────────────────────────────────────────────────── */
+    .quilts {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+        gap: var(--space-4);
+        margin-bottom: var(--space-3);
+    }
+
+    .quilt {
+        margin: 0;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 2px;
+        padding: 2px;
+        background: var(--rule-soft);
+        border-radius: var(--radius-card);
+    }
+
+    .cell {
+        display: grid;
+        place-items: center;
+        aspect-ratio: 1;
+        background: var(--surface);
+        font-family: var(--font-mono);
+        font-size: var(--text-body-size);
+        color: var(--ink-mid);
+    }
+
+    /* The two cells that meet across the boundary between the blocks. */
+    .cell[data-corner='true'] {
+        background: var(--brass);
+        color: var(--ground);
+        font-weight: 600;
+    }
+
+    /* ── the twinned codes ───────────────────────────────────────────────── */
+    .pair {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+        gap: var(--space-3);
+        margin-bottom: var(--space-3);
+    }
+
+    .side {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+        padding: var(--space-3);
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-card);
+        background: var(--surface);
+    }
+
+    .side .big {
+        font-size: var(--text-title-size);
+    }
+
+    .where,
+    .offset {
+        font-size: var(--text-small-size);
+        color: var(--ink-soft);
+    }
+
+    .where {
+        font-family: var(--font-mono);
+    }
+
+    /* ── tables ──────────────────────────────────────────────────────────── */
+    .table-scroll {
+        overflow-x: auto;
+        margin-bottom: var(--space-2);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--text-small-size);
+    }
+
+    :where(th, td) {
+        padding: var(--space-1) var(--space-2);
+        border-bottom: 1px solid var(--rule-soft);
+        text-align: left;
+        vertical-align: top;
+    }
+
+    thead th {
+        color: var(--ink-mid);
+        border-bottom-color: var(--rule);
+        white-space: nowrap;
+    }
+
+    tbody th {
+        font-weight: 400;
+    }
+
+    .right {
+        text-align: right;
+        font-family: var(--font-mono);
+    }
+
+    .quiet { color: var(--ink-soft); }
+    .cost { color: var(--crimson); }
+    .good { color: var(--verdigris); }
+
+    .onward {
+        margin-top: var(--space-5);
+        padding-top: var(--space-3);
+        border-top: 1px solid var(--rule-soft);
+        color: var(--ink-mid);
+    }
+</style>
