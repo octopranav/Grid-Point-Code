@@ -64,6 +64,24 @@ const code = GPC.encode(START.latitude, START.longitude);
                 value={code}
             />
 
+            <!-- The other direction. A code says where a place is; this says
+                 which place is called that -- and because a hit carries the
+                 code, choosing one needs nothing else fetched. -->
+            <div class="find">
+                <input
+                    class="find-entry"
+                    type="search"
+                    spellcheck="false"
+                    autocomplete="off"
+                    placeholder="or find a place by name"
+                    aria-label="Find a place by name"
+                    aria-controls="found"
+                    data-find
+                />
+                <ul class="found" id="found" data-found hidden></ul>
+                <p class="note quiet" data-find-note hidden></p>
+            </div>
+
             <div class="specimen">
                 <CodeMark code={code} size="inline" />
             </div>
@@ -256,6 +274,7 @@ const code = GPC.encode(START.latitude, START.longitude);
     import { FORMS, COMPASS, aloud } from '../lib/forms';
     import { addressOf, codeIn, linkTo } from '../lib/permalink';
     import { qrFor } from '../lib/qr';
+    import { search, type Place } from '../lib/search';
     import {
         nearby,
         anchored,
@@ -338,6 +357,85 @@ const code = GPC.encode(START.latitude, START.longitude);
         const offlineNote = section.querySelector<HTMLElement>('[data-offline-note]')!;
         const keepButton = section.querySelector<HTMLButtonElement>('[data-keep]')!;
         const forgetButton = section.querySelector<HTMLButtonElement>('[data-forget]')!;
+        const findEntry = section.querySelector<HTMLInputElement>('[data-find]')!;
+        const foundList = section.querySelector<HTMLElement>('[data-found]')!;
+        const findNote = section.querySelector<HTMLElement>('[data-find-note]')!;
+
+        // Searching is one range request, but a keystroke is not worth one.
+        let typing = 0;
+        let searched = 0;
+
+        function showFound(places: Place[]) {
+            foundList.replaceChildren();
+            for (const hit of places) {
+                const row = document.createElement('li');
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'find-hit';
+
+                const name = document.createElement('span');
+                name.className = 'find-name';
+                name.textContent = hit.name;
+
+                const where = document.createElement('span');
+                where.className = 'find-where';
+                where.textContent = hit.region;
+
+                button.append(name, where);
+
+                // The index carries the code, and the code *is* the coordinate,
+                // so a chosen place needs nothing fetched to become a point.
+                // It goes to `place`, which owns the map and the fields --
+                // `setCode` only writes what is derived from the characters,
+                // and a code set without its point leaves the panel describing
+                // one place and the map showing another.
+                button.addEventListener('click', () => {
+                    const [latitude, longitude] = GPC.decode(hit.code);
+                    place(latitude, longitude, 'elsewhere');
+                    findEntry.value = '';
+                    foundList.hidden = true;
+                    foundList.replaceChildren();
+                    findNote.hidden = true;
+                });
+                row.append(button);
+                foundList.append(row);
+            }
+            foundList.hidden = places.length === 0;
+        }
+
+        findEntry.addEventListener('input', () => {
+            window.clearTimeout(typing);
+            const query = findEntry.value.trim();
+
+            if (query.length < 2) {
+                foundList.hidden = true;
+                foundList.replaceChildren();
+                findNote.hidden = true;
+                return;
+            }
+
+            typing = window.setTimeout(() => {
+                const mine = ++searched;
+                void search(query, 12).then((places) => {
+                    if (mine !== searched) return;   // a later keystroke won
+
+                    if (places === null) {
+                        foundList.hidden = true;
+                        findNote.textContent =
+                            'The name index is not part of this deployment, so there is '
+                            + 'nothing to search. A code typed above still works.';
+                        findNote.hidden = false;
+                        return;
+                    }
+
+                    showFound(places);
+                    findNote.textContent = places.length === 0
+                        ? `Nothing here is called “${query}”.`
+                        : '';
+                    findNote.hidden = places.length !== 0;
+                });
+            }, 180);
+        });
 
         let map: MapLibreMap | null = null;
         let code: string | null = null;
@@ -1716,6 +1814,61 @@ const code = GPC.encode(START.latitude, START.longitude);
     }
 
     .code-entry::placeholder { color: var(--ink-soft); font-weight: 400; }
+
+    /* ── finding a place by name ─────────────────────────────────────────── */
+    .find { position: relative; }
+
+    .find-entry {
+        width: 100%;
+        height: 34px;
+        padding: 0 var(--space-2);
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-cell);
+        background: var(--surface);
+        color: var(--ink);
+        font: inherit;
+        font-size: var(--text-small-size);
+    }
+
+    .find-entry::placeholder { color: var(--ink-soft); }
+    .find-entry:focus-visible { outline: 2px solid var(--prussian); outline-offset: 1px; }
+
+    .found {
+        list-style: none;
+        margin: var(--space-1) 0 0;
+        padding: 0;
+        max-height: 15rem;
+        overflow-y: auto;
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-cell);
+        background: var(--surface);
+    }
+
+    .found[hidden] { display: none; }
+
+    /* Built by script, so it carries no scope attribute of its own. */
+    .found :global(.find-hit) {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        width: 100%;
+        padding: var(--space-1) var(--space-2);
+        border: 0;
+        border-bottom: 1px solid var(--rule-soft);
+        background: none;
+        color: var(--ink);
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .found :global(li:last-child .find-hit) { border-bottom: 0; }
+    .found :global(.find-hit:hover) { background: var(--sunken); }
+    .found :global(.find-name) { font-size: var(--text-small-size); }
+    .found :global(.find-where) {
+        font-size: var(--text-label-size);
+        color: var(--ink-soft);
+    }
 
     .specimen { display: flex; justify-content: center; }
     .specimen :global(.mark[data-size='inline'] .cell) { width: 24px; height: 31px; }
