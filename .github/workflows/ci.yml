@@ -285,6 +285,14 @@ jobs:
       - name: Every documented example runs and says what it does
         run: python audit/examples.py
 
+      # `/spec` renders SPEC.md and `/docs` renders each port's README, so the
+      # site is built from files outside `web/`. The Pages workflow only runs on
+      # a list of paths, and that list did not include them: the specification
+      # could be amended, merged, and never reach the page that publishes it,
+      # with every check green.
+      - name: Everything the site renders can deploy it
+        run: python audit/deploys.py
+
   website:
     name: The website builds
     runs-on: ubuntu-latest

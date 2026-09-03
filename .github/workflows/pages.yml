@@ -31,9 +31,26 @@ name: Pages
 on:
   push:
     branches: [main]
+    # Everything the site is built from, which is not only `web/`.
+    #
+    # Two content collections read the repository itself: `/spec` renders
+    # `SPEC.md`, and `/docs` renders each port's own README. That is the point
+    # of them -- the site cannot fork from the source of truth -- but it means
+    # editing either one changes the site while touching nothing under `web/`.
+    #
+    # This list left both out, so the specification could be amended, merged,
+    # and never reach the page that publishes it. Found by editing `SPEC.md` and
+    # waiting for a deploy that was never going to come. **This list mirrors
+    # `web/src/content.config.ts`; a collection added there needs a line here**,
+    # and `audit/deploys.py` fails the build if it does not get one.
     paths:
       - 'web/**'
       - 'design/**'
+      - 'SPEC.md'
+      - 'csharp/README.md'
+      - 'java/README.md'
+      - 'python/README.md'
+      - 'typescript/README.md'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
