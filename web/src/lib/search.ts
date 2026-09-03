@@ -80,14 +80,20 @@ function blockFor(found: Marks, folded: string): number {
     return at;
 }
 
-/** One line of the file. Tabs separate, so no field can contain one. */
+/**
+ * One line of the file. Tabs separate, so no field can contain one.
+ *
+ * `folded, importance, name, code, region`. Importance is read past rather than
+ * read: it did its work in the sort, where it put the Toronto somebody meant
+ * above the four others of that name. Order here is the file's order.
+ */
 function parse(line: string, regions: string[]): Place | null {
     const parts = line.split('\t');
-    if (parts.length < 4) return null;
+    if (parts.length < 5) return null;
     return {
-        name: parts[1],
-        code: parts[2],
-        region: regions[Number(parts[3])] ?? '',
+        name: parts[2],
+        code: parts[3],
+        region: regions[Number(parts[4])] ?? '',
     };
 }
 
