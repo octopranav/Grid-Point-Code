@@ -16,6 +16,13 @@ const year = new Date().getFullYear();
         <li><a href="https://github.com/octopranav/Grid-Point-Code" rel="noreferrer">Source</a></li>
         <li><a href="https://github.com/octopranav/Grid-Point-Code/blob/main/LICENSE" rel="noreferrer">Apache 2.0</a></li>
     </ul>
+    <p class="test">
+        <button type="button" data-network-toggle hidden>Cut the network</button>
+        <span>
+            Nothing on this site needs the network except the map tiles. This closes
+            the door so you can check, rather than take it on trust.
+        </span>
+    </p>
     <p class="colophon">
         &copy; {year} Pranavkumar Patel &middot; Set in Bitter and IBM Plex, served from
         this origin &middot; No cookies, no trackers, nothing to dismiss
@@ -32,6 +39,30 @@ const year = new Date().getFullYear();
         flex-direction: column;
         gap: var(--space-3);
     }
+
+    .test {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        flex-wrap: wrap;
+        font-size: var(--text-small-size);
+        color: var(--ink-soft);
+    }
+
+    .test button {
+        height: 30px;
+        padding: 0 var(--space-2);
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-cell);
+        background: var(--ground);
+        color: var(--ink);
+        font: inherit;
+        font-size: var(--text-small-size);
+        cursor: pointer;
+    }
+
+    .test button:hover { border-color: var(--brass); }
+    .test span { flex: 1 1 20rem; }
 
     .what {
         font-size: var(--text-small-size);

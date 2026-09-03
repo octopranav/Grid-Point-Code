@@ -1,0 +1,193 @@
+---
+// The switch that lets a reader test the claim instead of believing it.
+//
+// Every page here says, in one way or another, that cutting the network changes
+// nothing except the basemap. That is worth very little as a sentence: the
+// reader has to go and find a setting in their operating system, and most
+// people reasonably will not. So the site closes the door itself, from a
+// control on the page.
+//
+// The service worker does the closing, and refuses the network the way a dead
+// connection refuses it. This component only asks, listens and says so.
+//
+// It renders on every page, including the ones with no footer, because the
+// control that turns this on lives in one place and the way back has to be
+// everywhere.
+---
+
+<div class="gate" data-gate hidden role="status">
+    <p>
+        <strong>The network is switched off for this site.</strong>
+        Everything here still works — a code is arithmetic, not a lookup. A page
+        you have not opened before will not load, exactly as it would not on a
+        train.
+    </p>
+    <button type="button" data-network-restore>Turn the network back on</button>
+</div>
+
+<script>
+    // Kept in one place so the footer control, the playground control and the
+    // banner cannot disagree about what is true.
+    const root = document.documentElement;
+    const gate = document.querySelector<HTMLElement>('[data-gate]');
+
+    /**
+     * A local note of what the switch was left as.
+     *
+     * The worker is the authority and answers when asked, but the answer is a
+     * message round trip and the banner is the one thing that must not wait for
+     * it. A reader who shut the network and came back to a site that works but
+     * says nothing about why would have no way to tell a deliberate experiment
+     * from a fault. This shows the banner immediately and is corrected the
+     * moment the worker replies -- so the worst case is a banner that appears
+     * and then goes away, rather than one that never appears at all.
+     */
+    const REMEMBERED = 'gpc-network';
+
+    function remember(off: boolean) {
+        try {
+            localStorage.setItem(REMEMBERED, off ? 'off' : 'on');
+        } catch (blocked) {
+            /* a refused store costs the head start and nothing else */
+        }
+    }
+
+    function recall(): boolean {
+        try {
+            return localStorage.getItem(REMEMBERED) === 'off';
+        } catch (blocked) {
+            return false;
+        }
+    }
+
+    function show(off: boolean) {
+        remember(off);
+        root.dataset.network = off ? 'off' : 'on';
+        if (gate) gate.hidden = !off;
+
+        for (const control of document.querySelectorAll<HTMLElement>('[data-network-toggle]')) {
+            control.hidden = false;
+            control.dataset.off = off ? 'true' : 'false';
+            control.textContent = off ? 'Let the network back in' : 'Cut the network';
+            control.setAttribute('aria-pressed', off ? 'true' : 'false');
+        }
+    }
+
+    function tell(off: boolean) {
+        // Whichever worker is in charge. `controller` is null on the very first
+        // load of a page, before the worker has claimed it, and asking `ready`
+        // covers that without a reload.
+        void navigator.serviceWorker?.ready.then((registration) => {
+            (navigator.serviceWorker.controller ?? registration.active)?.postMessage({
+                gpc: 'network',
+                off,
+            });
+        });
+    }
+
+    if ('serviceWorker' in navigator) {
+        let answered = false;
+
+        // What it was left as, before anyone has been asked. Only the banner is
+        // driven from this; the controls stay hidden until a worker has
+        // actually confirmed it is there to do the switching.
+        if (recall() && gate) {
+            root.dataset.network = 'off';
+            gate.hidden = false;
+        }
+
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            const said = event.data;
+            if (said && said.gpc === 'network') {
+                answered = true;
+                show(Boolean(said.off));
+            }
+        });
+
+        function ask() {
+            void navigator.serviceWorker.ready.then((registration) => {
+                (navigator.serviceWorker.controller ?? registration.active)?.postMessage({
+                    gpc: 'network',
+                    ask: true,
+                });
+            });
+        }
+
+        /**
+         * Ask rather than assume, and keep asking until answered.
+         *
+         * The switch survives a reload, so a page has to find out what it was
+         * left as -- and the one question that must not go unanswered is this
+         * one. A worker taking over is racy by construction: the message can be
+         * posted to one that is on its way out, and then the page believes the
+         * network is on while the worker is refusing it. That is the worst
+         * state available, a site that looks broken with nothing on screen
+         * saying why, and it is exactly what happened the first time this was
+         * tested.
+         */
+        ask();
+        navigator.serviceWorker.addEventListener('controllerchange', ask);
+        for (const wait of [400, 1200, 3000]) {
+            setTimeout(() => {
+                if (!answered) ask();
+            }, wait);
+        }
+
+        for (const control of document.querySelectorAll<HTMLElement>('[data-network-toggle]')) {
+            control.addEventListener('click', () => tell(control.dataset.off !== 'true'));
+        }
+        gate?.querySelector('[data-network-restore]')?.addEventListener('click', () => tell(false));
+    }
+    // Without a service worker there is nothing to switch, and the controls stay
+    // hidden rather than offering something that would do nothing.
+</script>
+
+<style>
+    /* Fixed rather than in the flow: one page here is a full-height instrument
+       with its own scrolling, and a bar inserted above it would have to be
+       subtracted from a height somewhere. This costs a strip of the viewport
+       only while a reader is deliberately running the experiment. */
+    .gate {
+        position: fixed;
+        left: var(--space-3);
+        right: var(--space-3);
+        bottom: var(--space-3);
+        z-index: 40;
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        flex-wrap: wrap;
+        padding: var(--space-2) var(--space-3);
+        border: 1px solid var(--brass);
+        border-radius: var(--radius-card);
+        background: var(--surface);
+        box-shadow: 0 2px 12px rgb(0 0 0 / 0.18);
+    }
+
+    .gate[hidden] { display: none; }
+
+    .gate p {
+        margin: 0;
+        flex: 1 1 22rem;
+        font-size: var(--text-small-size);
+        line-height: var(--text-small-line);
+        color: var(--ink-mid);
+    }
+
+    .gate strong { color: var(--ink); }
+
+    .gate button {
+        height: 32px;
+        padding: 0 var(--space-3);
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-cell);
+        background: var(--ground);
+        color: var(--ink);
+        font: inherit;
+        font-size: var(--text-small-size);
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .gate button:hover { border-color: var(--brass); }
+</style>
