@@ -21,6 +21,7 @@ import '../styles/global.css';
 import tokens from '../../../design/tokens.json';
 
 import Header from '../components/Header.astro';
+import NetworkGate from '../components/NetworkGate.astro';
 import Footer from '../components/Footer.astro';
 
 const ground = {
@@ -109,6 +110,7 @@ const canonical = new URL(route, Astro.site);
             <slot />
         </main>
         {!fills && <Footer />}
+        <NetworkGate />
 
         <script>
             // Registered after load, and never awaited: the site is arithmetic
