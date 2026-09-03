@@ -86,6 +86,16 @@ An implementation MUST reject NaN and both infinities, and MUST reject any
 value outside those intervals. Rejection MUST be explicit — an error, not a
 wrapped or clamped result.
 
+The rejection MUST say which axis was at fault: `LATITUDE` or `LONGITUDE`.
+Neither carries the `GPC_` prefix that the reasons in
+[section 9](#9-classification) do, and the difference is deliberate. Those
+describe a string that failed to parse; these describe an argument outside its
+domain, which is a different kind of mistake and is reported on the terms set
+out in [section 18.1](#181-cells) — an argument out of range is raised the way
+its own language raises one. A caller writing against more than one
+implementation should therefore not assume the reason arrives as a typed error,
+only that the axis is named.
+
 Four inputs need a stated answer rather than an accident:
 
 | Input | Rule |
@@ -1204,9 +1214,11 @@ a level is an argument rather than a malformed code, and the two are not the
 same kind of mistake. An implementation SHOULD raise whatever its language
 already uses for an argument out of range: the reason code `GPC_LEVEL` where the
 typed error can carry it, and the language's own argument error where it cannot.
-This is the one place in this specification where conforming implementations are
-expected to differ in the error they raise, and a caller writing against more
-than one of them should not assume `GPC_LEVEL` is available everywhere.
+The same licence extends to a coordinate outside the domain of
+[section 2](#2-the-coordinate-domain), and to nothing else. Those two are
+arguments; every other rejection in this specification is a judgement about a
+code, and MUST arrive as a typed reason. A caller writing against more than one
+implementation should not assume `GPC_LEVEL` is available everywhere.
 
 ### 18.2 Containment
 
