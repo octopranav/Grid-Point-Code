@@ -1,0 +1,16 @@
+[general]
+name=Grid Point Code
+qgisMinimumVersion=3.34
+description=Encode points to Grid Point Codes and decode codes back to points.
+about=Adds three Processing algorithms: a column of codes for a point layer, points from a column of codes, and the cell each code names as a polygon. Needs the gridpointcode-algo-pranavpatel-ca package, which is on PyPI.
+version=2.0.0
+author=Pranavkumar Patel
+email=contact@pranavpatel.ca
+tracker=https://github.com/octopranav/Grid-Point-Code/issues
+repository=https://github.com/octopranav/Grid-Point-Code
+homepage=https://gridpointcode.com
+category=Vector
+icon=icon.svg
+experimental=False
+deprecated=False
+hasProcessingProvider=yes
