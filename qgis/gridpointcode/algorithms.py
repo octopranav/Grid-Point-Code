@@ -79,9 +79,6 @@ class _Base(QgsProcessingAlgorithm):
     def groupId(self):
         return "gridpointcode"
 
-    def createInstance(self):
-        return type(self)()
-
     def _degrees(self, crs, context):
         """A transform into degrees, or None when the layer is already there."""
         target = QgsCoordinateReferenceSystem(WGS84)
@@ -103,6 +100,14 @@ class EncodePoints(_Base):
     FIELD = "FIELD"
     LEVEL = "LEVEL"
     OUTPUT = "OUTPUT"
+
+    def createInstance(self):
+        # Named rather than `type(self)`: QGIS owns the registered instance,
+        # and once its Python wrapper has been collected `type(self)` comes
+        # back as the base class. That builds an algorithm with no parameters,
+        # which the registry refuses with "Error creating algorithm from
+        # createInstance()" -- a message that says nothing about the cause.
+        return EncodePoints()
 
     def name(self):
         return "encodepoints"
@@ -201,6 +206,14 @@ class DecodeCodes(_Base):
     FIELD = "FIELD"
     OUTPUT = "OUTPUT"
 
+    def createInstance(self):
+        # Named rather than `type(self)`: QGIS owns the registered instance,
+        # and once its Python wrapper has been collected `type(self)` comes
+        # back as the base class. That builds an algorithm with no parameters,
+        # which the registry refuses with "Error creating algorithm from
+        # createInstance()" -- a message that says nothing about the cause.
+        return DecodeCodes()
+
     def name(self):
         return "decodecodes"
 
@@ -277,6 +290,14 @@ class CodeCells(_Base):
     FIELD = "FIELD"
     LEVEL = "LEVEL"
     OUTPUT = "OUTPUT"
+
+    def createInstance(self):
+        # Named rather than `type(self)`: QGIS owns the registered instance,
+        # and once its Python wrapper has been collected `type(self)` comes
+        # back as the base class. That builds an algorithm with no parameters,
+        # which the registry refuses with "Error creating algorithm from
+        # createInstance()" -- a message that says nothing about the cause.
+        return CodeCells()
 
     def name(self):
         return "codecells"
