@@ -48,6 +48,12 @@ from gridpointcode_algo_pranavpatel_ca import GPC       # noqa: E402
 
 CN_TOWER = (43.6426, -79.3871)
 
+#: The same place in web mercator, computed rather than eyeballed. The first
+#: version of this test carried a guess that was 1.2 km out, so it had to be
+#: given 500 m of slack -- which is slack a transposed axis could have hidden
+#: in. These are exact, so the assertion can be a few metres and mean it.
+CN_TOWER_3857 = (-8837331.5476, 5410299.2713)
+
 _app = None
 _provider = None        # see setUpModule: this must outlive the call
 
@@ -176,11 +182,14 @@ class PointsToCodes(unittest.TestCase):
         # Web mercator metres. Encoding them unchanged would raise; encoding
         # them with the axes swapped would give a code for somewhere real.
         out = run("gridpointcode:encodepoints",
-                  {"INPUT": points("EPSG:3857", ((-8837500.0, 5411500.0),)),
+                  {"INPUT": points("EPSG:3857", (CN_TOWER_3857,)),
                    "FIELD": "gpc", "LEVEL": 10})
 
         got = next(out.getFeatures())["gpc"]
-        self.assertLess(GPC.distance(got, GPC.encode(*CN_TOWER, False)), 500)
+        # Within a cell of the answer. Loose enough for the difference between
+        # a sphere and an ellipsoid, tight enough that a swapped axis or a
+        # missing transform could not pass.
+        self.assertLess(GPC.distance(got, GPC.encode(*CN_TOWER, False)), 5)
 
     def test_a_level_writes_the_cell(self):
         out = run("gridpointcode:encodepoints",
@@ -191,7 +200,7 @@ class PointsToCodes(unittest.TestCase):
 
     def test_the_output_is_in_degrees(self):
         out = run("gridpointcode:encodepoints",
-                  {"INPUT": points("EPSG:3857", ((-8837500.0, 5411500.0),)),
+                  {"INPUT": points("EPSG:3857", (CN_TOWER_3857,)),
                    "FIELD": "gpc", "LEVEL": 10})
         self.assertEqual(out.crs(), QgsCoordinateReferenceSystem("EPSG:4326"))
 
@@ -216,7 +225,11 @@ class CodesToPoints(unittest.TestCase):
 
         features = list(out.getFeatures())
         self.assertEqual(len(features), 2)
-        self.assertTrue(features[1].geometry().isEmpty())
+
+        by_code = {f["gpc"]: f for f in features}
+        self.assertFalse(by_code[code].geometry().isNull())
+        self.assertTrue(by_code["NOTACODE12"].geometry().isNull(),
+                        "the row that would not parse was given a position")
 
 
 @unittest.skipUnless(HAS_QGIS, "needs QGIS")
