@@ -297,6 +297,54 @@ jobs:
       - name: The four ports must not have got slower
         run: python bench/bench.py --check
 
+  sql:
+    name: The SQL port agrees with the vectors
+    runs-on: ubuntu-latest
+    # PostGIS rather than plain postgres, so the geometry bindings are covered
+    # by the same run instead of being the one file nothing exercises.
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
+        env:
+          POSTGRES_PASSWORD: gpc
+          POSTGRES_DB: gpc
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: gpc
+      PGDATABASE: gpc
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The functions are plain SQL and PL/pgSQL: no extension to build, no
+      # superuser, and nothing to install on the server. That is the claim the
+      # file makes for itself, so it is installed exactly that way here.
+      - name: Install the functions
+        run: psql -v ON_ERROR_STOP=1 -f sql/gpc.sql
+
+      # Against test_data/, the same vectors the four library ports are held
+      # to. A fifth implementation agreeing with itself would prove nothing.
+      - name: The vectors must hold in the database too
+        run: psql -v ON_ERROR_STOP=1 -f sql/load.sql
+
+      - name: The geometry bindings must agree as well
+        run: |
+          psql -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS postgis'
+          psql -v ON_ERROR_STOP=1 -f sql/gpc_postgis.sql -f sql/check_postgis.sql
+
+      # The reason any of this is in the database rather than in front of it.
+      - name: A prefix must be an index scan
+        run: psql -v ON_ERROR_STOP=1 -f sql/check_index.sql
+
   documentation:
     name: The documentation holds together
     runs-on: ubuntu-latest
