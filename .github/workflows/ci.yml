@@ -142,6 +142,25 @@ jobs:
       - name: Run the suite
         run: npm test
 
+  tokeniser:
+    name: The search convention finds what is near
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+
+      # Two of these are measurements over twenty thousand pairs rather than
+      # examples: that a query built this way misses nothing within its radius,
+      # and that the obvious simpler version really does lose things. The
+      # failure being guarded against is statistical and passes every case
+      # anybody would try by hand.
+      - name: The convention must lose nothing within its radius
+        run: python -m unittest discover --start-directory search --top-level-directory search --verbose
+
   vectors:
     name: Vectors regenerate identically
     runs-on: ubuntu-latest
