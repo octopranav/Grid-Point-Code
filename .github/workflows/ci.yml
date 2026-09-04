@@ -189,6 +189,40 @@ jobs:
             exit 1
           fi
 
+  geospatial:
+    name: The QGIS plugin and the OGR tool work
+    runs-on: ubuntu-latest
+    # Inside QGIS rather than beside it. There is no way to test a Processing
+    # plugin without the framework it plugs into, and the image carries GDAL
+    # too, so the OGR tool rides along instead of pulling a second one.
+    container:
+      image: qgis/qgis:ltr@sha256:681853565ad03722a0cbcba23985fd211ca927bec2b3d389cb07e0e0412e4184
+    env:
+      # Qt still wants a platform even with the GUI switched off.
+      QT_QPA_PLATFORM: offscreen
+      QGIS_PREFIX_PATH: /usr
+      # The port from this checkout, rather than installing a package into the
+      # image: what is tested should be what is in the tree.
+      GPC_PYTHON_PATH: ${{ github.workspace }}/python/src
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: What the container actually has
+        run: |
+          python3 -c "import qgis.core; print('QGIS', qgis.core.Qgis.QGIS_VERSION)"
+          python3 -c "from osgeo import gdal; print('GDAL', gdal.__version__)"
+
+      # Runs anywhere, including on a machine with no QGIS. It is here as well
+      # because the container is the only place the rest of the plugin runs,
+      # and a green tick that skipped everything would be worthless.
+      - name: The plugin's arithmetic and its algorithms
+        run: python3 -m unittest discover --start-directory qgis --top-level-directory qgis --verbose
+
+      - name: The OGR tool, against real files
+        run: python3 -m unittest discover --start-directory ogr --top-level-directory ogr --verbose
+
   vectors:
     name: Vectors regenerate identically
     runs-on: ubuntu-latest
