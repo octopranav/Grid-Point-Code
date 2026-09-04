@@ -49,11 +49,12 @@ from gridpointcode_algo_pranavpatel_ca import GPC       # noqa: E402
 CN_TOWER = (43.6426, -79.3871)
 
 _app = None
+_provider = None        # see setUpModule: this must outlive the call
 
 
 def setUpModule():                                      # noqa: N802
     """One headless QGIS for the whole file."""
-    global _app
+    global _app, _provider
     if not HAS_QGIS:
         return
 
@@ -73,11 +74,20 @@ def setUpModule():                                      # noqa: N802
 
     from gridpointcode.provider import GridPointCodeProvider
 
-    QgsApplication.processingRegistry().addProvider(GridPointCodeProvider())
+    # Kept in a module variable, and that is not tidiness. The registry takes
+    # the C++ side of the provider; nothing holds the Python side, so it is
+    # collected, and every algorithm under it loses its Python class. What
+    # comes back out of the registry is then a bare QgsProcessingAlgorithm:
+    # groupId() answers '' and createInstance() builds something with no
+    # parameters, which the registry rejects. The plugin does the same thing
+    # by keeping self.provider, which is why a user never sees this.
+    _provider = GridPointCodeProvider()
+    QgsApplication.processingRegistry().addProvider(_provider)
 
 
 def tearDownModule():                                   # noqa: N802
-    global _app
+    global _app, _provider
+    _provider = None
     if _app is not None:
         _app.exitQgis()
         _app = None
