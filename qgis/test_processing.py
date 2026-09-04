@@ -227,9 +227,15 @@ class CodesToPoints(unittest.TestCase):
         self.assertEqual(len(features), 2)
 
         by_code = {f["gpc"]: f for f in features}
-        self.assertFalse(by_code[code].geometry().isNull())
-        self.assertTrue(by_code["NOTACODE12"].geometry().isNull(),
-                        "the row that would not parse was given a position")
+        self.assertFalse(by_code[code].geometry().isEmpty())
+
+        # `isEmpty` rather than `isNull`: a point sink can store a feature that
+        # was given no geometry as POINT EMPTY rather than as nothing at all,
+        # and either way the row has no position, which is the promise.
+        without = by_code["NOTACODE12"].geometry()
+        self.assertTrue(
+            without.isEmpty(),
+            f"the row that would not parse came back at {without.asWkt()}")
 
 
 @unittest.skipUnless(HAS_QGIS, "needs QGIS")
