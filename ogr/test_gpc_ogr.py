@@ -51,6 +51,11 @@ except ImportError:                                     # pragma: no cover
 # produces a code rather than an error.
 CN_TOWER = (43.6426, -79.3871)
 
+#: The same place in web mercator, computed rather than eyeballed, so the
+#: assertion below can be a few metres instead of a few hundred. Slack is room
+#: a transposed axis can hide in.
+CN_TOWER_3857 = (-8837331.5476, 5410299.2713)
+
 
 class FieldNames(unittest.TestCase):
     """No GDAL needed: this is the part that keeps a driver from mangling it."""
@@ -124,14 +129,13 @@ class Encoding(unittest.TestCase):
         # were degrees would fail outright; encoding them after a transform
         # that got the axis order wrong would give a code for somewhere real.
         # Only the right answer passes.
-        x, y = -8837500.0, 5411500.0                # roughly the CN Tower
-        source = _points(self.where / "merc.gpkg", [(x, y)], epsg=3857)
+        source = _points(self.where / "merc.gpkg", [CN_TOWER_3857], epsg=3857)
         encode(source, self.where / "out.gpkg", quiet=True)
 
         got = _read(self.where / "out.gpkg", "gpc")[0][0]
-        # Within a couple of hundred metres of the real thing is enough to
-        # prove the transform happened and the axes are the right way round.
-        self.assertLess(GPC.distance(got, GPC.encode(*CN_TOWER, False)), 500)
+        # Within a cell. Loose enough for the difference between a sphere and
+        # an ellipsoid, tight enough that a swapped axis cannot pass.
+        self.assertLess(GPC.distance(got, GPC.encode(*CN_TOWER, False)), 5)
 
     def test_a_layer_with_no_crs_is_refused(self):
         source = self.where / "bare.gpkg"
@@ -185,7 +189,9 @@ class Decoding(unittest.TestCase):
         srs.ImportFromEPSG(4326)
         layer = written.CreateLayer("codes", srs, ogr.wkbNone)
         layer.CreateField(ogr.FieldDefn("gpc", ogr.OFTString))
-        for value in (GPC.encode(*CN_TOWER, False), "NOTACODE12"):
+        # Q and Y are the letters the alias table will not rescue. NOTACODE12
+        # would have been read as N0T4C0D312 and placed in Asia.
+        for value in (GPC.encode(*CN_TOWER, False), "NOTAQCODEY"):
             feature = ogr.Feature(layer.GetLayerDefn())
             feature.SetField("gpc", value)
             layer.CreateFeature(feature)

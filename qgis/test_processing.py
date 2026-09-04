@@ -219,9 +219,14 @@ class CodesToPoints(unittest.TestCase):
         self.assertEqual(GPC.encode(point.y(), point.x(), False), code)
 
     def test_a_bad_code_keeps_its_row(self):
+        # NOTAQCODEY, not NOTACODE12. The second one looks unparseable and is
+        # not: the alias table reads O as 0, A as 4 and E as 3, so it becomes
+        # N0T4C0D312 and decodes to a real place in Asia. Q and Y are the
+        # letters section 8 refuses to alias, which is what makes this one
+        # genuinely unreadable.
         code = GPC.encode(*CN_TOWER, False)
         out = run("gridpointcode:decodecodes",
-                  {"INPUT": table([code, "NOTACODE12"]), "FIELD": "gpc"})
+                  {"INPUT": table([code, "NOTAQCODEY"]), "FIELD": "gpc"})
 
         features = list(out.getFeatures())
         self.assertEqual(len(features), 2)
@@ -232,7 +237,7 @@ class CodesToPoints(unittest.TestCase):
         # `isEmpty` rather than `isNull`: a point sink can store a feature that
         # was given no geometry as POINT EMPTY rather than as nothing at all,
         # and either way the row has no position, which is the promise.
-        without = by_code["NOTACODE12"].geometry()
+        without = by_code["NOTAQCODEY"].geometry()
         self.assertTrue(
             without.isEmpty(),
             f"the row that would not parse came back at {without.asWkt()}")
