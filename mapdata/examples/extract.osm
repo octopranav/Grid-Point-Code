@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="handmade">
+  <node id="1" lat="43.6426" lon="-79.3871">
+    <tag k="name" v="CN Tower"/>
+    <tag k="ref:gridpointcode" v="#G3RJM-0M6DX"/>
+  </node>
+  <node id="2" lat="-33.8568" lon="151.2153">
+    <tag k="name" v="Sydney Opera House"/>
+    <tag k="ref:gridpointcode" v="#6LK4X-NRP0R"/>
+  </node>
+  <node id="3" lat="-13.1631" lon="-72.545">
+    <tag k="name" v="Machu Picchu"/>
+    <tag k="ref:gridpointcode" v="#C8HKC-13C80"/>
+  </node>
+  <node id="90" lat="43.6426" lon="-79.3871"/>
+  <node id="91" lat="43.6430" lon="-79.3875"/>
+  <way id="500">
+    <nd ref="90"/>
+    <nd ref="91"/>
+    <tag k="name" v="A street, which is not a point"/>
+    <tag k="ref:gridpointcode" v="#G3RJM-0M6DX"/>
+  </way>
+</osm>

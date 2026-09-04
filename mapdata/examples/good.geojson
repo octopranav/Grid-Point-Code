@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "CN Tower",
+        "ref:gridpointcode": "#G3RJM-0M6DX"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -79.3871,
+          43.6426
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Sydney Opera House",
+        "ref:gridpointcode": "#6LK4X-NRP0R"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          151.2153,
+          -33.8568
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Machu Picchu",
+        "ref:gridpointcode": "#C8HKC-13C80"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -72.545,
+          -13.1631
+        ]
+      }
+    }
+  ]
+}

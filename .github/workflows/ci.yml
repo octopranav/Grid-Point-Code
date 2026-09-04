@@ -161,6 +161,34 @@ jobs:
       - name: The convention must lose nothing within its radius
         run: python -m unittest discover --start-directory search --top-level-directory search --verbose
 
+  mapdata:
+    name: Codes in map data still say where things are
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+
+      # A code written into a file is a copy of a coordinate, and copies go
+      # stale silently: the node moves, the tag does not, and what is left is a
+      # well-formed code for a plausible place a short walk away. The checker
+      # is fed every one of those failures here, because a checker nobody has
+      # watched fail is a checker nobody knows works.
+      - name: The checker must catch every way this goes wrong
+        run: python -m unittest discover --start-directory mapdata --top-level-directory mapdata --verbose
+
+      # And the shipped examples must be what the README says they are.
+      - name: The clean example must pass and the broken one must not
+        run: |
+          python mapdata/validate.py mapdata/examples/good.geojson
+          if python mapdata/validate.py mapdata/examples/wrong.geojson; then
+            echo "the broken example passed validation" >&2
+            exit 1
+          fi
+
   vectors:
     name: Vectors regenerate identically
     runs-on: ubuntu-latest

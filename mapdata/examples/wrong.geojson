@@ -1,0 +1,77 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Moved since it was tagged",
+        "ref:gridpointcode": "#G3RJM-0M6DX"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -79.3871,
+          43.64296
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Code from somewhere else",
+        "ref:gridpointcode": "#G3RJM-0M6DX"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.1246,
+          51.5007
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Mistyped",
+        "ref:gridpointcode": "#G3RJM-0M6DQ"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -79.3871,
+          43.6426
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "A park, which is not a point",
+        "ref:gridpointcode": "#G3RJM-0M6DX"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -79.39,
+              43.64
+            ],
+            [
+              -79.38,
+              43.64
+            ],
+            [
+              -79.38,
+              43.65
+            ],
+            [
+              -79.39,
+              43.64
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}
