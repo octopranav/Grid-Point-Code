@@ -135,7 +135,14 @@ def run(algorithm, parameters):
     parameters.setdefault("OUTPUT", "TEMPORARY_OUTPUT")
 
     result = processing.run(algorithm, parameters, context=context, feedback=feedback)
-    return QgsProcessingUtils.mapLayerFromString(result["OUTPUT"], context)
+    output = result["OUTPUT"]
+
+    # Sometimes a layer, sometimes the string that names one, depending on the
+    # sink and the QGIS version. Both are answered the same way here so the
+    # tests are about the algorithms rather than about which it happened to be.
+    if isinstance(output, QgsVectorLayer):
+        return output
+    return QgsProcessingUtils.mapLayerFromString(output, context)
 
 
 @unittest.skipUnless(HAS_QGIS, "needs QGIS")
