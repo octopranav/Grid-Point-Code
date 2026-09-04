@@ -48,19 +48,32 @@ How well the order holds up, measured over those 200,000 codes:
 
 **Declare the column `COLLATE "C"`.** The ordering property is a property of
 *bytes*, and most databases are created with a collation that does not sort
-bytes — `en_US.UTF-8` sorts the way a person alphabetises. Two things go wrong
-without it:
+bytes — `en_US.UTF-8` sorts the way a person alphabetises.
 
-* `LIKE 'G3RJM%'` will not use a plain B-tree index at all, and falls back to
-  reading the table.
-* `ORDER BY code` is no longer guaranteed to be traversal order.
+What that costs was measured rather than guessed, over 200,000 codes in a column
+collated `und-x-icu`:
 
-`COLLATE "C"` on the column fixes both, and costs nothing: a code contains only
-digits and upper-case letters, so there is no human-language ordering to lose.
-An index built with `text_pattern_ops` fixes the first but not the second.
+| | under a human-language collation |
+| --- | --- |
+| `WHERE code LIKE 'G3RJM%'` | **sequential scan** — the index is not used |
+| `WHERE code >= 'G3RJM' AND code < 'G3RJN'` | index scan, unaffected |
+| `ORDER BY code` | identical to byte order at all 200,000 positions |
 
-`sql/check_index.sql` reports which kind of database it is running on, so a
-failure here says so rather than leaving you to guess.
+So the damage is narrower than it first appears, and in one direction than
+expected. The *order* survives: this alphabet is digits and consonants with no
+vowels and no lower case, and a human-language collation happens to sort those
+exactly as bytes do. What does not survive is the prefix query, which is the
+common case and the reason to reach for a code in the first place.
+
+`COLLATE "C"` on the column fixes it and costs nothing — there is no
+human-language ordering here to lose. An index built with `text_pattern_ops`
+fixes it too. If you can change neither, write the bounded range instead of the
+`LIKE`; it compares whole values rather than asking for a prefix, and the
+planner is happy with it under any collation.
+
+None of the three rows above is asserted here. `sql/check_index.sql` builds the
+ICU-collated column and asks the planner, so if a later PostgreSQL changes any
+of this, the check says so rather than this page going quietly stale.
 
 ## What is here
 

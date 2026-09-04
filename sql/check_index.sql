@@ -116,28 +116,77 @@ BEGIN
 END;
 $$;
 
--- The collation, stated rather than assumed. If the database's own default
--- happens to be byte order this passes trivially; if it does not, this is the
--- line that shows the two orders differ and why the README insists.
+-- The collation advice, demonstrated rather than repeated.
+--
+-- The check that used to be here compared the database's own default with byte
+-- order and reported which it was. On a runner whose database is already byte
+-- ordered that passes without touching the thing it is about, so it said
+-- nothing on the only machine that runs it.
+--
+-- This builds a column under a collation that is definitely not byte order and
+-- asks the two questions that matter. The answers were a surprise, and the
+-- README now says what they are rather than what seemed likely.
 DO $$
 DECLARE
-    same boolean;
+    plan text;
+    differ int;
+    total int;
 BEGIN
-    SELECT bool_and(a = b) INTO same
-      FROM (
-        SELECT row_number() OVER (ORDER BY code COLLATE "C") AS n, code AS a
-          FROM (SELECT code FROM gpc_places LIMIT 5000) x
-      ) one
-      JOIN (
-        SELECT row_number() OVER (ORDER BY code COLLATE "default") AS n, code AS b
-          FROM (SELECT code FROM gpc_places LIMIT 5000) y
-      ) other USING (n);
-
-    IF same THEN
-        RAISE NOTICE 'this database''s default collation is already byte order';
-    ELSE
-        RAISE NOTICE 'this database''s default collation is NOT byte order: '
-                     'the COLLATE "C" in the README is doing real work here';
+    IF NOT EXISTS (SELECT 1 FROM pg_collation WHERE collname = 'und-x-icu') THEN
+        RAISE NOTICE 'no ICU collation on this build; the collation check is skipped';
+        RETURN;
     END IF;
+
+    CREATE TEMP TABLE gpc_icu (code text COLLATE "und-x-icu");
+    INSERT INTO gpc_icu SELECT code FROM gpc_places;
+    CREATE INDEX gpc_icu_code ON gpc_icu (code);
+    ANALYZE gpc_icu;
+    SELECT count(*) INTO total FROM gpc_icu;
+
+    -- 1. The order itself. For this alphabet -- digits and consonants, no
+    --    vowels and no lower case -- a human-language collation turns out to
+    --    agree with byte order at every position. Worth knowing, and worth
+    --    knowing it was checked rather than assumed.
+    SELECT count(*) FILTER (WHERE a <> b) INTO differ
+      FROM (SELECT row_number() OVER (ORDER BY code COLLATE "C") AS n, code AS a
+              FROM gpc_icu) one
+      JOIN (SELECT row_number() OVER (ORDER BY code COLLATE "und-x-icu") AS n, code AS b
+              FROM gpc_icu) other USING (n);
+
+    IF differ > 0 THEN
+        RAISE NOTICE 'ICU and byte order disagree at % of % positions: ORDER BY '
+                     'needs COLLATE "C" as well as the index', differ, total;
+    ELSE
+        RAISE NOTICE 'ICU and byte order agree at all % positions', total;
+    END IF;
+
+    -- 2. The index, which is where it actually costs something. A prefix LIKE
+    --    cannot use a B-tree under a non-byte collation and falls back to
+    --    reading the table.
+    EXECUTE 'EXPLAIN (FORMAT json) SELECT count(*) FROM gpc_icu '
+            'WHERE code LIKE ' || quote_literal('G3RJM%') INTO plan;
+
+    IF plan LIKE '%Index%' THEN
+        RAISE NOTICE 'a prefix used the index even under ICU; the README is '
+                     'stricter than this database requires';
+    ELSE
+        RAISE NOTICE 'under ICU a prefix falls back to a sequential scan: that '
+                     'is what COLLATE "C" buys';
+    END IF;
+
+    -- 3. A bounded range does not care, because it compares whole values
+    --    rather than asking for a prefix. Callers who cannot change the
+    --    collation have this to fall back on, so it must keep working.
+    EXECUTE 'EXPLAIN (FORMAT json) SELECT count(*) FROM gpc_icu '
+            'WHERE code >= ' || quote_literal('G3RJM')
+         || ' AND code < ' || quote_literal('G3RJN') INTO plan;
+
+    IF plan NOT LIKE '%Index%' THEN
+        RAISE EXCEPTION
+            'a bounded range stopped using the index under ICU as well. The '
+            'README offers it as the way out for callers who cannot set the '
+            'collation, and it would now be wrong. The plan was: %', plan;
+    END IF;
+    RAISE NOTICE 'a bounded range still uses the index under ICU';
 END;
 $$;
