@@ -286,20 +286,20 @@ involved. So the eleventh character is optional, written after a star, and you
 add it exactly where the people are.
 
 **What it buys.** It detects **every single-character error** and **every
-transposition of two adjacent characters** — the two mistakes people make when
+transposition of two adjacent characters**, the two mistakes people make when
 they hear a code, write it down, and type it in later. Verified exhaustively:
 over 4,000 random codes, all 1,056,000 possible single-symbol errors and all
 38,389 adjacent transpositions were caught.
 
 **Why that matters.** Without it, a mistyped code is usually still a valid code.
 Nearly 29 % of single-character typos land somewhere plausible in the right
-region — the wrong door, the wrong block, sometimes 20 km away — and nothing in
+region (the wrong door, the wrong block, sometimes 20 km away), and nothing in
 the format objects, because very nearly every ten-character string over the
 alphabet names some real cell. This is the one mechanism that says "that is not
 what was sent" instead of quietly naming the wrong place.
 
 **When to use it.** Wherever a code is read aloud, spoken over a radio or a
-telephone, written by hand, or printed on a sign or a delivery note — anywhere a
+telephone, written by hand, or printed on a sign or a delivery note: anywhere a
 person is in the path. Not for machine-to-machine traffic, storage or URLs,
 where it is only an extra character to strip.
 
@@ -333,7 +333,7 @@ GPC.IsValidV1("#FN5G-CDKL-HDC");   // Validation, IsValid = true
 ```
 
 `Decode` dispatches on length once separators are stripped: ten characters is
-version 2, eleven is version 1. There is no version 1 encoder — the old format
+version 2, eleven is version 1. There is no version 1 encoder, because the old format
 is readable, not writable. Anyone who still needs to write version 1 codes
 should pin `1.1.x`.
 
