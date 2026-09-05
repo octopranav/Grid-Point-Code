@@ -157,13 +157,21 @@ jobs:
           limit=1000000000
           bytes=$(du -sb dist | cut -f1)
           percent=$((bytes * 100 / limit))
+          # Every figure here is `du -b`, the bytes in the files, and not
+          # `du -h`, the room they take up on this disk. Those disagree by more
+          # than 200 MB: the landmark archive is 82,000 small files and each one
+          # rounds up to a filesystem block, which is a fact about the runner
+          # and not about anything that gets served. Reporting the rounded
+          # figure beside a percentage worked out from the real one produced a
+          # line that read as though it contradicted itself.
+          #
           # To both, and not only to the summary. The summary is the readable
           # place, but it cannot be fetched afterwards and it is not there at
           # all when this is run outside Actions, so a figure written only there
           # is a figure nobody can go back and look up.
           {
-            echo "site: $(du -sh dist | cut -f1) (${bytes} bytes), ${percent}% of the 1 GB Pages publishes"
-            du -sh dist/* | sort -rh | head -5
+            echo "site: $(numfmt --to=si --suffix=B "$bytes") in ${bytes} bytes, ${percent}% of the 1 GB Pages publishes"
+            du -sb dist/* | sort -rn | head -5 | numfmt --field=1 --to=si --suffix=B
           } | tee -a "$GITHUB_STEP_SUMMARY"
           if [ "$bytes" -gt "$limit" ]; then
             echo "::error::The built site is ${bytes} bytes. Pages publishes no more than ${limit}, so this deployment would be refused. Cut the landmark archive down (web/scripts/build-landmarks.mjs decides what is kept) or shard the name index."
