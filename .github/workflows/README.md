@@ -73,6 +73,44 @@ Setting this up is done once, outside the repository:
 Both names must match exactly, including the environment, or the exchange is
 refused and the release fails without publishing anything.
 
+### The NuGet policy, and rehearsing it
+
+Two things about that third bullet are worth writing down, because both were
+believed wrong for a while.
+
+**The seven day window does not apply here.** A new policy on nuget.org can
+start out temporarily active, and lapse if nothing publishes inside a week. That
+happens when nuget.org cannot read the repository and owner IDs it needs to bind
+the policy to this repository and no other, which is the case for a private one.
+This repository is public, so the IDs are readable when the policy is made and
+it is permanently active from the start. Even where the window does apply it can
+be restarted at any time, including after it has closed, so there is nothing
+here that can be quietly lost by waiting.
+
+**What was actually untested is the workflow.** `release-nuget.yml` was written
+the morning after `v2.0.0` was tagged, so the tag that published npm and PyPI
+never reached it, and 2.0.0 went to nuget.org by hand. That left one release
+path in this repository that had never executed, due to run for the first time
+unattended, on a tag, after a build and a test suite and a pack had already
+succeeded.
+
+So it can be run by hand:
+
+```
+gh workflow run release-nuget.yml
+```
+
+It builds, tests, packs and asks nuget.org to trade the OIDC token for a key,
+which is the whole release except the push. The push is skipped on anything but
+a tag push, guarded on the event rather than the ref so that dispatching the
+workflow at a tag cannot republish a version that is already public. A key it
+does not spend expires in an hour regardless.
+
+That rehearsal is worth running whenever the policy or the environment is
+touched, and once before any tag. It cannot prove the push itself, which needs a
+version that does not exist yet, but every way of getting the policy wrong that
+does not involve the package name shows up in it.
+
 ## Provenance
 
 The Python artifacts are attested with `actions/attest-build-provenance`, which

@@ -1422,35 +1422,78 @@ const code = GPC.encode(START.latitude, START.longitude);
         // ── the map ──────────────────────────────────────────────────────────
 
         async function loadMap() {
+            // The map is an illustration of an answer the page already has.
+            // Everything the playground does with a code is arithmetic, so none
+            // of it may sit behind a basemap: a reader with no network, or a
+            // browser that withholds WebGL2, still typed a code and is still
+            // owed an answer, and somebody who followed a link to one is owed
+            // the place it names. `seed` is therefore called on every path out
+            // of here, including the ones where there is no map, and every
+            // function that draws already returns early without one.
+            let seeded = false;
+
+            // Every guard in this file that draws asks one question: is there
+            // a map. A map whose style never parsed answers yes, and then
+            // throws `Style is not done loading` at the first layer added to
+            // it. So it is retired here rather than taught about, and "the map
+            // did not arrive" keeps meaning the one thing the rest of the file
+            // already reads it as.
+            //
+            // Disabling the chooser goes with it: with nothing to restyle, a
+            // control that silently does nothing is worse than one that is
+            // visibly unavailable.
+            function noMap(message: string, error: unknown) {
+                const orphan = map;
+                map = null;
+                try {
+                    orphan?.remove();
+                } catch {
+                    /* it was already past helping; the canvas goes with the page */
+                }
+                basemapChooser.disabled = true;
+                hint.textContent = message;
+                console.warn('[grid point code] ' + message, error);
+                seed();
+            }
+
             let maplibre: typeof import('maplibre-gl');
             try {
                 maplibre = await import('maplibre-gl');
             } catch (error) {
-                hint.textContent = 'The map could not load. Everything else still works.';
-                console.warn('[grid point code] the map library did not load.', error);
+                noMap('The map could not load. Everything else still works.', error);
                 return;
             }
 
-            map = new maplibre.Map({
-                container: mapHolder,
-                style: basemapStyle(chosen),
-                center: [start.longitude, start.latitude],
-                zoom: 0,
-                attributionControl: { compact: false },
-                cooperativeGestures: true,
-                dragRotate: false,
-                pitchWithRotate: false,
-                // One Earth. Repeating it sideways turns a descent from the
-                // world into a descent from an aquarium, and makes the level-one
-                // box look like several boxes.
-                renderWorldCopies: false,
-            });
+            try {
+                map = new maplibre.Map({
+                    container: mapHolder,
+                    style: basemapStyle(chosen),
+                    center: [start.longitude, start.latitude],
+                    zoom: 0,
+                    attributionControl: { compact: false },
+                    cooperativeGestures: true,
+                    dragRotate: false,
+                    pitchWithRotate: false,
+                    // One Earth. Repeating it sideways turns a descent from the
+                    // world into a descent from an aquarium, and makes the level-one
+                    // box look like several boxes.
+                    renderWorldCopies: false,
+                });
+            } catch (error) {
+                // Most often no WebGL2: MapLibre needs it, and a machine or a
+                // policy can withhold it. Unguarded, this threw out of `loadMap`
+                // and took the shared-link seeding and the basemap control with
+                // it, so a browser without WebGL2 lost the playground and not
+                // just the picture in it.
+                noMap('The map could not start. Everything else still works.', error);
+                return;
+            }
 
             map.addControl(new maplibre.NavigationControl({ showCompass: false }), 'top-right');
 
-            const ready = () => {
-                if (!map || section.dataset.mapState === 'ready') return;
-                section.dataset.mapState = 'ready';
+            function seed() {
+                if (seeded) return;
+                seeded = true;
 
                 // A link names a place. Fed through the code field rather than
                 // decoded here, so a code that arrives broken is answered the
@@ -1481,7 +1524,29 @@ const code = GPC.encode(START.latitude, START.longitude);
                 }
                 codeField.value = shown;
                 codeField.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            const ready = () => {
+                if (!map || section.dataset.mapState === 'ready') return;
+                section.dataset.mapState = 'ready';
+                clearTimeout(waiting);
+                seed();
             };
+
+            // A style that never parses is a map that is not coming, and
+            // offline that is the ordinary case rather than a fault: the tiles
+            // are the one thing on this page that needs a network. Eight
+            // seconds is long enough that a slow connection still gets its map,
+            // and the wait costs nothing, because what the reader is waiting
+            // for is a picture of a code the page has already worked out.
+            const waiting = setTimeout(() => {
+                if (section.dataset.mapState === 'ready') return;
+                section.dataset.mapState = 'style-never-parsed';
+                noMap(
+                    'The map could not reach its tiles. Everything else still works.',
+                    new Error('the style never parsed'),
+                );
+            }, 8000);
 
             if (map.isStyleLoaded()) ready();
             else map.on('style.load', ready);
