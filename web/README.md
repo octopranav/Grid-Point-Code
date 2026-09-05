@@ -206,6 +206,43 @@ same twenty-five in turn returned 83,506. The stored data was whole either way,
 but concurrent reads of it were not. `keepArea` therefore fetches together and
 measures one at a time.
 
+### There is no offline basemap, and there is not going to be one
+
+The tiles are the one thing on the site that needs a network, and they stay that
+way. A world basemap is not a thing that can be shipped here: the vector tiles
+these styles are drawn from are tens of gigabytes for the planet, and even the
+handful of zoom levels that would show a country are hundreds of megabytes
+against a published site that already stands at four fifths of what Pages will
+serve. Cutting the landmarks to make room for a picture would be trading the
+part that answers questions for the part that decorates the answer.
+
+So the offline map is the plate: a drawing of the cell, at the coordinates the
+code names, rendered from the code itself and correct with nothing fetched at
+all. That is not a consolation. The plate is the thing that is true, and the
+basemap is context laid behind it.
+
+What this does mean is that **nothing may sit behind the basemap arriving**, and
+that is worth checking whenever this code is touched, because the failure is
+invisible on a desk with a network. Both maps now settle whether the tiles come
+or not:
+
+| | when the library will not load | when WebGL2 is missing | when the tiles never arrive |
+| --- | --- | --- | --- |
+| `Resolve` | plate, descent runs | plate, descent runs | plate, descent runs |
+| `Playground` | code still resolves | code still resolves | code still resolves |
+
+The playground did not, and the way it failed is the argument for the row. A
+shared link carries its code in the query string, and the code was read out of
+it inside the handler for `style.load`. With the tile host unreachable, that
+handler never ran: following somebody's link to Sydney showed the pre-rendered
+example in Toronto, with no error and nothing on screen to suggest the link had
+been read at all. The constructor was unguarded too, so a browser without WebGL2
+threw out of `loadMap` and lost the basemap control on the way past.
+
+To reproduce any of it, point `STYLES` in `src/lib/basemap.ts` at
+`http://127.0.0.1:9/` and load `/play?c=6LK4X-N2242`. The field should say
+`#6LK4X-N2242` and the coordinates should say `-33.868788, 151.209293`.
+
 ## Deployment
 
 Pushing to `main` builds and publishes through

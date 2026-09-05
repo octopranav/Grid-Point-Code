@@ -630,11 +630,19 @@ const cellHeight = PLATE / first.rows;
             else map.on('style.load', ready);
 
             map.on('error', (event) => {
-                section.dataset.mapState = 'tiles-failed';
                 // Tiles can fail while the library is fine. The plate is still
                 // correct and still on screen, so there is nothing to tell the
                 // reader -- but swallowing it silently would hide a real fault
                 // from anyone with a console open.
+                //
+                // Only while the map has not arrived, though. One tile of a
+                // hundred returning a 404 an hour into a session is not the map
+                // failing; the map is on screen and drawing. Recording it as a
+                // failure made the one attribute whose whole job is to say
+                // which step gave up name a step that had already succeeded.
+                if (section.dataset.mapState !== 'ready') {
+                    section.dataset.mapState = 'tiles-failed';
+                }
                 console.warn('Basemap unavailable; the plate is unaffected.', event.error);
             });
         }

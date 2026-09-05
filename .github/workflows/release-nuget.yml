@@ -34,6 +34,17 @@ name: Release NuGet
 on:
   push:
     tags: ['v*']
+  # A rehearsal, and the reason this trigger exists.
+  #
+  # This file was written after v2.0.0 was tagged, so it has never run: 2.0.0
+  # reached nuget.org by hand while npm and PyPI went through their workflows on
+  # that tag. The next tag would therefore exercise this path for the first time
+  # unattended, at the end of a job that has already built, tested and packed,
+  # and a publishing policy that is misspelled by one character fails exactly
+  # there. Running it by hand does everything up to and including the token
+  # exchange, and stops before the push. Nothing is published and the key it
+  # asks for expires in an hour whether it is used or not.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -68,6 +79,7 @@ jobs:
       # A tag that disagrees with the manifest publishes a version nobody asked
       # for, under a name that already means something else.
       - name: The tag must match the version in gpc.csproj
+        if: github.event_name == 'push'
         run: |
           tag="${GITHUB_REF_NAME#v}"
           version=$(python3 -c "import xml.etree.ElementTree as ET; print(ET.parse('gpc/gpc.csproj').find('.//PackageVersion').text)")
@@ -89,6 +101,9 @@ jobs:
       - name: Pack
         run: dotnet pack gpc/gpc.csproj --configuration Release
 
+      # Everything above runs in a rehearsal too. A rehearsal that skipped the
+      # build would be rehearsing nothing: what it is here to prove is that the
+      # job reaches the exchange with a package beside it.
       - name: NuGet login (OIDC for a key that lives one hour)
         uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
         id: login
@@ -97,8 +112,26 @@ jobs:
 
       # The symbols package rides along: dotnet nuget push sends the .snupkg
       # sitting beside the .nupkg without being told to.
+      #
+      # Guarded on the event and not on the ref, because a dispatch can be
+      # aimed at a tag as easily as at a branch, and that one would republish a
+      # version that is already public. A tag push is the only way in here.
       - name: Push
+        if: github.event_name == 'push'
         run: >
           dotnet nuget push gpc/bin/Release/*.nupkg
           --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
           --source https://api.nuget.org/v3/index.json
+
+      - name: What the rehearsal proved
+        if: github.event_name != 'push'
+        run: |
+          {
+            echo "Built, tested and packed, and nuget.org traded the OIDC token for a key."
+            echo ""
+            echo "That is the whole release path except the push, so the trusted"
+            echo "publishing policy is registered against this repository, this file"
+            echo "and the release environment, spelled the way all three actually are."
+            echo ""
+            echo "Nothing was published."
+          } >> "$GITHUB_STEP_SUMMARY"

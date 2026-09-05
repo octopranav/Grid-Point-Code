@@ -140,6 +140,33 @@ jobs:
       - name: Build
         run: npx astro build
 
+      # GitHub states one hard number about a published site: it "may be no
+      # larger than 1 GB". Almost none of what goes over that line would be
+      # this tree. The landmark archive is 82,000 shards and the name index is
+      # one large file, both fetched above, and both grow when GeoNames does
+      # rather than when anything here is edited. So the figure moves on its
+      # own, between deployments that changed nothing, and the first notice of
+      # it would otherwise be the day a deployment stopped working.
+      #
+      # Warn at four fifths, which is early enough to do something about and
+      # late enough not to cry wolf. Fail only past the limit itself, where the
+      # deployment was going to be refused anyway and the only thing left to
+      # decide is whether the reason is legible.
+      - name: The site has to fit in what Pages will publish
+        run: |
+          limit=1000000000
+          bytes=$(du -sb dist | cut -f1)
+          percent=$((bytes * 100 / limit))
+          echo "site: $(du -sh dist | cut -f1), ${percent}% of the 1 GB Pages publishes" >> "$GITHUB_STEP_SUMMARY"
+          du -sh dist/* | sort -rh | head -5 >> "$GITHUB_STEP_SUMMARY"
+          if [ "$bytes" -gt "$limit" ]; then
+            echo "::error::The built site is ${bytes} bytes. Pages publishes no more than ${limit}, so this deployment would be refused. Cut the landmark archive down (web/scripts/build-landmarks.mjs decides what is kept) or shard the name index."
+            exit 1
+          fi
+          if [ "$percent" -ge 80 ]; then
+            echo "::warning::The built site is at ${percent}% of the 1 GB Pages publishes. Nothing is broken yet, and nothing in this tree has to change for it to break."
+          fi
+
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: web/dist
