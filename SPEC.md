@@ -83,7 +83,7 @@ An implementation MUST accept every latitude in the closed interval
 [-90, 90] and every longitude in the closed interval [-180, 180].
 
 An implementation MUST reject NaN and both infinities, and MUST reject any
-value outside those intervals. Rejection MUST be explicit — an error, not a
+value outside those intervals. Rejection MUST be explicit: an error, not a
 wrapped or clamped result.
 
 The rejection MUST say which axis was at fault: `LATITUDE` or `LONGITUDE`.
@@ -91,7 +91,7 @@ Neither carries the `GPC_` prefix that the reasons in
 [section 9](#9-classification) do, and the difference is deliberate. Those
 describe a string that failed to parse; these describe an argument outside its
 domain, which is a different kind of mistake and is reported on the terms set
-out in [section 18.1](#181-cells) — an argument out of range is raised the way
+out in [section 18.1](#181-cells). An argument out of range is raised the way
 its own language raises one. A caller writing against more than one
 implementation should therefore not assume the reason arrives as a typed error,
 only that the axis is named.
@@ -199,8 +199,8 @@ row = clamp(row, 0,  7812499)
 col = clamp(col, 0, 11718749)
 ```
 
-The clamp catches exactly one input per axis — latitude +90, and longitude
-+180 had it not already been normalised — and is otherwise never reached. It
+The clamp catches exactly one input per axis, latitude +90 and longitude
++180 had it not already been normalised, and is otherwise never reached. It
 MUST still be applied: it is what makes the poles encode instead of indexing
 past the end of the grid.
 
@@ -244,7 +244,7 @@ four statements inside the loop is normative: `R` is decided from `sc` before
 this level's `c` is added to it, and `C` is decided from `sr` *after* this
 level's `r` has been added. Reversing either produces a different format.
 
-This is a Peano digit reflection — each axis mirrored according to the parity
+This is a Peano digit reflection, each axis mirrored according to the parity
 of the digits accumulated in the other. It is what puts consecutive codes in
 adjacent cells ([section 11](#11-ordering)).
 
@@ -565,13 +565,13 @@ character determines and is determined by the level-1 cell.
 
 For k > 1, assume the first k-1 characters determine the level-(k-1) cell. The
 parity state `(sr, sc)` entering level k is a function of the digits of that
-cell alone — including at k = 6, where it is the constant `(0, 0)`. Given that
+cell alone, including at k = 6, where it is the constant `(0, 0)`. Given that
 state, the map `(r, c) -> R * 5 + C` is a bijection from the 25 sub-cells onto
 the indices 0 to 24, because reflecting a digit `r -> 4 - r` is a permutation of
 `{0,1,2,3,4}`. So character k determines and is determined by which sub-cell of
 the level-(k-1) cell the point lies in. ∎
 
-Verified over 120,000 random pairs at all ten levels — 1,200,000 checks, no
+Verified over 120,000 random pairs at all ten levels, 1,200,000 checks, with no
 exceptions.
 
 The per-prefix bound is the level table in [section 3](#3-the-grid). Two codes
@@ -643,7 +643,7 @@ to cover a rectangular window. Measured over random windows at full resolution:
 | 16 × 16 cells | 16.04 | 3,000 |
 | 32 × 32 cells | 32.12 | 800 |
 
-A w × w window costs about w ranges — one contiguous run per row of the window,
+A w × w window costs about w ranges, one contiguous run per row of the window,
 which is the best a one-dimensional ordering of a two-dimensional space can do.
 The parity reset does not show up here, because a window that small lies inside
 one level-5 cell almost always.
@@ -679,7 +679,7 @@ thing in every level-5 cell on Earth, which is what makes the next part work.
 character code. It MUST be implemented as follows.
 
 First read the five characters as an offset within a level-5 cell, with the
-parity state seeded to zero — the same loop as [6.1](#61-code-to-grid) with
+parity state seeded to zero, the same loop as [6.1](#61-code-to-grid) with
 `sr = sc = 0` and no level-1 step:
 
 ```
@@ -722,7 +722,7 @@ no tie to break.
 ### 12.3 What recovery guarantees
 
 Recovery returns the correct full code **whenever the reference lies within
-half a level-5 cell of the true point in each axis** — at most 1,562 rows and
+half a level-5 cell of the true point in each axis**, at most 1,562 rows and
 1,562 columns away, that is
 
 ```
@@ -808,8 +808,8 @@ A `*` followed by one symbol. The `*` is on every telephone keypad, and it
 keeps an eleven-symbol check form mechanically distinct from an eleven-
 character version 1 code.
 
-The check character is normalised along with the payload — case-folded,
-separators removed, aliases applied — and what remains MUST be exactly one
+The check character is normalised along with the payload: case-folded,
+separators removed, aliases applied. What remains MUST be exactly one
 symbol of the alphabet. Nothing after the `*`, more than one symbol, or a
 character the alias table cannot resolve is `GPC_CHECK`, the same reason a
 mismatch gets. In every one of those cases the input carried a check the
@@ -826,7 +826,7 @@ Arithmetic is in GF(25), the field of order 25, built as GF(5) extended by a
 root `t` of `t² + t + 2`, which is irreducible over GF(5).
 
 An element is `a + b·t` with `a` and `b` in `{0,1,2,3,4}`. **An element is
-represented by the symbol index `b·5 + a`** — that is, a symbol's column digit
+represented by the symbol index `b·5 + a`**. That is, a symbol's column digit
 is the constant part and its row digit is the `t` part, matching the way
 [5.2](#52-grid-to-code) builds a symbol out of a row and a column.
 
@@ -945,9 +945,9 @@ Displacement depends almost entirely on which character was hit:
 
 | Position | Median displacement | Maximum | Character of the error |
 | --- | ---: | ---: | --- |
-| 1–3 | 2,472 km | 20,009 km | Obviously wrong on any map |
-| 4–6 | 20.8 km | 283 km | Plausible and silent — the dangerous middle |
-| 7–10 | 65 m | 2.3 km | Usually harmless |
+| 1 to 3 | 2,472 km | 20,009 km | Obviously wrong on any map |
+| 4 to 6 | 20.8 km | 283 km | Plausible and silent, the dangerous middle |
+| 7 to 10 | 65 m | 2.3 km | Usually harmless |
 
 One code in 240 is not error detection in any useful sense; it is the structural
 fact that `X` cannot begin a geometric code
@@ -1008,7 +1008,7 @@ languages, and this ordering must be.
 
 **Choosing k.** The window is 3 by 3 level-k cells. It MUST comfortably exceed
 the uncertainty in the reference. Measured over typos that landed more than
-10 km from the reference — the ones worth correcting:
+10 km from the reference, the ones worth correcting:
 
 | k | Window | Reference good to | True code in the set | Ranked first | Median size | 90th |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: |
@@ -1020,7 +1020,7 @@ the uncertainty in the reference. Measured over typos that landed more than
 `k = 6` SHOULD be the default: it suits a device fix or a named suburb, returns
 one candidate in the median case, and never returned more than four in 1,500
 trials. Widening k to cover a poorer reference costs precision, not
-correctness — at `k = 4` the true code is always present but arrives with up to
+correctness: at `k = 4` the true code is always present but arrives with up to
 157 near neighbours, because a typo in the last three characters barely moves
 the point.
 
@@ -1034,7 +1034,7 @@ corrects rather than merely detects.
 Level-1 boundaries are the seams of the format. They lie on:
 
 * the equator, and latitude 45° north and south;
-* the prime meridian, and every 60th meridian east and west of it — 60°, 120°
+* the prime meridian, and every 60th meridian east and west of it: 60°, 120°
   and the antimeridian.
 
 Two points on opposite sides of one of these lines are in different level-1
@@ -1674,7 +1674,7 @@ returned is the one every version 1 release has returned.
 ### B.3 The combination pair
 
 Step 7 is the only part that is not plain arithmetic. It inverts a bijection
-between an index and a pair `(a, b)` drawn from a 180 by 360 table — whole
+between an index and a pair `(a, b)` drawn from a 180 by 360 table of whole
 degrees of latitude and longitude, each doubled and offset by one for the sign,
 which is why `tLat` runs to 180 and `tLong` to 360.
 
@@ -1741,7 +1741,7 @@ whatever they have decided it means.
 
 Nothing here is required for conformance and none of it constrains an
 implementation. The sections above define four ways to write a location down;
-this one is about what happens after a code leaves the software — which form to
+this one is about what happens after a code leaves the software: which form to
 hand to somebody, and how to say one out loud.
 
 ### D.1 Which form to share
@@ -1768,7 +1768,7 @@ point: a sign at the entrance to a village, a notice on a door, one person
 telling another where to meet while both are standing in the same district. It
 is the wrong thing to put behind a share button, in a message or in a stored
 record, because none of those knows where the far end will be when it reads
-them — and a short form resolved against a distant reference does not fail. It
+them, and a short form resolved against a distant reference does not fail. It
 returns a plausible location 8 or 10 km away
 ([12.3](#123-what-recovery-guarantees)).
 
@@ -1797,8 +1797,8 @@ without changing the format: read out in English, `C`, `D`, `G`, `P`, `T` and
 the digit `3` all rhyme.
 
 The alias table of [section 8](#8-parsing-and-normalisation) is no help here.
-That table repairs a reader who typed a letter the alphabet does not contain —
-`O` for `0`, `S` for `5` — and every symbol in the rhyming set above is a real
+That table repairs a reader who typed a letter the alphabet does not contain,
+`O` for `0` or `S` for `5`, and every symbol in the rhyming set above is a real
 symbol. A listener who hears `D` where `T` was said writes down a code that
 parses, validates and decodes to somewhere else. The check character is what
 detects that. Callouts are what avoid it.
@@ -1832,7 +1832,7 @@ connection. `0` to `9` are spoken as themselves.
 So `#G3RJM-98NM9*T` is:
 
 ```
-Golf, three, Romeo, Juliett, Mike — nine, eight, November, Mike, nine — check Tango
+Golf, three, Romeo, Juliett, Mike; nine, eight, November, Mike, nine; check Tango
 ```
 
 The group boundary is worth a pause, and the check character is worth naming as

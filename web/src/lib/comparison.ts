@@ -38,7 +38,7 @@ export const SYSTEMS: System[] = [
         name: 'Grid Point Code',
         kind: 'Coordinate encoding',
         source: {
-            label: 'This site’s specification',
+            label: 'This site\'s specification',
             url: '/spec',
         },
     },
@@ -95,7 +95,7 @@ export const ROWS: Row[] = [
         values: {
             gpc: 'Ten characters, always ten',
             digipin: 'Ten characters, always ten',
-            olc: 'Ten digits by default, eleven for a finer cell, plus a “+”',
+            olc: 'Ten digits by default, eleven for a finer cell, plus a "+"',
             geohash: 'As many characters as the precision needs',
             w3w: 'Three words',
         },
@@ -103,7 +103,7 @@ export const ROWS: Row[] = [
     {
         dimension: 'Area it names',
         note:
-            'The figure that started this page. Against Open Location Code’s default ten '
+            'The figure that started this page. Against Open Location Code\'s default ten '
             + 'digits a cell here is about twenty-two times smaller, but that is a '
             + 'comparison of defaults, not of capability. At eleven digits the two are '
             + 'within about a tenth of each other, and saying only the first number would '
@@ -124,9 +124,9 @@ export const ROWS: Row[] = [
             + 'characters, where twenty-five symbols are needed to reach 2.5 m over the '
             + 'whole Earth. That is an engineering trade, made deliberately, and not a '
             + 'shortcoming of either. '
-            + 'Every figure in this column is the published specification’s. Sites '
+            + 'Every figure in this column is the published specification\'s. Sites '
             + 'unaffiliated with its authors offer a longer code extended to the whole '
-            + 'Earth; that is somebody else’s work and is not what the document defines, '
+            + 'Earth; that is somebody else\'s work and is not what the document defines, '
             + 'so it is not reported here as though it were.',
         values: {
             gpc: 'Everywhere on Earth',
@@ -160,7 +160,7 @@ export const ROWS: Row[] = [
             gpc: 'Yes, and the converse is stated not to hold',
             digipin: 'Yes, "identifying the cells is done in a hierarchical fashion"',
             olc: null,
-            geohash: 'Yes; “the reverse of this is not guaranteed”',
+            geohash: 'Yes; "the reverse of this is not guaranteed"',
             w3w: 'No, the words are unrelated by design',
         },
     },
@@ -168,10 +168,10 @@ export const ROWS: Row[] = [
         dimension: 'Symbols it is written in',
         note:
             'Every system here guards against this, which is worth saying plainly: it is '
-            + 'settled practice rather than anybody’s idea. Open Location Code’s symbols '
-            + 'are “selected to reduce writing errors and prevent accidentally spelling '
-            + 'words”; DIGIPIN’s document records replacing G, W and X “to maintain the '
-            + 'phonetic and visual clarity”; geohash drops a, i, l and o; the word lists '
+            + 'settled practice rather than anybody\'s idea. Open Location Code\'s symbols '
+            + 'are "selected to reduce writing errors and prevent accidentally spelling '
+            + 'words"; DIGIPIN\'s document records replacing G, W and X "to maintain the '
+            + 'phonetic and visual clarity"; geohash drops a, i, l and o; the word lists '
             + 'are curated. This one has no vowels, so a code cannot spell a word.',
         values: {
             gpc: '25 symbols, no vowels',
@@ -194,8 +194,8 @@ export const ROWS: Row[] = [
     {
         dimension: 'A way to tell a mistyped one',
         note:
-            'Read carefully: “its document does not define one” is not the same as “it '
-            + 'cannot”. These cells report what each specification sets out, and a system '
+            'Read carefully: "its document does not define one" is not the same as "it '
+            + 'cannot". These cells report what each specification sets out, and a system '
             + 'may well do something its document leaves unsaid. The check character here '
             + 'is optional and absent unless somebody asks for it, which is worth '
             + 'admitting in the same breath as claiming it.',
@@ -210,9 +210,9 @@ export const ROWS: Row[] = [
     {
         dimension: 'A way to recover a mistyped one',
         note:
-            'The row where this format has something the others’ documents do not '
+            'The row where this format has something the others\' documents do not '
             + 'describe. The structure that hides an error also locates it: the wrong '
-            + 'code’s neighbourhood is searched for codes one keystroke away, ranked '
+            + 'code\'s neighbourhood is searched for codes one keystroke away, ranked '
             + 'against a rough idea of where you were. The typos page here does it in '
             + 'front of the reader.',
         values: {
@@ -289,7 +289,7 @@ export const ROWS: Row[] = [
  * likely to be quietly dropped in a later edit.
  */
 export const PROMISES = [
-    'Every figure about another system comes from that system’s own documentation, linked beside it.',
+    'Every figure about another system comes from that system\'s own documentation, linked beside it.',
     'Where a document does not answer a question, the cell says so rather than guessing, and "its document does not define one" is never a claim that a system cannot do the thing.',
     'The dimensions include the ones this format loses, adoption and saying an address out loud, because choosing the axes is how a comparison lies while every fact in it stays true. So does choosing who appears at all, which is why the closest system to this one is here rather than absent.',
     'No system here is described as bad, and none of them is. They answer different questions, and several answer theirs better than this one answers anything yet.',

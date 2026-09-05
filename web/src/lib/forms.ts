@@ -102,7 +102,7 @@ export function aloud(code: string): string {
 
     const head = [...payload.slice(0, 5)].map(callout).join(', ');
     const tail = [...payload.slice(5)].map(callout).join(', ');
-    return head + ' — ' + tail + ' — check ' + callout(check);
+    return head + '; ' + tail + '; check ' + callout(check);
 }
 
 /**
