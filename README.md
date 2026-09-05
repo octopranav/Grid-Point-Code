@@ -40,8 +40,8 @@ prefix is a region, so `WHERE code LIKE 'G3RJM%'` means "everything in this
 8.0 by 10.7 km cell". And a code fits in six bytes if you would rather store a
 number than a string.
 
-**If codes get spoken or written down** — over a radio, down a telephone, onto a
-sign or a delivery note — an optional check character catches every
+**If codes get spoken or written down**, over a radio, down a telephone, onto a
+sign or a delivery note, an optional check character catches every
 single-character mistake and every swapped pair, and
 [Appendix D](SPEC.md#appendix-d--sharing-a-code-non-normative) covers reading
 one aloud.
@@ -56,7 +56,7 @@ function, or a batch over a billion rows.
 | --- | --- |
 | Share one exact spot | The full code, `#G3RJM-98NM9` |
 | Say it aloud, or have it written down | The check form, `#G3RJM-98NM9*T` |
-| Group points by area | The first k characters — `cell` |
+| Group points by area | The first k characters, `cell` |
 | Ask whether a point is in an area | `contains`, which is a string comparison |
 | Find what is next door | `neighbours` |
 | Store it small, or sort it | The 48-bit integer form |
@@ -66,7 +66,7 @@ function, or a batch over a billion rows.
 Two things worth knowing before you start. A code names a **cell, not a point**,
 so it comes back as the centre of a 2.56 by 3.42 m box rather than the exact
 coordinate you put in. And a shared prefix proves nearness, but nearness does
-not promise a shared prefix — two points either side of a grid boundary can
+not promise a shared prefix. Two points either side of a grid boundary can
 share nothing at all. Both are covered under
 [Precision and limits](#precision-and-limits).
 
@@ -86,7 +86,7 @@ Everything below follows from that one property.
 | Because a shared prefix **is** a shared cell | |
 | --- | --- |
 | A prefix is a region identifier | ten nested scales, continent down to doorway, with nothing to mint and nothing extra to store |
-| The prefix test **is** the containment test | `contains` is a string comparison — no geometry, no tolerance, no special case at a boundary |
+| The prefix test **is** the containment test | `contains` is a string comparison, with no geometry, no tolerance, no special case at a boundary |
 | The alphabet is ASCII-ascending | `ORDER BY code` is a spatial sort, and an ordinary string index is a spatial index |
 | Cells nest exactly | neighbours, cell sizes, the short form and typo correction are all integer arithmetic on the grid |
 
@@ -120,7 +120,7 @@ latitude, so a cell is squarer at 41.5 degrees and narrower towards the poles.
 ## Code structure
 
 * **Format**: `#XXXXX-XXXXX`, ten characters, the same length everywhere
-* **Alphabet**: `0123456789CDFGHJKLMNPRTWX` — 25 symbols, no vowels, digits
+* **Alphabet**: `0123456789CDFGHJKLMNPRTWX`, 25 symbols, no vowels, digits
   first so that the ASCII order is the spatial order
 * **Cell**: 2.56 m north to south by 3.42 m east to west at the equator
 * **No dependencies**: nothing third-party in any of the four ports
@@ -160,7 +160,7 @@ are the two mistakes a person makes, so it earns its place wherever a code will
 be read aloud or written down.
 
 The short form is the one to be careful with. Five characters resolve only
-against a reference near the true point — right for a sign at the entrance to a
+against a reference near the true point: right for a sign at the entrance to a
 village, wrong behind a share button, which cannot know where the far end will
 be standing. Out of range it does not fail; it returns a plausible location 8
 or 10 km away.
@@ -328,14 +328,14 @@ GPC.with_check("#G3RJM-98NM9")       # '#G3RJM-98NM9*T'
 ```
 
 **What it buys.** It detects **every single-character error** and **every
-transposition of two adjacent characters** — the two mistakes people actually
+transposition of two adjacent characters**, the two mistakes people actually
 make when they hear a code, write it down, and type it in later. Verified
 exhaustively: over 4,000 random codes, all 1,056,000 possible single-symbol
 errors and all 38,389 adjacent transpositions were caught.
 
 **Why that matters here.** Without it, a mistyped code is usually still a valid
 code. Nearly 29 % of single-character typos land somewhere plausible in the
-right region — the wrong door, the wrong block, sometimes 20 km away — and
+right region (the wrong door, the wrong block, sometimes 20 km away), and
 nothing in the format objects, because very nearly every ten-character string
 over the alphabet names some real cell. The check character is the one mechanism
 that says "this is not what was sent" instead of quietly naming the wrong place.
@@ -347,7 +347,7 @@ that says "this is not what was sent" instead of quietly naming the wrong place.
 | Read aloud, over a radio or a telephone | **Yes** |
 | Written by hand, printed on a sign or a delivery note | **Yes** |
 | Typed in by a person from anywhere | **Yes** |
-| Machine to machine, stored in a record, put in a URL | No — it is not canonical |
+| Machine to machine, stored in a record, put in a URL | No, it is not canonical |
 
 **It is never in the way.** The check form is **not canonical**: no port emits
 it unless asked, `#G3RJM-98NM9` and `#G3RJM-98NM9*T` denote the same place, and
@@ -363,8 +363,8 @@ GPC.is_valid("#G3RJM-98NM9*Z")        # False -- the check does not hold
 ```
 
 Reach for `with_check` rather than building the string yourself. By hand it is
-three operations and two ways to be quietly wrong — the star dropped, or the
-character spliced inside the group separator instead of after it — and neither
+three operations and two ways to be quietly wrong: the star dropped, or the
+character spliced inside the group separator instead of after it, and neither
 mistake is caught by anything, because the result is a string nobody validated.
 It recomputes rather than trusting, so a code arriving with a wrong check comes
 back with a right one.
@@ -422,8 +422,8 @@ raising, and names the axis at fault. C# and Java leave that to catching the
 argument exception their languages already raise.
 
 Case and separators never matter. Confusable letters are read as the symbols
-they stand for — `O` as `0`, `I` as `1`, `S` as `5`, `Z` as `2`, `B` as `8`,
-`A` as `4`, `E` as `3`, `V` as `W` — while `L` is a real symbol and is never
+they stand for: `O` as `0`, `I` as `1`, `S` as `5`, `Z` as `2`, `B` as `8`,
+`A` as `4`, `E` as `3`, `V` as `W`. `L` is a real symbol and is never
 read as `1`. Every failure carries a reason code (`GPC_NULL`, `GPC_LENGTH`,
 `GPC_CHAR`, `GPC_CHECK`, `GPC_RESERVED`, `GPC_RANGE`) so a caller can branch on
 the reason instead of matching on message text.
@@ -488,13 +488,13 @@ GPC.screen("#G3RJM-98NM9")                  # ('2026.2', []) -- clean
 
 * **The short form is a convenience and the ten characters are the form of
   record.** Recovery is exact whenever the reference is within half a level-5
-  cell of the true point on each axis — 4.0 km of latitude, 5.3 km of longitude
-  at the equator — and outside that box it returns a plausible location 8 or
+  cell of the true point on each axis, 4.0 km of latitude and 5.3 km of longitude
+  at the equator. Outside that box it returns a plausible location 8 or
   10 km away rather than failing.
 * **`suggest_corrections` corrects, it does not detect.** Give it a code and a
   rough idea of where the point should be, and it returns the codes one typo
   away that are plausible there, best first; at the default level the true code
-  is usually the only candidate. It is not a checksum — that is what the check
+  is usually the only candidate. It is not a checksum; that is what the check
   character above is for.
 * **`screen` advises and never blocks.** The alphabet has no vowels, so no word
   can be spelled outright, but digit substitutions still can, and a code about to
@@ -529,7 +529,7 @@ for code in GPC.encode_stream(points):   # lazily, one at a time
 * **`geo:` URIs are exact.** Six decimal places is what `decode` returns, so a
   code written out this way and read back encodes to the same code every time.
   Degrees, minutes and seconds are for a person to read and are rounded to a
-  hundredth of a second — lossy by up to 0.155 m, though a decoded code still
+  hundredth of a second, lossy by up to 0.155 m, though a decoded code still
   survives the round trip.
 * **The batch form throws on the first bad row; the streaming form does not.**
   Take the stream when you would rather handle a bad row than lose the rest.
@@ -556,7 +556,7 @@ two formats are told apart.
 | A shared prefix means | nothing | the same cell, always |
 
 That is the whole test: count the characters. `decode` does exactly the same
-thing — it strips the separators and dispatches on length — so a version 1 code
+thing, stripping the separators and dispatching on length, so a version 1 code
 reads correctly under 2.0.0 without anyone asking, and `decode_v1` is there for
 a caller that wants to be explicit. Because the dispatch is on length alone, an
 eleven-character string that happens to be a valid version 1 code decodes as

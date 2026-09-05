@@ -208,7 +208,17 @@ export default defineConfig({
         // Astro slugs headings the way GitHub does, so the ninety-six
         // `#fragment` links already inside SPEC.md keep working here without
         // the document being touched.
-        processor: satteri({ hastPlugins: [repositoryLinks, emptyHeaders, scrollableTables] }),
+        //
+        // Smart punctuation is off. It is on by default, and it was quietly
+        // rewriting the source: `--` in SPEC.md arrived on the page as an en
+        // dash, and a straight quote as a curly one, so the specification the
+        // site published was not character for character the one in the
+        // repository. Six en dashes and fifteen curly quotes on /spec alone
+        // came from here rather than from anything anybody wrote.
+        processor: satteri({
+            features: { smartPunctuation: false },
+            hastPlugins: [repositoryLinks, emptyHeaders, scrollableTables],
+        }),
     },
     vite: {
         server: {
