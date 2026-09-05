@@ -6,7 +6,7 @@ python search/tokenise.py '#G3RJM-98NM9' 100
 
 Every full-text engine matches terms. A code's prefixes name nested cells, so
 indexing the prefixes as terms turns *what is near here* into an ordinary term
-query — no geo type, no spatial index, no plugin, and nothing the engine has to
+query, with no geo type, no spatial index, no plugin, and nothing the engine has to
 understand about the earth.
 
 This directory is a convention and a reference implementation of it. There is no
@@ -51,8 +51,8 @@ Measured over 20,000 random pairs, at the level `level_for` picks for the radius
 
 A search that returns two thirds of what is there is worse than one that fails,
 because nothing about it looks wrong. This is the same one-directional guarantee
-the specification states in section 10.2 — a shared prefix proves proximity,
-proximity does not promise a shared prefix — and the eight neighbours are what
+the specification states in section 10.2: a shared prefix proves proximity,
+proximity does not promise a shared prefix, and the eight neighbours are what
 turns it around.
 
 ## Choosing the level
@@ -76,7 +76,7 @@ the equator, so a level chosen from the equatorial figure quietly stops
 covering. This is the kind of thing that works in testing in London and fails in
 Reykjavík.
 
-| level | cell, north–south | cell, east–west at the equator |
+| level | cell, north to south | cell, east to west at the equator |
 | ---: | ---: | ---: |
 | 3 | 200 km | 267 km |
 | 4 | 40 km | 53 km |
@@ -91,7 +91,7 @@ The 180th meridian is a convention, not an edge, and two points either side of
 it can be metres apart. The neighbours of the westernmost cell include cells
 from the far side, so a query there reaches across and finds them.
 
-The poles are a real edge — there is no cell above the north pole — and the
+The poles are a real edge, because there is no cell above the north pole, and the
 query comes back with fewer than nine terms rather than naming one that does not
 exist and would match nothing forever.
 
@@ -113,21 +113,21 @@ or splits on anything will not match what was indexed.
 { "query": { "terms": { "cells": ["G3RJM98", "G3RJM9D", "G3RJM9C", "..."] } } }
 ```
 
-**Lucene** — a `StringField` per term, and a `TermInSetQuery` over the nine.
+**Lucene**: a `StringField` per term, and a `TermInSetQuery` over the nine.
 
-**SQLite FTS5** — the terms are already tokens; join them with `OR`:
+**SQLite FTS5**: the terms are already tokens; join them with `OR`:
 
 ```sql
 CREATE VIRTUAL TABLE docs USING fts5(name, cells);
 SELECT name FROM docs WHERE cells MATCH 'G3RJM98 OR G3RJM9D OR G3RJM9C';
 ```
 
-**PostgreSQL full text** — or, better, do not: `sql/` in this repository does the
+**PostgreSQL full text**, or better, do not. `sql/` in this repository does the
 same job with a plain B-tree and a prefix, which is faster and needs no second
 column. Use this convention there only if the codes are already inside a
 `tsvector` for another reason.
 
-**Meilisearch, Typesense and the rest** — an array-of-strings field with an
+**Meilisearch, Typesense and the rest**: an array-of-strings field with an
 exact-match filter. The shape is the same everywhere.
 
 ## Ranking

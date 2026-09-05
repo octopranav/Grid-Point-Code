@@ -19,7 +19,7 @@
 //
 // The check mode is what runs in continuous integration. A generated file that
 // someone edited by hand is a fork of the design system that nobody announced,
-// and it will be silently undone the next time this runs — so the build refuses
+// and it will be silently undone the next time this runs, so the build refuses
 // to go green while one exists.
 //
 // No dependencies, in keeping with the rest of the project.
@@ -73,7 +73,7 @@ function css() {
 
     // The three blocks below are one rule with three ways of being reached, and
     // the order matters. A viewer has three states, not two: an explicit choice
-    // stamps the root element, and the default setting stamps nothing at all —
+    // stamps the root element, and the default setting stamps nothing at all,
     // so the bare :root has to carry a complete palette, the media query may
     // only override, and it is guarded so that choosing light beats a dark
     // operating system. Defining any colour solely inside one of the last two

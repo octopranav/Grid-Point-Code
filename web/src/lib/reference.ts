@@ -58,7 +58,7 @@ const wrap = (degrees: number) => ((degrees + 540) % 360) - 180;
  * questions worth asking: whether recovery is guaranteed at all (at most 1),
  * and how much room is left over for the listener's idea of where the landmark
  * is to differ from ours (how far below 1). That second margin is the one that
- * bites in practice — 12.3 is explicit that two services can place the same
+ * bites in practice. 12.3 is explicit that two services can place the same
  * suburb kilometres apart, and no arithmetic here can rescue that.
  */
 export function tightness(

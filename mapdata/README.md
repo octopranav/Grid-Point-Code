@@ -69,7 +69,7 @@ the code actually refers to, or leave it off.
 This project does not get to decide what OpenStreetMap tags things. The key
 above is what this repository uses and validates; it is a proposal, not an
 established tag, and it is deliberately in the `ref:` namespace so that it reads
-as what it is — a reference somebody supplied, not a computed attribute.
+as what it is: a reference somebody supplied, not a computed attribute.
 
 ## The check
 
@@ -98,7 +98,7 @@ actually in.
 
 Both fixtures under `examples/` are generated from real coordinates rather than
 typed, so the good one is correct by construction. The wrong one carries each
-failure above, and the tests feed every one of them to the checker — a checker
+failure above, and the tests feed every one of them to the checker, because a checker
 nobody has watched fail is a checker nobody knows works.
 
 ## Testing

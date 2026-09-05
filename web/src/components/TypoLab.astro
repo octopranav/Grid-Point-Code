@@ -70,7 +70,7 @@ const symbols = GPC.normalise(code)[0];
             <h2>Getting it back</h2>
             <p class="note quiet">
                 The structure that hides the error also locates it. Given a rough idea
-                where you were — a device fix, a named suburb — the wrong code's
+                where you were (a device fix, a named suburb), the wrong code's
                 neighbourhood is searched for codes one keystroke away.
             </p>
             <p class="found" data-found>—</p>
@@ -171,7 +171,7 @@ const symbols = GPC.normalise(code)[0];
             if (where === null) {
                 brokenWhere.textContent = 'nowhere';
                 verdict.textContent =
-                    'Refused before decoding — the one typo in 240 the structure catches, '
+                    'Refused before decoding. The one typo in 240 the structure catches, '
                     + 'because no code that names a place begins with X.';
                 verdict.dataset.kind = 'caught';
                 candidates.replaceChildren();
@@ -191,7 +191,7 @@ const symbols = GPC.normalise(code)[0];
                 verdict.dataset.kind = 'obvious';
                 verdict.textContent =
                     `Valid, and ${span(moved)} away. Far enough that a map gives it away `
-                    + 'at a glance — the errors worth worrying about are the small ones.';
+                    + 'at a glance. The errors worth worrying about are the small ones.';
             } else if (moved >= 500) {
                 verdict.dataset.kind = 'silent';
                 verdict.textContent =
@@ -201,7 +201,7 @@ const symbols = GPC.normalise(code)[0];
             } else {
                 verdict.dataset.kind = 'near';
                 verdict.textContent =
-                    `Valid, ${span(moved)} away — near enough to be the same doorway. A `
+                    `Valid, ${span(moved)} away, near enough to be the same doorway. A `
                     + 'wrong character this late costs almost nothing, which is the other '
                     + 'half of what the nesting buys.';
             }
@@ -229,9 +229,9 @@ const symbols = GPC.normalise(code)[0];
                     : `${suggestions.length} candidate${suggestions.length === 1 ? '' : 's'} `
                       + `one keystroke away, in this neighbourhood` +
                       (rank === 0
-                          ? ' — and the first is the code you meant.'
+                          ? ', and the first is the code you meant.'
                           : rank > 0
-                            ? ` — the code you meant is number ${rank + 1}.`
+                            ? `, and the code you meant is number ${rank + 1}.`
                             : ', and the code you meant is not among them.') +
                       (suggestions.length > 20
                           ? ' A slip in the last characters barely moves the point, so half '

@@ -8,7 +8,7 @@
 //
 // Coordinates, the code and the map are three views of a single point. Touch any
 // one and the other two follow. Nothing is ever left showing a stale answer
-// beside a fresh error — if an entry cannot be read, every surface empties.
+// beside a fresh error. If an entry cannot be read, every surface empties.
 //
 // Correcting a typo is deliberately not here. A mistyped code usually lands on
 // another perfectly valid code, so correction is not a validation question at
@@ -192,7 +192,7 @@ const code = GPC.encode(START.latitude, START.longitude);
                 <div class="body">
                     <p class="note quiet">
                         A link to this exact cell. Scanning it opens the playground here,
-                        which is the whole of what is being shared — the coordinates are
+                        which is the whole of what is being shared. The coordinates are
                         under "Also written as" for handing to a map instead.
                     </p>
                     <div class="share">
@@ -223,7 +223,7 @@ const code = GPC.encode(START.latitude, START.longitude);
                         Five characters name a position inside a cell 8 by 10.7 km, so
                         they need a reference near the point to be read back. These are
                         the places near enough that recovery is guaranteed. A reference
-                        further off does not fail — it returns somewhere else.
+                        further off does not fail; it returns somewhere else.
                     </p>
                     <p class="note" data-anchor-note></p>
                     <ul class="anchors" data-anchors></ul>
@@ -259,7 +259,7 @@ const code = GPC.encode(START.latitude, START.longitude);
                     <p class="note quiet">
                         A callout is any word beginning with the symbol; the listener keeps
                         the first character. Said in English, C, D, G, P, T and three all
-                        rhyme — which is what the check character is for.
+                        rhyme, which is what the check character is for.
                     </p>
                 </div>
             </details>
@@ -799,7 +799,7 @@ const code = GPC.encode(START.latitude, START.longitude);
          * No code: nothing is half-shown.
          *
          * `keepTyping` is set when the reader is mid-edit in the coordinate
-         * fields — clearing those under someone's cursor would be worse than
+         * fields. Clearing those under someone's cursor would be worse than
          * the stale value. Everywhere else empties, including the coordinates
          * when it was the code that failed, because they describe a point that
          * is no longer on offer.
@@ -1192,7 +1192,7 @@ const code = GPC.encode(START.latitude, START.longitude);
             rememberInUrl(code);
 
             // Decoding gives the cell centre, which is the point the code
-            // actually names — not the arbitrary spot inside the cell that was
+            // actually names, not the arbitrary spot inside the cell that was
             // clicked. Showing the click back would claim a precision the code
             // does not have.
             const [centreLatitude, centreLongitude] = GPC.decode(code);
@@ -1201,7 +1201,7 @@ const code = GPC.encode(START.latitude, START.longitude);
             // when the reader typed the point themselves: the code names a
             // cell, and a field saying something the code does not mean is one
             // more place that can disagree. Safe to overwrite because those
-            // fields report on `change` — blur or Enter — by which time the
+            // fields report on `change` (blur or Enter), by which time the
             // typing is finished.
             latitudeField.value = centreLatitude.toFixed(6);
             longitudeField.value = centreLongitude.toFixed(6);
@@ -1313,7 +1313,7 @@ const code = GPC.encode(START.latitude, START.longitude);
             if (kind === CodeClass.RESERVED) {
                 say(kind, '');
                 codeNote.textContent =
-                    'A reserved code. Well formed, but it names no location — the ' +
+                    'A reserved code. Well formed, but it names no location. The ' +
                     'specification sets this range aside and never decodes it.';
                 return;
             }
@@ -1331,7 +1331,7 @@ const code = GPC.encode(START.latitude, START.longitude);
 
         function explain(reason: string, cleaned: string): string {
             if (reason === 'GPC_LENGTH') {
-                return 'A code is exactly ten characters, everywhere on Earth — ' +
+                return 'A code is exactly ten characters, everywhere on Earth. ' +
                     'this one has ' + cleaned.length + '.';
             }
             if (reason === 'GPC_CHAR') {
@@ -1349,7 +1349,7 @@ const code = GPC.encode(START.latitude, START.longitude);
             if (reason === 'GPC_CHECK') {
                 return 'The code and its check character disagree, so one of them ' +
                     'was mistyped. The check catches every single wrong character ' +
-                    'and every swapped pair — which is why it is worth adding when ' +
+                    'and every swapped pair, which is why it is worth adding when ' +
                     'a code is read aloud or written down.';
             }
             return '';
@@ -1414,7 +1414,7 @@ const code = GPC.encode(START.latitude, START.longitude);
                     ? 'Your browser placed you to within about <b>' + within +
                       ' m</b>, which is inside a single cell.'
                     : 'Your browser placed you to within about <b>' + within +
-                      ' m</b>. The code is exact for the point it was given — at ' +
+                      ' m</b>. The code is exact for the point it was given, and at ' +
                       'this accuracy that point may not be your doorway.';
             advisory.dataset.tone = within <= 3 ? 'plain' : 'warn';
         }

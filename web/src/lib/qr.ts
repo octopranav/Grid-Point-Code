@@ -21,7 +21,7 @@ import { renderSVG } from 'uqr';
  * looks like generous padding and is not: without it, a scanner has no way to
  * find the edge of the symbol.
  *
- * Error correction M — fifteen per cent — because a code on a screen gets
+ * Error correction M, fifteen per cent, because a code on a screen gets
  * photographed at an angle, under a reflection, by a camera that is not quite
  * in focus.
  */

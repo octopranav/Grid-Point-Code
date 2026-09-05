@@ -336,7 +336,7 @@ function wayBack() {
   <h1>The network is switched off</h1>
   <p>
     You switched it off on this site to see what still works. This page was not
-    one of the ones already held, so there was nothing to show you — which is
+    one of the ones already held, so there was nothing to show you, which is
     exactly what would have happened on a train.
   </p>
   <p>Letting the network back in needs no network of its own.</p>

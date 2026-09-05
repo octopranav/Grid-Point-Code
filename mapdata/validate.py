@@ -184,25 +184,39 @@ def validate(path, tag=TAG, tolerance=0.0):
     raise SystemExit(f"{path.name}: expected .osm, .xml, .geojson or .json")
 
 
+def parse(argv, flags):
+    """Positional arguments and options, walked in order.
+
+    Not "everything that is not an option and does not equal an option's
+    value": that drops a file whose name happens to match one, so
+    `validate.py 5 places.geojson --tolerance 5` quietly checks one file
+    instead of two and says nothing about the other.
+    """
+    positional = []
+    options = {}
+    at = 0
+    while at < len(argv):
+        token = argv[at]
+        if token in flags:
+            options[token] = argv[at + 1] if at + 1 < len(argv) else None
+            at += 2
+        else:
+            positional.append(token)
+            at += 1
+    return positional, options
+
+
 def main():
-    argv = sys.argv[1:]
+    files, options = parse(sys.argv[1:], {"--tag", "--tolerance"})
 
-    def option(name, fallback=None):
-        if name not in argv:
-            return fallback
-        at = argv.index(name)
-        return argv[at + 1] if at + 1 < len(argv) else fallback
-
-    files = [one for one in argv if not one.startswith("--")
-             and one not in (option("--tag"), option("--tolerance"))]
     if not files:
         print(__doc__.strip().splitlines()[0], file=sys.stderr)
         print("\n    python mapdata/validate.py <file> [--tag KEY] "
               "[--tolerance METRES]", file=sys.stderr)
         return 2
 
-    tag = option("--tag", TAG)
-    tolerance = float(option("--tolerance", "0"))
+    tag = options.get("--tag") or TAG
+    tolerance = float(options.get("--tolerance") or 0)
 
     total = 0
     wrong = []

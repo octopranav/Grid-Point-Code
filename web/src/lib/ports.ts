@@ -1,7 +1,7 @@
 // The four ports, and where each one is published.
 //
 // The name and the blurb are the site's own words. **The package identity is
-// not** — it is read from each port's own manifest at build time, because
+// not**. It is read from each port's own manifest at build time, because
 // writing it here is how a page ends up naming a package that no longer exists.
 // Two of the four were wrong the first time they were typed out by hand.
 

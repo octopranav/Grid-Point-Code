@@ -48,22 +48,12 @@
 -- vectors the four library ports are held to.
 
 -- ---------------------------------------------------------------------------
--- The alphabet (section 4) and the grid (section 3).
---
--- Written into each function rather than kept in a table: a table would be a
--- second thing to install, and a function that reads one cannot be IMMUTABLE,
--- which would cost the index expression this whole file exists for.
-
-CREATE OR REPLACE FUNCTION gpc_alphabet() RETURNS text
-    LANGUAGE sql IMMUTABLE PARALLEL SAFE
-    AS $$ SELECT '0123456789CDFGHJKLMNPRTWX'::text $$;
-
-COMMENT ON FUNCTION gpc_alphabet() IS
-    'The twenty-five symbols, in ASCII order. Section 4.';
-
-
--- ---------------------------------------------------------------------------
 -- Grid to code, and back. Sections 5.2 and 6.1.
+--
+-- The alphabet of section 4 is written into each function rather than kept in
+-- a table. A table would be a second thing to install, and a function that
+-- read one could not be IMMUTABLE, which would cost the index expression this
+-- whole file exists for.
 
 CREATE OR REPLACE FUNCTION gpc_grid_to_code(p_row bigint, p_col bigint)
     RETURNS text

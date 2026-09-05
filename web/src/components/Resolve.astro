@@ -2,7 +2,7 @@
 // The front door: a coordinate arriving one character at a time.
 //
 // Two surfaces show the same step. The PLATE is a drawing of the subdivision
-// the current level performs — the world four by six, everything under it five
+// the current level performs: the world four by six, everything under it five
 // by five, with the containing cell lit. It is server-rendered, exact, and
 // needs no network, no basemap and no JavaScript. The MAP is the geographic
 // version of the same step, and it is an enhancement: it arrives afterwards,
@@ -37,7 +37,7 @@ const cellHeight = PLATE / first.rows;
         <h1>A shared prefix is a shared cell.</h1>
         <p class="lede">
             Ten characters name any doorway on the planet. Each one narrows the world
-            by twenty-five — from a block of it spanning two continents down to the
+            by twenty-five, from a block of it spanning two continents down to the
             step outside a front door.
         </p>
 
@@ -704,7 +704,7 @@ const cellHeight = PLATE / first.rows;
                     status.dataset.tone = 'plain';
                     status.textContent =
                         error.code === error.PERMISSION_DENIED
-                            ? 'No location given — the places above work just as well.'
+                            ? 'No location given. The places above work just as well.'
                             : 'Your location could not be read just now.';
                 },
                 { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
@@ -920,7 +920,7 @@ const cellHeight = PLATE / first.rows;
     }
 
     /* Once the map is up it owns the stage, and the plate steps aside into the
-       corner — still drawing the same step, now as a key to what the map shows. */
+       corner, still drawing the same step, now as a key to what the map shows. */
     .resolve[data-mapped='true'] .plate {
         inset: auto var(--space-2) var(--space-2) auto;
         width: 112px;

@@ -32,7 +32,6 @@ from qgis.core import (
     QgsProcessing,
     QgsProcessingAlgorithm,
     QgsProcessingException,
-    QgsProcessingParameterEnum,
     QgsProcessingParameterFeatureSink,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
@@ -46,6 +45,7 @@ from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from .geometry import cell_box
 
 WGS84 = "EPSG:4326"
+
 
 def library():
     """The port, or a message a user can act on.

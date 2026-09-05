@@ -1,6 +1,6 @@
 # The website
 
-[gridpointcode.com](https://gridpointcode.com) — a playground, a specification
+[gridpointcode.com](https://gridpointcode.com): a playground, a specification
 and a proof, all of which keep working with the network cut.
 
 ```
@@ -23,7 +23,7 @@ The site imports **the package published to npm**, not the source next door.
 That makes it a standing test of the release: if a version ever encoded a point
 differently, or dropped an operation the site calls, the build fails here rather
 than in somebody else's project. Every code and every cell measurement on the
-site is computed at build time by that package — none of them are written out by
+site is computed at build time by that package. None of them are written out by
 hand, so none of them can quietly go stale.
 
 Type is served from this origin rather than a font network. A page whose whole
@@ -64,7 +64,7 @@ basemap and no JavaScript. Without a script it stands still at level one, which
 is a true and complete statement on its own.
 
 The **map** is the geographic version of the same step. It arrives afterwards,
-over the plate, and its absence costs the page nothing — if the tiles fail, or
+over the plate, and its absence costs the page nothing. If the tiles fail, or
 the library never loads, or a reader has scripting off, the plate is still there
 and still right. Tiles come from OpenFreeMap, which needs no key, no account and
 sets no cookies; MapLibre is loaded on demand and is a 264&nbsp;KB chunk
@@ -75,7 +75,7 @@ claim is that it needs nobody should not have a front page that breaks when
 somebody else's server is down.
 
 The version is pinned to MapLibre 5 deliberately. MapLibre 6 loads and runs, but
-never finishes loading an OpenMapTiles vector source from this provider — the
+never finishes loading an OpenMapTiles vector source from this provider. The
 style parses, the worker fetches tiles perfectly well on its own, and yet the
 source reports unloaded forever and the map draws nothing. Version 5 is what the
 tile provider documents, and it works. Newest is not automatically right when the
@@ -96,7 +96,7 @@ arrive, which is what a map is supposed to look like.
 
 ## Themes
 
-A reader has three states, not two: light, dark, and following their system —
+A reader has three states, not two: light, dark, and following their system.
 which is the default and is a real setting rather than a missing one. An
 explicit choice stamps `data-theme` on the root element; the system setting
 stamps nothing and lets `prefers-color-scheme` decide. A small inline script in
@@ -111,13 +111,13 @@ paper.
 
 A short form is five characters and a reference. It resolves only against a
 point within half a level-5 cell of the true one, and outside that box recovery
-does **not** fail — it returns a plausible place eight or ten kilometres away
+does **not** fail; it returns a plausible place eight or ten kilometres away
 with nothing raised. So the playground has to be able to say which references
 are near enough, which means shipping a gazetteer.
 
 `scripts/build-landmarks.mjs` turns a [GeoNames](https://www.geonames.org) dump
 (CC BY 4.0) into one file per cell, keyed by the first characters of a
-landmark's own code — `#G3RJM-98NM9` is filed under `G3RJ`. The reader works out
+landmark's own code, so `#G3RJM-98NM9` is filed under `G3RJ`. The reader works out
 which files the recovery box reaches into from its four corners, which is one
 file nine times in ten and never more than four.
 
@@ -132,7 +132,7 @@ minutes and produces roughly 6.5 million landmarks over 82,000 files, 260 MB.
 Three numbers decided the shape of it, and all three were measured rather than
 guessed:
 
-- **Level 4, not 3.** At level 3 the densest cells — New York, Seoul, Berlin —
+- **Level 4, not 3.** At level 3 the densest cells (New York, Seoul, Berlin)
   came out over a megabyte each, and those are where readers are. Level 4 costs
   1.4 files a lookup instead of 1.08 and drops the worst case from 420 KB to
   131 KB gzipped, with a median of 0.3 KB.
@@ -144,20 +144,20 @@ guessed:
   typed array costs 74 MB and gave identical totals.
 
 What is kept is filtered twice. Only classes whose published coordinate is
-somewhere a person stands — not a river, a road, a park or a province, whose
+somewhere a person stands, not a river, a road, a park or a province, whose
 one coordinate is a centroid. And only descriptions unique inside their own
 region, because `Scarborough` is a district of Toronto and a settlement 1,900 km
 north, and a listener who picks the wrong one is not told they did.
 
 **The archive lives beside `public/`, not inside it, and that is not a
 preference.** With 82,000 files in `public/` the dev server never finished
-starting — it gave up after thirty seconds, every time, while the same tree with
+starting. It gave up after thirty seconds, every time, while the same tree with
 the archive moved aside answered in under five. The production build never
 minded, which is what made it a trap: the site built and deployed perfectly and
 could not be worked on.
 
 Moving it out of `public/` is only half the fix, because Vite watches the whole
-project root — the archive has to be excluded from the watcher as well. Both
+project root, so the archive has to be excluded from the watcher as well. Both
 halves are in [`astro.config.mjs`](astro.config.mjs), along with the small
 integration that serves the files in development and copies them into the output
 at the end of a build.
@@ -189,14 +189,14 @@ keeping it.
 
 The two shard stores are separate on purpose. Counting them together made the
 panel say `1 shard held for this area` immediately after a reader pressed
-Forget — true, in that one shard was in a cache, and useless, because they had
+Forget. True, in that one shard was in a cache, and useless, because they had
 not asked for it and the area was not actually available. Only the kept store is
 ever counted or reported: telling someone an area is held because they once
 glanced at it is the same sentence as telling them it is ready for a journey.
 Forget empties both, and the seen store refills on its own, invisibly.
 
 Shards are also kept as they are looked up, and the playground offers to keep
-the area around a point — the cell one level above a shard, about 200 by 267 km,
+the area around a point: the cell one level above a shard, about 200 by 267 km,
 a few hundred kilobytes. That is a deliberate size: worth asking for before a
 journey, where the whole world at eighty-odd megabytes would not be.
 
@@ -214,7 +214,7 @@ the landmark archive before building it.
 
 **The custom domain is not configured from this tree.** Publishing from a
 workflow rather than a branch means the domain is repository settings and
-nothing else — a `CNAME` file in the built output is ignored, which is why there
+nothing else. A `CNAME` file in the built output is ignored, which is why there
 is not one here. It is set once, by hand, under Settings then Pages. The
 workflow cannot change it, so instead it checks the address the deployment
 answered on and warns if that is not the expected one.
@@ -222,5 +222,5 @@ answered on and warns if that is not the expected one.
 The DNS records for the domain are **not** proxied. Putting a proxy in front of
 GitHub Pages prevents the certificate from being renewed: the site works for
 ninety days and then stops, and the only fix is to turn the proxy off and wait.
-Nothing is gained by it here — Pages is already behind a content network, and
+Nothing is gained by it here. Pages is already behind a content network, and
 there is no origin to conceal.

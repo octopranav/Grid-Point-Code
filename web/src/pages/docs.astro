@@ -7,7 +7,7 @@ const description =
     + 'conformance vectors, and byte-identical output from every one.';
 
 // Every port is published at the same version, and that is the point rather
-// than a coincidence — so it is worth saying only if it is true.
+// than a coincidence, so it is worth saying only if it is true.
 const versions = [...new Set(PORTS.map((each) => each.version))];
 const together = versions.length === 1 ? versions[0] : null;
 ---
@@ -19,7 +19,7 @@ const together = versions.length === 1 ? versions[0] : null;
             <p class="lede">
                 The same specification, implemented four times and checked against the same
                 conformance vectors. A coordinate encoded by any one of them is the same ten
-                characters as any other — not nearly, exactly.
+                characters as any other. Not nearly, exactly.
                 {together && (
                     <> Every port is published at <code class="code">{together}</code>.</>
                 )}

@@ -8,7 +8,7 @@
 //
 // Rendered entirely at build time. There is nothing here a reader interacts
 // with, so there is no reason to ship a script that recomputes what the build
-// already knows — and it means the page works with everything turned off.
+// already knows, and it means the page works with everything turned off.
 
 import { SEAMS, crossing, ordinary, neighboursCross } from '../lib/seams';
 
@@ -37,7 +37,7 @@ const metres = (value: number) => value.toFixed(1) + ' m';
         <h1>Where it comes apart</h1>
         <p class="lede">
             Two points either side of a level-1 boundary are in different cells at
-            every level, so they share no characters at all — however close they
+            every level, so they share no characters at all, however close they
             stand. The shortest possible crossing is one cell: 2.56 m north to
             south.
         </p>
@@ -82,7 +82,7 @@ const metres = (value: number) => value.toFixed(1) + ' m';
     </div>
     <p class="note quiet">
         The same two steps, taken on a seam and taken anywhere else. The distance is
-        identical; the prefix is not. East–west crossings narrow toward the poles,
+        identical; the prefix is not. East to west crossings narrow toward the poles,
         which is why the figures differ between one meridian and another.
     </p>
 
@@ -147,7 +147,7 @@ const metres = (value: number) => value.toFixed(1) + ' m';
     <h2>Crossing them anyway</h2>
     <p>
         A cell's neighbours are the eight around it, and at a seam that means eight
-        cells with a different first character. The operation crosses regardless —
+        cells with a different first character. The operation crosses regardless:
         at Greenwich, the cell west of the line lists the cell east of it:
     </p>
 

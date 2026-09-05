@@ -1,6 +1,6 @@
 # The QGIS plugin
 
-Three Processing algorithms, and nothing else — no toolbar, no dock, no menu
+Three Processing algorithms, and nothing else: no toolbar, no dock, no menu
 item. Everything here belongs in the toolbox, where it can be run in a model, in
 a batch over a hundred layers, or from the command line with `qgis_process`. A
 button can do none of that.
@@ -35,7 +35,7 @@ tells you exactly this rather than failing with an import error somewhere deep.
 ## Two things the algorithms do without being asked
 
 **They reproject.** A layer in a national grid or in web mercator holds numbers
-that are not degrees. Encoding them anyway does not raise — it produces a
+that are not degrees. Encoding them anyway does not raise; it produces a
 well-formed code for the wrong hemisphere, which is a failure with no symptom.
 The transform is not optional and not yours to remember. A layer with no CRS at
 all is refused rather than guessed at.
@@ -73,7 +73,7 @@ python -m unittest discover --start-directory qgis --top-level-directory qgis
 
 Without QGIS this runs `test_geometry.py` and skips the rest. `geometry.py` is
 deliberately free of any QGIS import: it holds the one piece of arithmetic the
-plugin does for itself — the box of a cell coarser than level 10, which
+plugin does for itself, the box of a cell coarser than level 10, which
 `decodeToArea` will not give you because it takes a whole code rather than a
 prefix. A second copy of a formula drifts from the first, so at level 10 it is
 held to being bit-identical to the library's.

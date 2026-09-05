@@ -1,7 +1,7 @@
 /* Documents rendered from the repository's own markdown.
  *
  * These rules are global on purpose. The markdown is compiled to plain HTML with
- * no component scope on it, so a scoped rule would never match — the same trap
+ * no component scope on it, so a scoped rule would never match. The same trap
  * the playground's script-built rows fell into. Confined under `.document`, so
  * the loosening reaches no further than the pages that render markdown. */
 
@@ -83,7 +83,7 @@
     border-radius: var(--radius-card);
     background: var(--sunken);
     /* The specification's worked examples include lines that will not wrap
-       sensibly — grid arithmetic, alignment diagrams — so they scroll rather
+       sensibly (grid arithmetic, alignment diagrams), so they scroll rather
        than fold. The container scrolls; the page never does. */
     overflow-x: auto;
 }

@@ -104,16 +104,16 @@ export const ROWS: Row[] = [
         dimension: 'Area it names',
         note:
             'The figure that started this page. Against Open Location Code’s default ten '
-            + 'digits a cell here is about twenty-two times smaller — but that is a '
+            + 'digits a cell here is about twenty-two times smaller, but that is a '
             + 'comparison of defaults, not of capability. At eleven digits the two are '
             + 'within about a tenth of each other, and saying only the first number would '
             + 'be picking the flattering half.',
         values: {
-            gpc: '8.8 m² — 2.56 by 3.42 m at the equator',
-            digipin: '14 m² — 3.8 by 3.8 m; its document notes this varies with latitude',
+            gpc: '8.8 m², 2.56 by 3.42 m at the equator',
+            digipin: '14 m², 3.8 by 3.8 m; its document notes this varies with latitude',
             olc: '193 m² at ten digits; 9.8 m² at eleven',
             geohash: 'Varies with length; ±0.61 km at six characters',
-            w3w: '9 m² — 3 by 3 m',
+            w3w: '9 m², 3 by 3 m',
         },
     },
     {
@@ -130,7 +130,7 @@ export const ROWS: Row[] = [
             + 'so it is not reported here as though it were.',
         values: {
             gpc: 'Everywhere on Earth',
-            digipin: 'India and its maritime zone — 63.5°–99.5° E, 2.5°–38.5° N, as published',
+            digipin: 'India and its maritime zone: 63.5 to 99.5° E, 2.5 to 38.5° N, as published',
             olc: 'Everywhere on Earth',
             geohash: 'Everywhere on Earth',
             w3w: 'Everywhere on Earth',
@@ -144,8 +144,8 @@ export const ROWS: Row[] = [
         values: {
             gpc: 'Yes',
             digipin: 'Yes',
-            olc: 'No — length is chosen for precision',
-            geohash: 'No — length is chosen for precision',
+            olc: 'No, length is chosen for precision',
+            geohash: 'No, length is chosen for precision',
             w3w: 'Three words, of varying character length',
         },
     },
@@ -158,10 +158,10 @@ export const ROWS: Row[] = [
             + 'than of any one design, and the seams page measures what it costs.',
         values: {
             gpc: 'Yes, and the converse is stated not to hold',
-            digipin: 'Yes — “identifying the cells is done in a hierarchical fashion”',
+            digipin: 'Yes, "identifying the cells is done in a hierarchical fashion"',
             olc: null,
             geohash: 'Yes; “the reverse of this is not guaranteed”',
-            w3w: 'No — the words are unrelated by design',
+            w3w: 'No, the words are unrelated by design',
         },
     },
     {
@@ -184,10 +184,10 @@ export const ROWS: Row[] = [
     {
         dimension: 'Converts without a network or a table',
         values: {
-            gpc: 'Yes — arithmetic only',
-            digipin: 'Yes — described as an offline grid system',
-            olc: 'Yes — arithmetic only',
-            geohash: 'Yes — arithmetic only',
+            gpc: 'Yes, arithmetic only',
+            digipin: 'Yes, described as an offline grid system',
+            olc: 'Yes, arithmetic only',
+            geohash: 'Yes, arithmetic only',
             w3w: 'The published interface is an API',
         },
     },
@@ -216,7 +216,7 @@ export const ROWS: Row[] = [
             + 'against a rough idea of where you were. The typos page here does it in '
             + 'front of the reader.',
         values: {
-            gpc: 'Yes — candidates one keystroke away, ranked by distance',
+            gpc: 'Yes, candidates one keystroke away, ranked by distance',
             digipin: 'Its document does not define one',
             olc: 'Its specification does not define one',
             geohash: 'Not described',
@@ -290,7 +290,7 @@ export const ROWS: Row[] = [
  */
 export const PROMISES = [
     'Every figure about another system comes from that system’s own documentation, linked beside it.',
-    'Where a document does not answer a question, the cell says so rather than guessing — and “its document does not define one” is never a claim that a system cannot do the thing.',
-    'The dimensions include the ones this format loses — adoption, and saying an address out loud — because choosing the axes is how a comparison lies while every fact in it stays true. So does choosing who appears at all, which is why the closest system to this one is here rather than absent.',
+    'Where a document does not answer a question, the cell says so rather than guessing, and "its document does not define one" is never a claim that a system cannot do the thing.',
+    'The dimensions include the ones this format loses, adoption and saying an address out loud, because choosing the axes is how a comparison lies while every fact in it stays true. So does choosing who appears at all, which is why the closest system to this one is here rather than absent.',
     'No system here is described as bad, and none of them is. They answer different questions, and several answer theirs better than this one answers anything yet.',
 ];

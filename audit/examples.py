@@ -1,7 +1,7 @@
 """Run every documented Python example and check what it claims.
 
 Documentation rots quietly. A renamed method, a changed return shape, a value
-that drifted by a digit — none of it shows up in a test suite, because the
+that drifted by a digit: none of it shows up in a test suite, because the
 examples live in prose and nothing executes prose. This does.
 
 Two conventions are in the documentation and both are checked:
@@ -151,7 +151,7 @@ def run(path: Path, problems: list[str]) -> tuple[int, int]:
         try:
             tree = ast.parse(source)
         except SyntaxError as error:
-            problems.append(f'{path.relative_to(ROOT)}:{first}: will not parse — {error}')
+            problems.append(f'{path.relative_to(ROOT)}:{first}: will not parse, {error}')
             continue
 
         for node in tree.body:

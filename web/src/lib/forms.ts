@@ -71,10 +71,10 @@ const NUMBERS = [
 const callout = (symbol: string) => CALLOUTS[symbol] ?? NUMBERS[Number(symbol)];
 
 /**
- * A code as it should be read aloud — which is always the check form.
+ * A code as it should be read aloud, which is always the check form.
  *
  * The alphabet excludes vowels so a code cannot spell a word, and excludes the
- * shapes a reader confuses on paper — but it was never chosen for phonetic
+ * shapes a reader confuses on paper, but it was never chosen for phonetic
  * distinctness and cannot be now: said in English, C, D, G, P, T and the digit
  * three all rhyme. A listener who hears D where T was said writes down a code
  * that parses, validates, and decodes somewhere else.

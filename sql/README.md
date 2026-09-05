@@ -5,7 +5,7 @@ psql -d yourdb -f sql/gpc.sql
 ```
 
 Plain SQL and PL/pgSQL. No extension to compile, nothing to install on the
-server, no superuser — it is a file of functions, so it works on a managed
+server, no superuser. It is a file of functions, so it works on a managed
 instance where `CREATE EXTENSION` does not.
 
 ## Why put it in the database
@@ -35,7 +35,7 @@ SELECT * FROM places ORDER BY code;
 
 No GiST index, no geometry column, no second column to keep in step, and no
 PostGIS. On 200,000 rows the first query plans as an *Index Only Scan* and the
-last needs no sort at all — both checked in CI rather than claimed here.
+last needs no sort at all. Both are checked in CI rather than claimed here.
 
 How well the order holds up, measured over those 200,000 codes:
 
@@ -48,14 +48,14 @@ How well the order holds up, measured over those 200,000 codes:
 
 **Declare the column `COLLATE "C"`.** The ordering property is a property of
 *bytes*, and most databases are created with a collation that does not sort
-bytes — `en_US.UTF-8` sorts the way a person alphabetises.
+bytes: `en_US.UTF-8` sorts the way a person alphabetises.
 
 What that costs was measured rather than guessed, over 200,000 codes in a column
 collated `und-x-icu`:
 
 | | under a human-language collation |
 | --- | --- |
-| `WHERE code LIKE 'G3RJM%'` | **sequential scan** — the index is not used |
+| `WHERE code LIKE 'G3RJM%'` | **sequential scan**, the index is not used |
 | `WHERE code >= 'G3RJM' AND code < 'G3RJN'` | index scan, unaffected |
 | `ORDER BY code` | identical to byte order at all 200,000 positions |
 
@@ -65,7 +65,7 @@ vowels and no lower case, and a human-language collation happens to sort those
 exactly as bytes do. What does not survive is the prefix query, which is the
 common case and the reason to reach for a code in the first place.
 
-`COLLATE "C"` on the column fixes it and costs nothing — there is no
+`COLLATE "C"` on the column fixes it and costs nothing, because there is no
 human-language ordering here to lose. An index built with `text_pattern_ops`
 fixes it too. If you can change neither, write the bounded range instead of the
 `LIKE`; it compares whole values rather than asking for a prefix, and the
@@ -98,9 +98,9 @@ them in an index expression and inside a parallel scan:
 CREATE INDEX ON readings (gpc_encode(latitude, longitude, false));
 ```
 
-Errors are raised with the specification's reason codes as the message —
+Errors are raised with the specification's reason codes as the message:
 `GPC_NULL`, `GPC_CHAR`, `GPC_LENGTH`, `GPC_CHECK`, `GPC_RESERVED`,
-`GPC_LATITUDE`, `GPC_LONGITUDE`, `GPC_LEVEL` — under SQLSTATE `22023`, so a
+`GPC_LATITUDE`, `GPC_LONGITUDE`, `GPC_LEVEL`, under SQLSTATE `22023`, so a
 caller can catch the class and read the reason.
 
 ## Geometry
@@ -111,7 +111,7 @@ psql -d yourdb -f sql/gpc.sql -f sql/gpc_postgis.sql
 
 Optional and separate, because nothing above needs it. It adds
 `gpc_encode(geometry)`, `gpc_decode_point(code)` and `gpc_decode_box(code)`, so
-the axis order stops being the caller's problem — longitude is X and latitude is
+the axis order stops being the caller's problem. Longitude is X and latitude is
 Y, which is the reverse of the order the format writes them in and the classic
 way to get this wrong.
 
@@ -125,7 +125,7 @@ perfectly well-formed code for the wrong place.
 psql -d yourdb -v ON_ERROR_STOP=1 -f sql/gpc.sql -f sql/load.sql
 ```
 
-Against `test_data/` — the same conformance vectors the four library ports are
+Against `test_data/`, the same conformance vectors the four library ports are
 held to, 3,921 of them. A fifth implementation checked against assertions
 written alongside it would prove nothing; these are generated from the
 specification and shared.

@@ -262,18 +262,31 @@ def decode(source_path, target_path, field=FIELD, driver="GPKG",
     return placed, refused
 
 
+def parse(argv, flags):
+    """Positional arguments and options, walked in order.
+
+    Not "everything that is not an option and does not equal an option's
+    value": that drops a file whose name happens to match one, so
+    `validate.py 5 places.geojson --tolerance 5` quietly checks one file
+    instead of two and says nothing about the other.
+    """
+    positional = []
+    options = {}
+    at = 0
+    while at < len(argv):
+        token = argv[at]
+        if token in flags:
+            options[token] = argv[at + 1] if at + 1 < len(argv) else None
+            at += 2
+        else:
+            positional.append(token)
+            at += 1
+    return positional, options
+
+
 def main():
-    argv = sys.argv[1:]
-
-    def option(name, fallback=None):
-        if name not in argv:
-            return fallback
-        at = argv.index(name)
-        return argv[at + 1] if at + 1 < len(argv) else fallback
-
-    values = {option(name) for name in ("--field", "--level", "--format", "--layer")}
-    positional = [one for one in argv
-                  if not one.startswith("--") and one not in values]
+    positional, options = parse(
+        sys.argv[1:], {"--field", "--level", "--format", "--layer"})
 
     if len(positional) < 3 or positional[0] not in ("encode", "decode"):
         print(__doc__.strip().splitlines()[0], file=sys.stderr)
@@ -284,12 +297,12 @@ def main():
         return 2
 
     what, source, target = positional[0], positional[1], positional[2]
-    field = option("--field", FIELD)
-    driver = option("--format", "GPKG")
-    layer = option("--layer")
+    field = options.get("--field") or FIELD
+    driver = options.get("--format") or "GPKG"
+    layer = options.get("--layer")
 
     if what == "encode":
-        level = int(option("--level", "10"))
+        level = int(options.get("--level") or 10)
         if not 1 <= level <= 10:
             raise SystemExit("--level is 1 to 10")
         encode(source, target, field, level, driver, layer)

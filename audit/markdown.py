@@ -130,7 +130,7 @@ def check_setext_traps(path: Path, lines: list[str], problems: list[str]) -> Non
         if previous_number == number - 1 and previous.strip() and not ATX.match(previous):
             problems.append(
                 f'{path}:{number}: `---` directly under text is a setext heading '
-                f'underline, not a horizontal rule — it turns line {number - 1} '
+                f'underline, not a horizontal rule: it turns line {number - 1} '
                 f'into a heading. Put a blank line above it.'
             )
 
@@ -154,7 +154,7 @@ def check_tables(path: Path, lines: list[str], problems: list[str]) -> None:
         if cells(header) != cells(line):
             problems.append(
                 f'{path}:{number}: the separator row has {cells(line)} columns '
-                f'and its header has {cells(header)} — the table will not render.'
+                f'and its header has {cells(header)}, so the table will not render.'
             )
 
 
@@ -191,7 +191,7 @@ def check_links(path: Path, lines: list[str], anchors: dict[Path, set[str]],
                     }
                 if fragment not in anchors[destination]:
                     problems.append(
-                        f'{path}:{number}: `{file_part}#{fragment}` — '
+                        f'{path}:{number}: `{file_part}#{fragment}` is broken, '
                         f'that file has no such heading.'
                     )
 

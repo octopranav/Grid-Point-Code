@@ -264,7 +264,7 @@ def check(costs, ports, band):
             if drift > band:
                 breaches.append(
                     f"{port} {task} costs {now:.2f} calibration units, "
-                    f"was {was:.2f} — {drift:.1f}× slower"
+                    f"was {was:.2f}, {drift:.1f}× slower"
                 )
     return breaches
 
