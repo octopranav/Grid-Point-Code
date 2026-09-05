@@ -1,4 +1,4 @@
-# Grid Point Code (GPC)
+# Grid Point Code (GPC) for Java
 
 ## Overview
 
@@ -46,6 +46,16 @@ lines share nothing.
 - **A spatial API on top of the guarantee.** Cells, neighbours, containment,
   distance, the short form, typo correction and the integer form.
 - **Reads version 1 codes.** Every code ever issued still resolves.
+
+## Installation
+
+```xml
+<dependency>
+    <groupId>ca.pranavpatel.algo</groupId>
+    <artifactId>gridpointcode</artifactId>
+    <version>2.0.0</version>
+</dependency>
+```
 
 ## Requirements
 
