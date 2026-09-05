@@ -217,6 +217,41 @@ const code = GPC.encode(START.latitude, START.longitude);
             </details>
 
             <details class="group" name="playground">
+                <summary>Keep and take away</summary>
+                <div class="body">
+                    <p class="note quiet">
+                        A list in this browser and nowhere else. No account, no server,
+                        nothing leaves the device — everything a place is made of is
+                        already in the code, so there is nothing else worth storing and
+                        no reason for anybody else to hold it.
+                    </p>
+                    <div class="keeping">
+                        <input
+                            type="text"
+                            class="naming"
+                            data-save-name
+                            maxlength="80"
+                            placeholder="What to call it"
+                            aria-label="A name for this place"
+                        />
+                        <button type="button" class="secondary" data-save disabled>Save</button>
+                    </div>
+                    <p class="note quiet" data-save-note></p>
+
+                    <ul class="places" data-places></ul>
+
+                    <div class="takeaway" data-takeaway hidden>
+                        <p class="note quiet">Take the list with you:</p>
+                        <div class="formats" data-formats></div>
+                        <div class="formats">
+                            <button type="button" class="tiny" data-print>Print sheet</button>
+                            <button type="button" class="tiny" data-forget-all>Forget all</button>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <details class="group" name="playground">
                 <summary>Anchor the short form</summary>
                 <div class="body">
                     <p class="note quiet">
@@ -265,6 +300,25 @@ const code = GPC.encode(START.latitude, START.longitude);
             </details>
         </div>
     </div>
+
+    <!--
+        For paper. Hidden on screen and the only thing on the page when
+        printed: an envelope wants the address, the code, the check character
+        and something a camera can read, and nothing else at all.
+    -->
+    <div class="sheet" data-sheet aria-hidden="true">
+        <div class="sheet-address" data-sheet-address></div>
+        <div class="sheet-code">
+            <span class="sheet-mark" data-sheet-code>—</span>
+            <span class="sheet-check" data-sheet-check></span>
+        </div>
+        <div class="sheet-where" data-sheet-where></div>
+        <div class="sheet-qr" data-sheet-qr></div>
+        <p class="sheet-note">
+            Ten characters name a cell 2.56 m across. The character after the
+            star catches a single wrong symbol or a swapped pair.
+        </p>
+    </div>
 </section>
 
 <script>
@@ -275,6 +329,8 @@ const code = GPC.encode(START.latitude, START.longitude);
     import { addressOf, codeIn, linkTo } from '../lib/permalink';
     import { qrFor } from '../lib/qr';
     import { search, type Place } from '../lib/search';
+    import { FORMATS, type Kept } from '../lib/exports';
+    import { canStore, clear, drop, filename, keep, saved } from '../lib/saved';
     import {
         nearby,
         anchored,
@@ -360,6 +416,19 @@ const code = GPC.encode(START.latitude, START.longitude);
         const findEntry = section.querySelector<HTMLInputElement>('[data-find]')!;
         const foundList = section.querySelector<HTMLElement>('[data-found]')!;
         const findNote = section.querySelector<HTMLElement>('[data-find-note]')!;
+        const saveName = section.querySelector<HTMLInputElement>('[data-save-name]')!;
+        const saveButton = section.querySelector<HTMLButtonElement>('[data-save]')!;
+        const saveNote = section.querySelector<HTMLElement>('[data-save-note]')!;
+        const placesList = section.querySelector<HTMLElement>('[data-places]')!;
+        const takeaway = section.querySelector<HTMLElement>('[data-takeaway]')!;
+        const formatButtons = section.querySelector<HTMLElement>('[data-formats]')!;
+        const printButton = section.querySelector<HTMLButtonElement>('[data-print]')!;
+        const forgetAll = section.querySelector<HTMLButtonElement>('[data-forget-all]')!;
+        const sheetAddress = section.querySelector<HTMLElement>('[data-sheet-address]')!;
+        const sheetCode = section.querySelector<HTMLElement>('[data-sheet-code]')!;
+        const sheetCheck = section.querySelector<HTMLElement>('[data-sheet-check]')!;
+        const sheetWhere = section.querySelector<HTMLElement>('[data-sheet-where]')!;
+        const sheetQr = section.querySelector<HTMLElement>('[data-sheet-qr]')!;
 
         // Searching is one range request, but a keystroke is not worth one.
         let typing = 0;
@@ -489,6 +558,12 @@ const code = GPC.encode(START.latitude, START.longitude);
                 qrFigure.insertAdjacentHTML('afterbegin', qrFor(address));
                 qrFigure.append(caption);
             }
+
+            // Whether this place can be saved is derived from the code too, so
+            // it belongs here with the rest. Left out, Save stays disabled for
+            // the whole session and the list can never be added to -- which is
+            // exactly what it did the first time it was tried.
+            updateSaving();
 
             // Everything below is derived from the code, so it is computed here
             // and nowhere else. Any form updated somewhere else is a form that
@@ -679,6 +754,177 @@ const code = GPC.encode(START.latitude, START.longitude);
                 /* a refused clipboard is not worth an error message */
             }
         });
+
+        // ── keeping places, and taking them away ─────────────────────────
+        //
+        // The list lives in this browser. Nothing here talks to a server, and
+        // the exports are built in the page and handed to the browser as a
+        // blob, so a reader can take their places away without any of them
+        // having been anywhere.
+
+        /** What to call a place, if the reader does not say. */
+        function suggestName(): string {
+            const choice = choices.find((c) => identify(c) === picked) ?? choices[0];
+            return choice ? `${choice.name}, ${choice.region}` : '';
+        }
+
+        function drawPlaces() {
+            const places = saved();
+            placesList.replaceChildren();
+            takeaway.hidden = places.length === 0;
+
+            for (const kept of places) {
+                const item = document.createElement('li');
+
+                const go = document.createElement('button');
+                go.type = 'button';
+                go.className = 'place';
+                go.addEventListener('click', () => {
+                    // The code is the coordinate: going back to a saved place
+                    // needs nothing fetched and nothing looked up.
+                    const [latitude, longitude] = GPC.decode(kept.code);
+                    place(latitude, longitude, 'elsewhere');
+                });
+
+                const name = document.createElement('span');
+                name.className = 'place-name';
+                name.textContent = kept.name || GPC.formatGPC(kept.code);
+
+                const mark = document.createElement('span');
+                mark.className = 'place-code code';
+                mark.textContent = GPC.formatGPC(kept.code);
+
+                go.append(name, mark);
+
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'tiny';
+                remove.textContent = 'Forget';
+                remove.setAttribute('aria-label', `Forget ${name.textContent}`);
+                remove.addEventListener('click', () => {
+                    drop(kept.code);
+                    drawPlaces();
+                });
+
+                item.append(go, remove);
+                placesList.append(item);
+            }
+        }
+
+        function updateSaving() {
+            // Read once: inside the callback the narrowing above is gone,
+            // because nothing promises `code` is the same by the time it runs.
+            const showing = code;
+            const already = showing !== null
+                && saved().some((one) => one.code === showing.replace(/[^0-9A-Z]/g, ''));
+            saveButton.disabled = code === null;
+            saveButton.textContent = already ? 'Saved' : 'Save';
+            if (code !== null && !saveName.value) saveName.placeholder = suggestName()
+                || 'What to call it';
+        }
+
+        saveButton.addEventListener('click', () => {
+            if (code === null) return;
+
+            const [latitude, longitude] = GPC.decode(code);
+            const written = keep({
+                code: code.replace(/[^0-9A-Z]/g, ''),
+                name: saveName.value.trim() || suggestName(),
+                latitude,
+                longitude,
+                saved: new Date().toISOString(),
+            });
+
+            saveNote.textContent = written
+                ? ''
+                : 'This browser will not keep anything — storage is full or '
+                  + 'site data is switched off. Nothing was saved.';
+
+            saveName.value = '';
+            drawPlaces();
+            updateSaving();
+        });
+
+        // The exports, one button each, built from the same list.
+        for (const format of FORMATS) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'tiny';
+            button.textContent = format.name;
+            button.title = format.what;
+            button.addEventListener('click', () => {
+                const places = saved();
+                if (places.length === 0) return;
+
+                const blob = new Blob([format.of(places)], { type: format.type });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename(format.extension);
+                link.click();
+
+                // Let go on a later turn, not on this one. Chrome starts the
+                // download inside `click`, but not every browser does, and one
+                // that starts it a tick later finds the URL already revoked
+                // and saves nothing -- with no error, because as far as it is
+                // concerned the link simply pointed at nothing.
+                setTimeout(() => URL.revokeObjectURL(url), 30_000);
+            });
+            formatButtons.append(button);
+        }
+
+        forgetAll.addEventListener('click', () => {
+            clear();
+            drawPlaces();
+            updateSaving();
+        });
+
+        // ── the sheet ────────────────────────────────────────────────────
+        //
+        // Filled from whatever the panel is showing, and only ever seen on
+        // paper. Printing the page prints this and nothing else.
+
+        function drawSheet() {
+            if (code === null) {
+                sheetCode.textContent = '—';
+                sheetCheck.textContent = '';
+                sheetAddress.textContent = '';
+                sheetWhere.textContent = '';
+                sheetQr.replaceChildren();
+                return;
+            }
+
+            const [latitude, longitude] = GPC.decode(code);
+
+            sheetAddress.textContent = saveName.value.trim() || suggestName();
+            sheetCode.textContent = code;
+
+            // The check character is what an envelope needs and a screen does
+            // not: nobody retypes a code they can copy.
+            try {
+                sheetCheck.textContent = `*${GPC.checkCharacter(code)}`;
+            } catch {
+                sheetCheck.textContent = '';
+            }
+
+            sheetWhere.textContent = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+
+            sheetQr.replaceChildren();
+            sheetQr.insertAdjacentHTML('afterbegin', qrFor(addressOf(code, location)));
+        }
+
+        printButton.addEventListener('click', () => {
+            drawSheet();
+            window.print();
+        });
+
+        if (!canStore()) {
+            saveNote.textContent =
+                'This browser will not keep a list — site data is switched off. '
+                + 'Everything else on this page still works.';
+        }
+
+        drawPlaces();
 
 
         // ── keeping an area to hand ────────────────────────────────────────
@@ -2210,5 +2456,146 @@ const code = GPC.encode(START.latitude, START.longitude);
         .stage { height: 55vh; min-height: 300px; border-right: 0; border-bottom: 1px solid var(--rule); }
         .panel { overflow: visible; }
         .groups { overflow: visible; flex: none; }
+    }
+    /* ── keeping places ──────────────────────────────────────────────── */
+    .keeping {
+        display: flex;
+        gap: var(--space-2);
+        margin-bottom: var(--space-2);
+    }
+
+    .naming {
+        flex: 1;
+        min-width: 0;
+        padding: var(--space-1) var(--space-2);
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-cell);
+        background: var(--ground);
+        color: var(--ink);
+        font-family: var(--font-body);
+        font-size: var(--text-small-size);
+    }
+
+    .places {
+        list-style: none;
+        margin: 0 0 var(--space-3);
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+    }
+
+    .places li {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+    }
+
+    .places :global(.place) {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1px;
+        padding: var(--space-1) var(--space-2);
+        border: 1px solid var(--rule-soft);
+        border-radius: var(--radius-cell);
+        background: var(--surface);
+        color: var(--ink);
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .places :global(.place:hover) {
+        border-color: var(--brass);
+    }
+
+    .places :global(.place-name) {
+        font-size: var(--text-small-size);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+    }
+
+    .places :global(.place-code) {
+        font-size: var(--text-label-size);
+        color: var(--ink-soft);
+    }
+
+    .formats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-1);
+        margin-bottom: var(--space-1);
+    }
+
+    /* ── the sheet ───────────────────────────────────────────────────── */
+    /* Not on screen at all. It exists for paper, and putting it behind
+       `display: none` rather than off-screen keeps a screen reader from
+       reading the whole thing out a second time. */
+    .sheet {
+        display: none;
+    }
+
+    @media print {
+        /* An envelope wants the address, the code and the square. Everything
+           else on this page is a control, and a control on paper is ink spent
+           on something nobody can press. */
+        .playground > :not(.sheet) {
+            display: none !important;
+        }
+
+        .sheet {
+            display: block;
+            font-family: var(--font-body);
+            color: #000;
+            background: #fff;
+            padding: 0;
+        }
+
+        .sheet-address {
+            font-size: 13pt;
+            line-height: 1.4;
+            margin-bottom: 6mm;
+            max-width: 90mm;
+        }
+
+        .sheet-code {
+            font-family: var(--font-mono);
+            font-size: 22pt;
+            letter-spacing: var(--code-tracking);
+            margin-bottom: 2mm;
+        }
+
+        .sheet-check {
+            font-size: 14pt;
+            color: #444;
+        }
+
+        .sheet-where {
+            font-family: var(--font-mono);
+            font-size: 9pt;
+            color: #444;
+            margin-bottom: 5mm;
+        }
+
+        .sheet-qr :global(svg) {
+            width: 30mm;
+            height: 30mm;
+        }
+
+        .sheet-note {
+            margin-top: 6mm;
+            max-width: 90mm;
+            font-size: 8pt;
+            line-height: 1.4;
+            color: #444;
+        }
+
+        @page {
+            margin: 15mm;
+        }
     }
 </style>
