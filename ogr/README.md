@@ -11,7 +11,7 @@ back, or turns a column of codes into points, so a code can enter and leave a
 pipeline that has never heard of it.
 
 `encode` copies the source and appends a text column. `decode` goes the other
-way and needs no geometry at all in the input — a CSV of codes becomes a point
+way and needs no geometry at all in the input: a CSV of codes becomes a point
 layer.
 
 | option | |
@@ -23,7 +23,7 @@ layer.
 
 ## The trap this is written around
 
-GDAL 3 changed the axis order of EPSG:4326 to what the authority says it is —
+GDAL 3 changed the axis order of EPSG:4326 to what the authority says it is,
 **latitude first**. Code written against GDAL 2 that reads `GetX()` as a
 longitude now gets the two the wrong way round, and in most of the world a
 transposed coordinate is still a valid coordinate. It encodes. It gives a
@@ -31,7 +31,7 @@ perfectly well-formed code for a real place several thousand kilometres from the
 right one, and nothing raises.
 
 Every transformation here sets `OAMS_TRADITIONAL_GIS_ORDER`, and the tests use a
-point whose latitude and longitude cannot be confused for each other — 43.6426
+point whose latitude and longitude cannot be confused for each other. 43.6426
 is a valid longitude and −79.3871 is a valid latitude, so a swap produces an
 answer rather than an error, and only the right answer passes.
 

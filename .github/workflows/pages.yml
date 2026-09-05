@@ -21,7 +21,7 @@
 #
 # It builds against the package published to the registry rather than the source
 # next door, so a green run here is also evidence that the released artifact
-# works — the same standard the release notes hold every other port to.
+# works, the same standard the release notes hold every other port to.
 #
 # Actions are pinned to a commit rather than a tag: a tag can be moved to point
 # at different code, a commit cannot.

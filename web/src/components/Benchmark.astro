@@ -30,13 +30,13 @@ const OPERATIONS = [
         <p>
             Nothing is sent anywhere and nothing is fetched. The measurement is of this
             machine at this moment, so it is not a number to compare against somebody
-            else's — it is a number you watched happen.
+            else's. It is a number you watched happen.
         </p>
     </header>
 
     <div class="controls">
         <button type="button" class="go" data-run hidden>
-            Measure — about five seconds
+            Measure, about five seconds
         </button>
         <p class="state" data-state>
             Measuring needs JavaScript, which is the one thing on this site that
@@ -78,7 +78,7 @@ const OPERATIONS = [
         <dd>
             An engine that can see a result is never used may remove the call that
             produced it, and then the page is timing an empty loop. Every operation
-            returns a number that is summed, and the total is printed above — a figure
+            returns a number that is summed, and the total is printed above, a figure
             that could only exist if the work was done.
         </dd>
 
@@ -107,7 +107,7 @@ const OPERATIONS = [
     </dl>
 
     <p class="note">
-        The points are the same on every machine — a thousand of them, from a seeded
+        The points are the same on every machine: a thousand of them, from a seeded
         generator, so what differs between two runs is the hardware and not the work.
     </p>
 </section>
@@ -207,7 +207,7 @@ const OPERATIONS = [
                 'The operations were summed as they ran, and came to '
                 + carried.toLocaleString('en')
                 + '. That total is here because a result nothing uses is a result an '
-                + 'engine may stop computing — a benchmark of nothing at all runs '
+                + 'engine may stop computing. A benchmark of nothing at all runs '
                 + 'very fast indeed.';
             total.hidden = false;
             button.disabled = false;

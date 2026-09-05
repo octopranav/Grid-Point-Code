@@ -32,7 +32,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from validate import GPC, TAG, validate  # noqa: E402
+from validate import GPC, TAG, parse, validate  # noqa: E402
 
 EXAMPLES = HERE / "examples"
 CN_TOWER = (43.6426, -79.3871)
@@ -167,6 +167,25 @@ class OpenStreetMap(unittest.TestCase):
 
 
 class Arguments(unittest.TestCase):
+
+    def test_options_and_files_are_told_apart(self):
+        files, options = parse(["a.geojson", "--tag", "gpc"], {"--tag"})
+        self.assertEqual(files, ["a.geojson"])
+        self.assertEqual(options, {"--tag": "gpc"})
+
+    def test_a_file_named_like_an_option_value_survives(self):
+        # The earlier version picked files by excluding anything equal to an
+        # option's value, so this lost the file called 5 and said nothing.
+        files, options = parse(["5", "b.geojson", "--tolerance", "5"],
+                               {"--tag", "--tolerance"})
+        self.assertEqual(files, ["5", "b.geojson"])
+        self.assertEqual(options["--tolerance"], "5")
+
+    def test_a_trailing_option_with_nothing_after_it(self):
+        files, options = parse(["a.geojson", "--tag"], {"--tag"})
+        self.assertEqual(files, ["a.geojson"])
+        self.assertIsNone(options["--tag"])
+
 
     def test_the_key_can_be_changed(self):
         code = GPC.encode(*CN_TOWER)

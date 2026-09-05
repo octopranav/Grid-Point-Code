@@ -94,7 +94,7 @@ const metres = (value: number) =>
         </p>
         <p>
             Every figure below is worked out by the library at build time, and the
-            claims are checked rather than stated — the page fails to build if the
+            claims are checked rather than stated. The page fails to build if the
             construction stops behaving as it is described here.
         </p>
     </header>
@@ -109,7 +109,7 @@ const metres = (value: number) =>
     <p>
         The blocks are lettered in a serpentine: west to east along the bottom row,
         then east to west along the next, snaking northward. Not left to right and
-        back to the start — that would put the end of one row and the start of the
+        back to the start, because that would put the end of one row and the start of the
         next at opposite edges of the world.
     </p>
 
@@ -151,7 +151,7 @@ const metres = (value: number) =>
         twenty-five symbols are laid into it in an order that depends on where the
         cell sits. Each axis is mirrored according to the parity of the digits
         accumulated in the other. That is the whole rule, and this is what it looks
-        like — two neighbouring blocks of the world, at the level below them:
+        like, on two neighbouring blocks of the world, at the level below them:
     </p>
 
     <div class="quilts">
@@ -164,7 +164,7 @@ const metres = (value: number) =>
                     )))}
                 </div>
                 <figcaption>
-                    <span class="code">{of.symbol}</span> — {of.where}
+                    <span class="code">{of.symbol}</span>, {of.where}
                 </figcaption>
             </figure>
         ))}
@@ -175,7 +175,7 @@ const metres = (value: number) =>
         the order joined up. The traversal runs west to east along this row of the
         world: it leaves the left block by <span class="code">X</span>{' '}
         in the {checked.leaves}-right corner, and takes up the right block
-        at <span class="code">0</span> in the {checked.leaves}-left — the two cells touching
+        at <span class="code">0</span> in the {checked.leaves}-left, the two cells touching
         across the boundary, marked above. Without the mirror it would have to fly
         back to the far corner of the world at the end of every cell.
     </p>
@@ -207,7 +207,7 @@ const metres = (value: number) =>
         Entering the sixth character, the accumulated parities are set back to
         zero. Without that, what characters six to ten mean would depend on the
         five before them, and they would name nothing on their own. With it, the
-        last five characters depend only on the position inside the level-5 cell —
+        last five characters depend only on the position inside the level-5 cell,
         so they mean the same thing everywhere on Earth:
     </p>
 
@@ -220,7 +220,7 @@ const metres = (value: number) =>
                 </span>
                 <span class="offset">
                     {twin.up.toLocaleString('en')} up, {twin.across.toLocaleString('en')} across
-                    <span class="quiet"> — inside its own cell</span>
+                    <span class="quiet">, inside its own cell</span>
                 </span>
             </div>
         ))}
@@ -308,7 +308,7 @@ const metres = (value: number) =>
         </table>
     </div>
     <p>
-        South to north by band, and inside each band along the serpentine — which
+        South to north by band, and inside each band along the serpentine, which
         is why Toronto precedes Ahmedabad though it is further north, and why
         Sydney precedes Machu Picchu though it is further east. The two Toronto
         points share nine characters and land side by side.
@@ -323,7 +323,7 @@ const metres = (value: number) =>
     </p>
 
     <p class="onward">
-        The rules themselves are in <a href="/spec">the specification</a> — the
+        The rules themselves are in <a href="/spec">the specification</a>: the
         serpentine and the reflection in section 5, the ordering in section 11.
         <a href="/play">The playground</a> will resolve any point through all ten
         levels, and <a href="/seams">the seams page</a> shows where this

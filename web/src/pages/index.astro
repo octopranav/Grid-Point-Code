@@ -3,14 +3,14 @@ import Base from '../layouts/Base.astro';
 import Resolve from '../components/Resolve.astro';
 import { resolve, SAMPLES } from '../lib/levels';
 
-// The ladder is the same ten cells the hero steps through, standing still —
+// The ladder is the same ten cells the hero steps through, standing still.
 // computed by the package published to npm rather than written out here, so a
 // release that changed a cell size would change this table or fail the build.
 const { levels } = resolve(SAMPLES[0].latitude, SAMPLES[0].longitude);
 
 const description =
     'Ten characters name any location on Earth. Encoding and decoding are arithmetic, ' +
-    'offline, with no lookup table and no network — and a shared prefix is a shared region.';
+    'offline, with no lookup table and no network, and a shared prefix is a shared region.';
 ---
 
 <Base title="Home" description={description}>

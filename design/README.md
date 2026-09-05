@@ -19,7 +19,7 @@ node design/build-tokens.mjs --check    write nothing; fail if a target has drif
 
 The check mode runs in continuous integration. A generated file somebody edited
 by hand is a fork of the design system that nobody announced, and the next
-regeneration would silently undo it — so the build refuses to go green while one
+regeneration would silently undo it, so the build refuses to go green while one
 exists. Edit `tokens.json` and regenerate.
 
 The generator has no dependencies, like everything else here.
@@ -38,7 +38,7 @@ type colour that stays legible on it, which changes at level six on both themes.
 
 ## The typeface was chosen by measurement
 
-Codes mix digits and capitals, so tabular figures are not enough — only a true
+Codes mix digits and capitals, so tabular figures are not enough. Only a true
 monospace gives every code on Earth the same printed width.
 
 Which monospace is a narrower question than it looks. The alphabet has no `O`,
@@ -61,7 +61,7 @@ share. A code is only as safe as its worst pair, so the worst pair decides.
 | JetBrains Mono | C/G | 0.192 |
 
 IBM Plex Mono was chosen: it has the best worst pair, and it is the only
-candidate whose weak point is not `C` against `G` — the pair that decides three
+candidate whose weak point is not `C` against `G`, the pair that decides three
 of the four, in an alphabet where both letters are common. It also shares a
 skeleton with the body face, so that pairing is structural rather than lucky.
 

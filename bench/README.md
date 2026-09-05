@@ -51,8 +51,8 @@ commit, minutes apart, on the same service:
 
 | | worst movement across the three runs |
 | --- | --- |
-| operations a second | 1.62× — Java `decode`, 2.01 M then 3.26 M |
-| calibrated cost | 1.51× — TypeScript `codeToGrid`, 1.82 then 2.75 |
+| operations a second | 1.62×, Java `decode`, 2.01 M then 3.26 M |
+| calibrated cost | 1.51×, TypeScript `codeToGrid`, 1.82 then 2.75 |
 
 Nothing about the library changed between those runs. The first column is what a
 check on absolute throughput would have had to tolerate; the second is what this
@@ -67,7 +67,7 @@ operations in Python cost about a hundred times what they cost in Java, so the
 unit itself is different in each column. Compare a column with itself over time.
 
 It is not perfectly comparable between *machines* either. The same ratios taken
-on a workstation and on the runner differ by as much as 2.6× — TypeScript
+on a workstation and on the runner differ by as much as 2.6×. TypeScript
 `codeToGrid` is 4.76 calibration units on one and 1.82 on the other. The loop
 removes a machine's speed, not its architecture or its just-in-time compiler,
 which is why the baseline is taken where the check runs.

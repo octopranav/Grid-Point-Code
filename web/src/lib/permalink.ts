@@ -5,7 +5,7 @@
 // always opened on the same rooftop in Toronto, a refresh lost the point, and
 // there was no way to send anyone what you were looking at.
 //
-// The code is the whole identifier. Nothing else goes in — not the basemap, not
+// The code is the whole identifier. Nothing else goes in: not the basemap, not
 // the zoom, not which group is open. Those are preferences about looking, they
 // already live in this browser's storage, and a link that carries them tells
 // the person receiving it how to hold their screen.

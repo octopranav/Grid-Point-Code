@@ -2,7 +2,7 @@
 //
 // Level-1 boundaries are the seams. Two points on opposite sides of one are in
 // different level-1 cells, so they share no characters at all however close
-// they are — the minimum crossing is a single cell, 2.56 m north to south.
+// they are. The minimum crossing is a single cell, 2.56 m north to south.
 //
 // This is not a defect a better construction would remove. Every grid of fixed
 // cells has boundaries and every code built on one has seams. What a format can
@@ -90,7 +90,7 @@ export function sharedPrefix(one: string, two: string): number {
  * Two hundredths of a thousandth of a degree either side.
  *
  * The same step section 16 uses for its worked example, so the figures this
- * page shows are the figures the specification prints — 2.8 m at Greenwich —
+ * page shows are the figures the specification prints, 2.8 m at Greenwich,
  * and a reader can hold the two next to each other.
  */
 const STEP = 0.00002;

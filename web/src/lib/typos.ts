@@ -61,7 +61,7 @@ export interface Damage {
  * The shape it produces is the specification's table in miniature: the first
  * few positions throw the point across the world where any map would catch it,
  * the last few move it by metres, and positions four to six land it tens of
- * kilometres away — near enough to look like a real answer.
+ * kilometres away, near enough to look like a real answer.
  */
 export function damage(code: string): Damage[] {
     const bare = GPC.normalise(code)[0];
