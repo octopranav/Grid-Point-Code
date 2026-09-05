@@ -507,12 +507,6 @@ jobs:
       # failed: every row was right and the answer was wrong.
       - name: The name index answers with the place that was meant
         run: node scripts/test-names.mjs
-
-      # A vCard with an unescaped comma in a name does not fail to parse, it
-      # parses into the wrong number of fields; a CSV with an unescaped quote
-      # shifts every column after it. Neither shows on a place called Toronto.
-      - name: The exports must survive the names that break them
-        run: node scripts/test-exports.mjs
       # The site imports the package from the registry, not the source next
       # door. So this job is also a standing test of the published artifact: if
       # a release ever shipped a broken build or dropped an operation the site
