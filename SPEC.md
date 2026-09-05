@@ -1,8 +1,14 @@
 # Grid Point Code, version 2
 
-**Status:** draft. This document defines version 2 of the format. It is
+**Status:** stable. This document defines version 2 of the format, which is
+published and implemented. Four ports pass the shared conformance vectors in
+`test_data/`, and 2.0.0 is released on npm, PyPI, Maven Central and NuGet. It is
 complete enough to implement from without reading any existing source, and the
 core carries no dependency on anything outside itself.
+
+Stable means the rules here will not change under an implementation. Anything
+that would alter a code a conforming encoder produces, or reject one it accepts
+today, is a new version of the format and not an amendment to this one.
 
 Version 1 remains published and is described in
 [Appendix B](#appendix-b--decoding-version-1-optional). An implementation may

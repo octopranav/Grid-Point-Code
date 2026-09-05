@@ -1,4 +1,4 @@
-# Grid Point Code (GPC)
+# Grid Point Code (GPC) for C#
 
 ## Overview
 
@@ -46,6 +46,12 @@ lines share nothing.
 - **A spatial API on top of the guarantee.** Cells, neighbours, containment,
   distance, the short form, typo correction and the integer form.
 - **Reads version 1 codes.** Every code ever issued still resolves.
+
+## Installation
+
+```bash
+dotnet add package Ca.Pranavpatel.Algo.GridPointCode
+```
 
 ## Requirements
 
@@ -350,7 +356,19 @@ happens to be a valid version 1 code decodes as one.
   coordinate carrying more precision than the 2.56 m cell does not come back
   unchanged. Encoding what you decoded always returns the same code.
 
-## Running the tests
+## Changelog
+
+See [CHANGELOG.md](https://github.com/octopranav/Grid-Point-Code/blob/main/CHANGELOG.md) for what changed in each release.
+
+## License
+
+Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+
+## Contributing
+
+Contributions are welcome! Please submit issues or pull requests via GitHub.
+
+### Running the tests
 
 The test project is an xUnit v3 self-hosting executable, so run it with
 `dotnet run` rather than `dotnet test`:
@@ -370,15 +388,3 @@ that SDK, and the Microsoft.Testing.Platform route launches the host over a
 without discovering anything. The same binary finds and runs all tests when
 started directly. Every package involved is already at its latest version, so
 this is an upstream limitation rather than a configuration problem here.
-
-## Changelog
-
-See [CHANGELOG.md](https://github.com/octopranav/Grid-Point-Code/blob/main/CHANGELOG.md) for what changed in each release.
-
-## License
-
-Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
-
-## Contributing
-
-Contributions are welcome! Please submit issues or pull requests via GitHub.
