@@ -8,88 +8,139 @@
 //
 // The sourcing rules and the reason the losing dimensions are included live in
 // lib/comparison.ts, beside the data they govern.
-
-import { SYSTEMS, ROWS, PROMISES } from '../lib/comparison';
+//
+// The page is built in five groups rather than one table of sixteen rows. The
+// single table was 713px wide inside a 319px scroller on a phone, and its
+// explanatory notes were `colspan` rows trapped inside that same horizontal
+// scroller. A note is prose and wants a column of its own; a matrix is a matrix.
+// They are separated here.
+import { SYSTEMS, ROWS, GROUPS, GUIDANCE, PROMISES } from '../lib/comparison';
 
 const ours = SYSTEMS[0];
+
+/** The rows of one group, in the order they were written. */
+const rowsIn = (group: string) => ROWS.filter((row) => row.group === group);
 ---
 
 <section class="compare">
     <header class="intro">
         <h1>Beside the alternatives</h1>
         <p class="lede">
-            This is the only page here that names other systems. Everywhere else they
-            are described by property, because this project is not a campaign against
-            anything. But a claim like "twenty-two times finer" means nothing without
-            the other side of it, so here is the other side.
+            Five ways of naming a place, put the same sixteen questions. Every figure
+            about another system is quoted from that system's own documentation and
+            linked to it, the questions include the ones this format answers worst, and
+            four of the five recommendations below point somewhere else.
         </p>
     </header>
 
-    <ul class="promises">
-        {PROMISES.map((promise) => <li>{promise}</li>)}
-    </ul>
+    <!-- The answer before the evidence for it. A reference table is no use to a
+         reader who has not already decided, and this page spent its whole life
+         as a reference table. -->
+    <section class="guidance" aria-labelledby="choosing">
+        <h2 id="choosing">If you are choosing one</h2>
+        <dl>
+            {GUIDANCE.map((advice) => (
+                <div class="advice">
+                    <dt>{advice.need}</dt>
+                    <dd>{advice.answer}</dd>
+                </div>
+            ))}
+        </dl>
+    </section>
 
-    <div class="table-scroll" tabindex="0">
-        <table>
-            <thead>
-                <tr>
-                    <!-- The corner of a comparison table heads nothing. A
-                         header cell with no text is a header in name only, and
-                         a screen reader announces it as one. -->
-                    <td class="corner"></td>
-                    {SYSTEMS.map((system) => (
-                        <th scope="col" data-ours={system.id === ours.id}>
-                            <span class="name">{system.name}</span>
-                            <span class="kind">{system.kind}</span>
-                        </th>
-                    ))}
-                </tr>
-            </thead>
-            <tbody>
-                {ROWS.map((row) => (
-                    <>
-                        <tr>
-                            <th scope="row">{row.dimension}</th>
+    {GROUPS.map((group) => (
+        <section class="group" aria-labelledby={`g-${group.id}`}>
+            <h2 id={`g-${group.id}`}>{group.name}</h2>
+            <p class="blurb">{group.blurb}</p>
+
+            <div class="table-scroll" tabindex="0">
+                <!-- The roles are the implicit ones, written out. On a narrow
+                     screen the CSS below turns every cell into a block so the
+                     table stacks instead of scrolling sideways, and changing
+                     `display` on a table element is what silently strips its
+                     semantics. Stating them keeps a screen reader's row and
+                     column announcements at both widths. -->
+                <table role="table">
+                    <thead>
+                        <tr role="row">
+                            <!-- The corner of a comparison table heads nothing.
+                                 A header cell with no text is a header in name
+                                 only, and a screen reader announces it as one. -->
+                            <td class="corner" role="presentation"></td>
                             {SYSTEMS.map((system) => (
-                                <td data-ours={system.id === ours.id}>
-                                    {row.values[system.id] ?? (
-                                        <span class="unsaid">Its specification does not say</span>
-                                    )}
-                                </td>
+                                <th scope="col" role="columnheader" data-ours={system.id === ours.id}>
+                                    <span class="name">{system.name}</span>
+                                    <span class="kind">{system.kind}</span>
+                                </th>
                             ))}
                         </tr>
-                        {row.note && (
-                            <tr class="note-row">
-                                <td colspan={SYSTEMS.length + 1}>{row.note}</td>
+                    </thead>
+                    <tbody>
+                        {rowsIn(group.id).map((row) => (
+                            <tr role="row">
+                                <th scope="row" role="rowheader">{row.dimension}</th>
+                                {SYSTEMS.map((system) => (
+                                    <td role="cell" data-label={system.name} data-ours={system.id === ours.id}>
+                                        {row.values[system.id] ?? (
+                                            <span class="unsaid">Its documentation does not say</span>
+                                        )}
+                                    </td>
+                                ))}
                             </tr>
-                        )}
-                    </>
-                ))}
-            </tbody>
-        </table>
-    </div>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
-    <h2>Where each figure came from</h2>
-    <ul class="sources">
-        {SYSTEMS.map((system) => (
-            <li>
-                <span class="who">{system.name}</span>
-                <a href={system.source.url} rel={system.source.url.startsWith('http') ? 'noreferrer' : undefined}>
-                    {system.source.label}
-                </a>
-            </li>
-        ))}
-    </ul>
-    <p class="note quiet">
-        Read on the dates this page was last built. If one of these systems has changed
-        and this page has not, the fault is here and not there. The link beside each
-        name is the thing to trust.
-    </p>
+            <!-- Out of the table on purpose. These were `colspan` rows inside
+                 the horizontal scroller, which put the longest prose on the
+                 page in the narrowest column on it. -->
+            {rowsIn(group.id).some((row) => row.note) && (
+                <div class="notes">
+                    {rowsIn(group.id).filter((row) => row.note).map((row) => (
+                        <p><b>{row.dimension}.</b>{' '}{row.note}</p>
+                    ))}
+                </div>
+            )}
+        </section>
+    ))}
+
+    <section aria-labelledby="sources">
+        <h2 id="sources">Where each figure came from</h2>
+        <ul class="sources">
+            {SYSTEMS.map((system) => (
+                <li>
+                    <span class="who">{system.name}</span>
+                    <a href={system.source.url} rel={system.source.url.startsWith('http') ? 'noreferrer' : undefined}>
+                        {system.source.label}
+                    </a>
+                </li>
+            ))}
+        </ul>
+        <p class="note quiet">
+            Read on the dates this page was last built. If one of these systems has changed
+            and this page has not, the fault is here and not there. The link beside each
+            name is the thing to trust.
+        </p>
+    </section>
+
+    <!-- After the evidence rather than before it. These are the rules the page
+         is kept to, and a reader who has just read the table is in a better
+         position to check them than one who has not started it. -->
+    <section aria-labelledby="honest">
+        <h2 id="honest">How this page is kept honest</h2>
+        <ul class="promises">
+            {PROMISES.map((promise) => <li>{promise}</li>)}
+        </ul>
+    </section>
 </section>
 
 <style>
+    /* The shared frame. Not a width of this page's choosing: the masthead and
+       the footer use the same one, so a reader moving here from another page
+       sees the text begin in the same place. */
     .compare {
-        max-width: 72rem;
+        max-width: var(--shell);
         margin: 0 auto;
         padding: var(--space-5) var(--space-4);
     }
@@ -113,19 +164,42 @@ const ours = SYSTEMS[0];
         max-width: var(--measure);
     }
 
-    /* The rules this page holds itself to, stated where a reader sees them
-       before the table rather than in a footnote after it. */
-    .promises {
+    .blurb {
+        color: var(--ink-mid);
+        font-size: var(--text-small-size);
+        margin-top: calc(var(--space-2) * -1);
+    }
+
+    /* ── the recommendation ─────────────────────────────────────────────── */
+
+    .guidance dl {
+        margin: 0;
+        display: grid;
+        gap: var(--space-3);
+    }
+
+    .advice {
+        display: grid;
+        gap: var(--space-0);
+        padding-left: var(--space-3);
+        border-left: 2px solid var(--rule);
+        border-radius: 0;
+    }
+
+    .advice dt {
+        font-weight: 500;
+        color: var(--ink);
         max-width: var(--measure);
-        margin: 0 0 var(--space-4);
-        padding-left: var(--space-4);
+    }
+
+    .advice dd {
+        margin: 0;
+        max-width: var(--measure);
         color: var(--ink-mid);
         font-size: var(--text-small-size);
     }
 
-    .promises li {
-        margin-bottom: var(--space-1);
-    }
+    /* ── the matrix ─────────────────────────────────────────────────────── */
 
     .table-scroll {
         overflow-x: auto;
@@ -184,13 +258,90 @@ const ours = SYSTEMS[0];
         font-style: italic;
     }
 
-    .note-row td {
-        padding-top: 0;
-        border-bottom: 1px solid var(--rule);
+    .notes {
+        max-width: var(--measure);
+        margin-top: var(--space-3);
+    }
+
+    .notes p {
         color: var(--ink-mid);
         font-size: var(--text-label-size);
-        line-height: 1.5;
+        line-height: 1.55;
     }
+
+    .notes b {
+        color: var(--ink);
+        font-weight: 500;
+    }
+
+    /* ── stacked, below the width where six columns can be read ─────────── */
+
+    /* Six columns of prose do not fit a phone, and a horizontal scrollbar on a
+       comparison is a way of hiding half of it. Each row becomes a small card:
+       the question as its heading, then one line per system, labelled from the
+       `data-label` the markup carries. */
+    @media (max-width: 860px) {
+        .table-scroll {
+            overflow-x: visible;
+        }
+
+        thead {
+            /* Not `display: none`: the column headings are the only place the
+               kind of each system is written, and a reader who cannot see the
+               table still needs them. Off-screen keeps them for that reader. */
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip-path: inset(50%);
+            white-space: nowrap;
+        }
+
+        tbody tr {
+            display: block;
+            margin-bottom: var(--space-3);
+            border: 1px solid var(--rule-soft);
+            border-radius: var(--radius-card);
+            overflow: hidden;
+        }
+
+        tbody th {
+            display: block;
+            background: var(--sunken);
+            color: var(--ink);
+            font-weight: 500;
+            border-bottom: 1px solid var(--rule-soft);
+        }
+
+        tbody td {
+            display: grid;
+            grid-template-columns: 9rem 1fr;
+            gap: var(--space-2);
+            border-bottom: 1px solid var(--rule-soft);
+        }
+
+        tbody tr td:last-child {
+            border-bottom: 0;
+        }
+
+        tbody td::before {
+            content: attr(data-label);
+            color: var(--ink-soft);
+        }
+    }
+
+    @media (max-width: 460px) {
+        tbody td {
+            grid-template-columns: 1fr;
+            gap: 0;
+        }
+
+        tbody td::before {
+            font-size: var(--text-label-size);
+        }
+    }
+
+    /* ── sources ────────────────────────────────────────────────────────── */
 
     .sources {
         list-style: none;
@@ -209,5 +360,17 @@ const ours = SYSTEMS[0];
     .who {
         min-width: 12rem;
         color: var(--ink-mid);
+    }
+
+    .promises {
+        max-width: var(--measure);
+        margin: 0;
+        padding-left: var(--space-4);
+        color: var(--ink-mid);
+        font-size: var(--text-small-size);
+    }
+
+    .promises li {
+        margin-bottom: var(--space-2);
     }
 </style>

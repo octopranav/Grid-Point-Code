@@ -45,7 +45,7 @@ const BANNER = (source) =>
 // ── the stylesheet the website imports ───────────────────────────────────────
 
 function css() {
-    const { colour, level, space, radius, type } = tokens;
+    const { colour, level, space, radius, type, layout } = tokens;
     const light = real(colour.light);
     const dark = real(colour.dark);
 
@@ -62,6 +62,7 @@ function css() {
         '',
         ...Object.entries(real(type.family)).map(([name, value]) => `  --font-${name}: ${value};`),
         `  --measure: ${type.measure};`,
+        `  --shell: ${layout.shell};`,
         `  --code-tracking: ${type.code['letter-spacing']};`,
         '',
         ...Object.entries(real(type.scale)).flatMap(([name, face]) => [

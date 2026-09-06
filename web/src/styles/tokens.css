@@ -51,6 +51,7 @@
   --font-body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
   --measure: 68ch;
+  --shell: 76rem;
   --code-tracking: 0.02em;
 
   --text-display-xl-size: 44px;
