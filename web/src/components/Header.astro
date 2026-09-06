@@ -28,6 +28,7 @@ const sections = [
 ---
 
 <header class="masthead">
+    <div class="shell bar">
     <a class="wordmark" href="/">
         <span class="stack" aria-hidden="true">
             <span></span><span></span><span></span><span></span>
@@ -54,18 +55,25 @@ const sections = [
             </svg>
         </a>
     </div>
+    </div>
 </header>
 
 <style>
+    /* The rule under the masthead runs the full width of the window, because a
+       hairline that stops short of the edges reads as an unfinished box rather
+       than as the bottom of a bar. What sits ON the bar is in the shared frame,
+       so the wordmark begins exactly where the page heading below it does. */
     .masthead {
+        background: var(--surface);
+        border-bottom: 1px solid var(--rule);
+    }
+
+    .bar {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: var(--space-4);
         height: 56px;
-        padding: 0 var(--space-4);
-        background: var(--surface);
-        border-bottom: 1px solid var(--rule);
     }
 
     .wordmark {
@@ -143,8 +151,20 @@ const sections = [
     .source:hover { color: var(--ink); }
 
     @media (max-width: 900px) {
-        .masthead { height: auto; flex-wrap: wrap; padding: var(--space-2) var(--space-3); }
+        .bar { height: auto; flex-wrap: wrap; padding-block: var(--space-2); }
         nav { order: 3; width: 100%; }
-        nav ul { gap: var(--space-3); padding-bottom: var(--space-1); }
+        /* Wrap, rather than scroll sideways inside the strip.
+
+           The list is `overflow-x: auto`, so on a 375px screen the eighth item
+           was reachable only by dragging a nav bar that gives no sign there is
+           anything past its edge. It read as a link cut in half. Wrapping costs
+           one row of height and puts every section on screen at once, which is
+           the trade worth making for something whose whole job is to be found. */
+        nav ul {
+            flex-wrap: wrap;
+            column-gap: var(--space-3);
+            row-gap: var(--space-1);
+            padding-bottom: var(--space-1);
+        }
     }
 </style>

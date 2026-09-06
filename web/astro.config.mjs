@@ -1,6 +1,6 @@
 // @ts-check
 import { createReadStream, existsSync, statSync } from 'node:fs';
-import { cp } from 'node:fs/promises';
+import { cp, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,6 +14,12 @@ import { satteri } from '@astrojs/markdown-satteri';
 // `site` is the real origin because absolute URLs end up in the sitemap, in
 // social previews, and in canonical links, and a wrong one there is invisible
 // until somebody else follows it.
+
+// One origin, because it is written into three places that have to agree: the
+// canonical link on every page, the sitemap, and the line in robots.txt that
+// points at the sitemap. Three copies of a hostname is three chances to move
+// two of them.
+const ORIGIN = 'https://gridpointcode.com';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const LANDMARKS = path.join(here, 'landmarks');
@@ -193,8 +199,68 @@ const scrollableTables = {
     },
 };
 
+/**
+ * A sitemap and a robots.txt, written from the pages that were actually built.
+ *
+ * Neither existed. Both were 404, which is worth more than it sounds: a machine
+ * reading about this format finds the package registries, because those are
+ * indexed, and the specification only if something leads it there. Nothing did.
+ *
+ * Written from `pages` rather than from a list kept by hand, so a route added
+ * later is in the sitemap without anybody remembering to add it. There is no
+ * `lastmod`: every page would carry the build date, which would tell a crawler
+ * that all thirteen changed every time one did, and a date that is wrong every
+ * time is worse than no date.
+ *
+ * The archive is disallowed. It is 82,000 shards and a name index, none of it
+ * anything a search result should point at, and all of it expensive to crawl.
+ */
+function discovery() {
+    return {
+        name: 'discovery',
+        hooks: {
+            'astro:build:done': async ({ dir, pages, logger }) => {
+                // `format: 'file'` and `trailingSlash: 'never'` mean the address
+                // a reader sees has no suffix and no trailing slash. The
+                // pathnames here arrive with neither, or with a slash on the
+                // front, depending on the route, so both ends are trimmed.
+                const urls = pages
+                    .map((page) => page.pathname.replace(/^\/+/, '').replace(/\/+$/, ''))
+                    .map((slug) => (slug ? `${ORIGIN}/${slug}` : `${ORIGIN}/`))
+                    .sort();
+
+                const sitemap = [
+                    '<?xml version="1.0" encoding="UTF-8"?>',
+                    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+                    ...urls.map((url) => `  <url><loc>${url}</loc></url>`),
+                    '</urlset>',
+                    '',
+                ].join('\n');
+
+                const robots = [
+                    'User-agent: *',
+                    'Allow: /',
+                    '',
+                    '# The landmark archive and the name index are data the site reads,',
+                    '# not pages anybody should be sent to. Together they are most of',
+                    '# what is deployed and none of what is worth indexing.',
+                    'Disallow: /landmarks/',
+                    'Disallow: /names/',
+                    '',
+                    `Sitemap: ${ORIGIN}/sitemap.xml`,
+                    '',
+                ].join('\n');
+
+                await writeFile(fileURLToPath(new URL('sitemap.xml', dir)), sitemap, 'utf8');
+                await writeFile(fileURLToPath(new URL('robots.txt', dir)), robots, 'utf8');
+                logger.info(`sitemap.xml lists ${urls.length} pages; robots.txt written`);
+            },
+        },
+    };
+}
+
 export default defineConfig({
-    site: 'https://gridpointcode.com',
+    site: ORIGIN,
     trailingSlash: 'never',
     build: {
         // A page at /play rather than /play/index.html, so a printed or spoken
@@ -231,5 +297,5 @@ export default defineConfig({
             },
         },
     },
-    integrations: [landmarks()],
+    integrations: [landmarks(), discovery()],
 });

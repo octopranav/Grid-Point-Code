@@ -80,7 +80,55 @@ export const SYSTEMS: System[] = [
     },
 ];
 
+/**
+ * The five things a reader is actually deciding between.
+ *
+ * Thirteen questions in one undifferentiated list is a wall. Grouped, a reader
+ * who only wants to know whether they are allowed to use the thing can go
+ * straight to the last group and skip the arithmetic.
+ */
+export interface Group {
+    id: string;
+    name: string;
+    /** What this group of questions is for. */
+    blurb: string;
+}
+
+export const GROUPS: Group[] = [
+    {
+        id: 'what',
+        name: 'What the address is',
+        blurb: 'Its shape, and where in the world it works at all.',
+    },
+    {
+        id: 'names',
+        name: 'What it points at',
+        blurb: 'How much ground one address covers.',
+    },
+    {
+        id: 'does',
+        name: 'What you can do with it',
+        blurb:
+            'The properties that decide whether it is useful in a database, on a '
+            + 'machine with no network, or in a sentence.',
+    },
+    {
+        id: 'wrong',
+        name: 'When somebody gets it wrong',
+        blurb:
+            'Addresses are copied by hand, read down telephones and written on '
+            + 'signs. This group is what happens then.',
+    },
+    {
+        id: 'use',
+        name: 'Whether you can use it',
+        blurb: 'Terms, who stands behind it, and whether anyone already does.',
+    },
+];
+
 export interface Row {
+    /** Which group of questions this belongs to. */
+    group: string;
     /** The question, put the same way to every system. */
     dimension: string;
     /** Why a reader should care, and where the answer is not flattering, why. */
@@ -91,6 +139,7 @@ export interface Row {
 
 export const ROWS: Row[] = [
     {
+        group: 'what',
         dimension: 'What the address is',
         values: {
             gpc: 'Ten characters, always ten',
@@ -101,6 +150,7 @@ export const ROWS: Row[] = [
         },
     },
     {
+        group: 'names',
         dimension: 'Area it names',
         note:
             'The figure that started this page. Against Open Location Code\'s default ten '
@@ -117,6 +167,7 @@ export const ROWS: Row[] = [
         },
     },
     {
+        group: 'what',
         dimension: 'Where it works',
         note:
             'The row that makes the rest of this column legible. Covering one country '
@@ -137,6 +188,7 @@ export const ROWS: Row[] = [
         },
     },
     {
+        group: 'what',
         dimension: 'Same length everywhere',
         note:
             'A fixed length is what lets a code be recognised on sight, validated by '
@@ -150,6 +202,7 @@ export const ROWS: Row[] = [
         },
     },
     {
+        group: 'does',
         dimension: 'A shared prefix means nearby',
         note:
             'Every grid encoding here that claims this is right to, and the two whose '
@@ -165,6 +218,7 @@ export const ROWS: Row[] = [
         },
     },
     {
+        group: 'what',
         dimension: 'Symbols it is written in',
         note:
             'Every system here guards against this, which is worth saying plainly: it is '
@@ -182,6 +236,7 @@ export const ROWS: Row[] = [
         },
     },
     {
+        group: 'does',
         dimension: 'Converts without a network or a table',
         values: {
             gpc: 'Yes, arithmetic only',
@@ -192,6 +247,43 @@ export const ROWS: Row[] = [
         },
     },
     {
+        group: 'does',
+        dimension: 'Sorting a column of them puts neighbours together',
+        note:
+            'The property a database is bought for, and not something invented here: it is '
+            + 'the reason the oldest system here is still in use. Two cells say nothing '
+            + 'because their documents do not raise it, which is not the same as a no. '
+            + 'What it buys is that an ordinary index answers "what is near here" '
+            + 'without a spatial type, and the SQL directory in the repository is that '
+            + 'claim run against a real planner rather than asserted.',
+        values: {
+            gpc: 'Yes, byte order is the order the grid is walked in',
+            digipin: null,
+            olc: null,
+            geohash: 'Yes, this is what a shared prefix gives',
+            w3w: 'No, the words carry no order',
+        },
+    },
+    {
+        group: 'does',
+        dimension: 'Saying less of it when the area is understood',
+        note:
+            'Everybody solves this and the oldest solution is the tidiest: a geohash '
+            + 'shortens by deleting characters off the end, and what is left is still a '
+            + 'geohash. Open Location Code removes two to six digits against a reference '
+            + 'location and documents exactly when that is safe. The short form here is '
+            + 'the last five characters and it is recovered against a reference too. No '
+            + 'advantage to anybody in this row.',
+        values: {
+            gpc: 'Yes, the last five characters, resolved against a nearby reference',
+            digipin: null,
+            olc: 'Yes, two to six digits removed against a reference location',
+            geohash: 'Yes, by dropping characters from the end',
+            w3w: 'No',
+        },
+    },
+    {
+        group: 'wrong',
         dimension: 'A way to tell a mistyped one',
         note:
             'Read carefully: "its document does not define one" is not the same as "it '
@@ -208,6 +300,7 @@ export const ROWS: Row[] = [
         },
     },
     {
+        group: 'wrong',
         dimension: 'A way to recover a mistyped one',
         note:
             'The row where this format has something the others\' documents do not '
@@ -224,6 +317,7 @@ export const ROWS: Row[] = [
         },
     },
     {
+        group: 'wrong',
         dimension: 'Codes that read badly',
         note:
             'Two approaches, and the difference is which way each can be corrected later. '
@@ -240,6 +334,7 @@ export const ROWS: Row[] = [
         },
     },
     {
+        group: 'wrong',
         dimension: 'Saying it out loud',
         note:
             'The row this format loses on its own evidence. Its appendix states that read '
@@ -256,6 +351,7 @@ export const ROWS: Row[] = [
         },
     },
     {
+        group: 'use',
         dimension: 'Terms',
         values: {
             gpc: 'Apache-2.0',
@@ -266,6 +362,25 @@ export const ROWS: Row[] = [
         },
     },
     {
+        group: 'use',
+        dimension: 'Who stands behind it',
+        note:
+            'An address outlives the person who coined it, so the honest question is not '
+            + 'who wrote it but who will still be answering for it in twenty years. A '
+            + 'national postal service, a large company and a company are three different '
+            + 'answers and all three are stronger than this one. The public domain is a '
+            + 'fourth kind of answer: nobody maintains it, and nobody can withdraw it '
+            + 'either, which for a format is not the worst position to be in.',
+        values: {
+            gpc: 'One person, under a permissive licence',
+            digipin: 'The Department of Posts, Government of India',
+            olc: 'Google, with the specification published openly',
+            geohash: 'Nobody. Its inventor placed it in the public domain',
+            w3w: 'what3words, a company',
+        },
+    },
+    {
+        group: 'use',
         dimension: 'How widely it is already used',
         note:
             'This is where this format is furthest behind, and it is not close. The others '
@@ -279,6 +394,61 @@ export const ROWS: Row[] = [
             geohash: 'Long-standing use in databases and search systems',
             w3w: 'Integrated by many navigation and emergency services',
         },
+    },
+];
+
+/**
+ * The answer, rather than the evidence for one.
+ *
+ * A table of sixteen rows is a reference, and a reader who has not already
+ * decided cannot use a reference. Four of these five recommend something else,
+ * which is not modesty: it is what the rows say when read honestly, and a
+ * comparison whose every path led home would not be worth publishing.
+ */
+export interface Advice {
+    /** The reader's situation, in their words rather than the table's. */
+    need: string;
+    /** Which system, and the row that says so. */
+    answer: string;
+}
+
+export const GUIDANCE: Advice[] = [
+    {
+        need: 'Somebody has to recognise the address you hand them',
+        answer:
+            'Open Location Code, or what3words. Both are already inside mapping '
+            + 'applications and services people have. This one is in nothing, and no '
+            + 'property in the table above outweighs that.',
+    },
+    {
+        need: 'The place is in India',
+        answer:
+            'DIGIPIN. It is the national addressing grid, it is backed by the postal '
+            + 'service, and inside that box it reaches four metres in ten characters. '
+            + 'Covering one country instead of a planet is what buys it that.',
+    },
+    {
+        need: 'You are indexing points in a database you control',
+        answer:
+            'Geohash, unless the addresses also have to be read by people. It has been '
+            + 'doing this since 2008, every database has a recipe for it, and it costs '
+            + 'nothing to leave. A fixed length is the reason to look further.',
+    },
+    {
+        need: 'The address gets spoken, down a telephone or over a radio',
+        answer:
+            'what3words. Three words picked with native speakers beat ten characters, '
+            + 'and the row above admits that this format cannot close the gap: read out '
+            + 'in English, six of its symbols rhyme with each other.',
+    },
+    {
+        need:
+            'You need exactly ten characters, no network, anywhere on Earth, and a '
+            + 'prefix that is a containment test',
+        answer:
+            'This one, and this is the narrow case it was built for. Nothing else in '
+            + 'the table holds all four at once. Whether that is worth adopting an '
+            + 'unadopted format is a question this page cannot answer for you.',
     },
 ];
 

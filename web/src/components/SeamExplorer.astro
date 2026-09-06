@@ -173,8 +173,11 @@ const metres = (value: number) => value.toFixed(1) + ' m';
 </section>
 
 <style>
+    /* The shared frame. Not a width of this page's choosing: the masthead and
+       the footer use the same one, so a reader moving here from another page
+       sees the text begin in the same place. */
     .seams {
-        max-width: 62rem;
+        max-width: var(--shell);
         margin: 0 auto;
         padding: var(--space-5) var(--space-4);
     }

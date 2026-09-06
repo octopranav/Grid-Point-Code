@@ -65,6 +65,33 @@ svg {
     height: auto;
 }
 
+/* One frame for the whole site.
+
+   The masthead, every page and the footer all sit in this, so a reader moving
+   between pages sees text begin in the same place. It replaces five different
+   container widths: at 1440px the heading on one page began 189px further in
+   than on another, and the footer's first link began 137px to the left of the
+   heading above it, which read as a broken grid rather than as a choice.
+
+   It is the frame and not the line. `p` above stays capped at the measure, so
+   widening this does not lengthen a line of prose past what is comfortable to
+   read; it only stops the frame moving.
+
+   `padding-inline` rather than a margin, so the padding is inside the max-width
+   and a full-bleed child can cancel it without escaping the frame. */
+.shell {
+    width: 100%;
+    max-width: var(--shell);
+    margin-inline: auto;
+    padding-inline: var(--space-4);
+}
+
+@media (max-width: 600px) {
+    .shell {
+        padding-inline: var(--space-3);
+    }
+}
+
 /* Every interactive thing has to be visibly reachable from a keyboard. The
    outline is drawn outside the element so it never covers what it marks. */
 :focus-visible {
