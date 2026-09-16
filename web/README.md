@@ -136,7 +136,7 @@ souq or old quarter that people in that country know by name, where the stalls,
 shops and doors inside have no address of their own and are found by landmark.
 That is the problem the format exists for, so it is what a visitor is shown.
 Not a religious site, not in territory two states contest, and not a shopping
-centre, whose units are numbered. Up to three a country, first line first. 171
+centre, whose units are numbered. Up to three a country, first line first. 170
 of them, across 107 countries. Countries that already use a national digital
 addressing system are added last.
 
@@ -175,6 +175,12 @@ in a bigger town across the harbour; the nearest puts a market in an old city in
 whichever ward's centre is a little closer. GeoNames records Camayenne, one
 neighbourhood of Conakry, with nearly the whole city's population, so that
 record is ignored.
+
+A market's point is where the code on its page names, and that page says the
+code is one spot in the market, so the point has to be in it. Wikidata's stated
+precision is no guide (a street given to six decimals claims 1.3 km), so points
+given to two or three decimals were checked against OpenStreetMap. Aleppo's
+Al-Madina Souq was left out: its point is 600 m from the souq's lanes.
 
 The script will not write a file it cannot check. A title that does not resolve,
 a place whose country does not match, or one carrying a religion statement

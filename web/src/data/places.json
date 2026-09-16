@@ -3053,21 +3053,6 @@
   },
   {
    "kind": "featured",
-   "iso": "SY",
-   "name": "Al-Madina Souq",
-   "region": "Aleppo Governorate",
-   "city": "Aleppo",
-   "near": null,
-   "lat": 36.2,
-   "lon": 37.15,
-   "description": "Souq in Aleppo, Syria",
-   "wikipedia": "Al-Madina Souq",
-   "wikidata": "Q2365332",
-   "country": "Syria",
-   "slug": "syria/al-madina-souq"
-  },
-  {
-   "kind": "featured",
    "iso": "TG",
    "name": "Lomé Grand Market",
    "region": "Maritime",

@@ -154,7 +154,6 @@ SO  Bakaara Market
 SR  Central Market (Paramaribo)
 SY  Al-Hamidiyah Souq
 SY  Midhat Pasha Souq
-SY  Al-Madina Souq
 TG  Lomé Grand Market
 TH  Chatuchak Weekend Market
 TH  Pak Khlong Talat
