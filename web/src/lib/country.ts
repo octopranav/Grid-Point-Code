@@ -6,7 +6,7 @@
 // **Asked of a lookup service, first.** A connection's country is the most
 // accurate answer available without asking the reader for their location, and
 // a hero that opened with a permission prompt would be a worse front page than
-// one showing somebody else's waterfall. Two free services, no key, each
+// one showing a market in somebody else's country. Two free services, no key, each
 // answering with a country code and nothing else; the second is asked only if
 // the first does not answer in time.
 //
@@ -32,7 +32,9 @@ const SERVICES = [
 
 /** One place, as much of it as a hero or a playground needs. */
 export interface Shown {
+    kind: 'featured' | 'sight' | 'city';
     name: string;
+    city: string | null;
     region: string | null;
     country: string;
     lat: number;
@@ -136,6 +138,8 @@ export async function placesFor(iso: string | null, fallback: string): Promise<S
     return [];
 }
 
-/** "Horseshoe Falls, Canada": the name and the country, which is the point. */
-export const label = (place: Shown): string =>
-    place.name === place.country ? place.name : `${place.name}, ${place.country}`;
+/** "Manek Chowk, Ahmedabad, India": the name, its city and the country. */
+export function label(place: Shown): string {
+    const parts = [place.name, place.city, place.country].filter(Boolean) as string[];
+    return parts.filter((part, at) => part !== parts[at - 1]).join(', ');
+}

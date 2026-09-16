@@ -59,14 +59,23 @@ to run against a stylesheet that has drifted from it.
 
 ## The hero, and the order it loads in
 
-The front page shows a coordinate arriving one character at a time, on two
-surfaces that show the same step.
+The front page shows an address arriving one character at a time, on two
+surfaces that show the same step. It opens on a market in the visitor's own
+country, says how that place is found without a code (a name, a city, and then
+directions) and how its code is said aloud, and offers to code the reader's own
+door.
 
-The **plate** is a drawing of the subdivision the current level performs: the
-world four by six, everything under it five by five, with the containing cell
-lit. It is rendered on the server, it is exact, and it needs no network, no
-basemap and no JavaScript. Without a script it stands still at level one, which
-is a true and complete statement on its own.
+The descent starts from a city, not from the world. Level four is a cell about
+40 km across, and the three characters above it (continents, countries,
+regions) are filled in from the start: nobody gives directions in those, and a
+story that spends its first three seconds on them is about the grid rather than
+the door.
+
+The **plate** is a drawing of the subdivision the current level performs, five
+by five, with the containing cell lit. It is rendered on the server, it is
+exact, and it needs no network, no basemap and no JavaScript. Without a script
+it stands still at level four, which is a true and complete statement on its
+own.
 
 The **map** is the geographic version of the same step. It arrives afterwards,
 over the plate, and its absence costs the page nothing. If the tiles fail, or
@@ -119,23 +128,34 @@ country, and every place the site knows has a page of its own under `/play`,
 titled the way somebody would search for it:
 `Toronto, Ontario, Canada · #G3RJF-4318R`.
 
-### Two sets
+### Three sets
 
 **Featured places** are chosen by hand, in
-[`scripts/featured-places.txt`](scripts/featured-places.txt): somewhere people
-travel to see, with no street address, that is not a religious site and not in
-territory two states contest. Up to three a country, first line first. 357 of
-them, across 164 countries.
+[`scripts/featured-places.txt`](scripts/featured-places.txt): a market, bazaar,
+souq or old quarter that people in that country know by name, where the stalls,
+shops and doors inside have no address of their own and are found by landmark.
+That is the problem the format exists for, so it is what a visitor is shown.
+Not a religious site, not in territory two states contest, and not a shopping
+centre, whose units are numbered. Up to three a country, first line first. 171
+of them, across 107 countries. Countries that already use a national digital
+addressing system are added last.
+
+**Sights** are in [`scripts/sights.txt`](scripts/sights.txt): famous places
+with no address at all, such as waterfalls, canyons and ruins. 357 of them,
+across 164 countries. They were the first featured set, and they keep their
+pages because people search for them, but none is what the site opens on. A
+waterfall has no door to give an address to.
 
 **Cities** are chosen by rule: every national capital, every city of half a
-million or more, and every regional capital of a quarter million or more. 1,676
+million or more, and every regional capital of a quarter million or more. 1,675
 of them, across 240 countries. A country with no featured place opens on its
 capital.
 
 ### The choice is made by a person; the facts are not
 
-A featured place is listed by its English Wikipedia title, because a title
-resolves to exactly one Wikidata item through Wikipedia's own redirects. A name
+A featured place or sight is listed by its English Wikipedia title, because a
+title resolves to exactly one Wikidata item through Wikipedia's own redirects. A
+Wikidata item (`Q12345`) is accepted too, for a market with no English article. A name
 search was tried first and matched "Petra" to a given name, "Gullfoss" and
 "Moraine Lake" to unrelated items with no links at all, which is why the list is
 of titles.
@@ -145,12 +165,22 @@ from Wikidata, reading only statements that are current, so Lake Baikal is not
 disqualified for once having been in the Soviet Union. It takes the region by
 walking Wikidata's administrative hierarchy to the country, because the nearest
 town is a poor guide to a state: the nearest town to Old Faithful is in Montana.
-It takes the nearby town from GeoNames, only from the listed country, because
-taking the nearest place of any country put Horseshoe Falls in New York.
+It takes a sight's nearby town from GeoNames, only from the listed country,
+because taking the nearest place of any country put Horseshoe Falls in New York.
+
+A market's city is the GeoNames place within 12 km with the most people for its
+distance, capitals counted double. Neither simpler rule worked. The largest
+place in reach put the souq in Manama in Al Muharraq and the market in Valletta
+in a bigger town across the harbour; the nearest puts a market in an old city in
+whichever ward's centre is a little closer. GeoNames records Camayenne, one
+neighbourhood of Conakry, with nearly the whole city's population, so that
+record is ignored.
 
 The script will not write a file it cannot check. A title that does not resolve,
-a place whose country does not match, or one carrying a religion statement or a
-street address stops the run and says which. What it cannot catch is a title
+a place whose country does not match, or one carrying a religion statement
+stops the run and says which, and so does a sight with a street address. A
+market with one is listed for review instead: the market as a whole can have an
+address while none of the stalls inside it do. What it cannot catch is a title
 that resolves cleanly to the wrong thing, and that is found by reading the
 output: the first pass turned "Trafalgar Falls" into a village and "Maracas Bay"
 into the whole island of Trinidad.
@@ -190,6 +220,22 @@ is not remembered, so the services are asked again next time.
 
 A country's places are fetched as `/places/<ISO>.json`, a few hundred bytes,
 rather than shipping the whole set to every visitor.
+
+## Giving an address
+
+A place page leads with the address in use there today, then the code, then the
+code as it is said: `Khan el-Khalili 66194`, a name both people know and the last
+five characters. The page gives the distance within which those five recover
+the exact code, computed for that latitude, and says plainly that further away
+they name somewhere else.
+
+The playground's link can carry directions: `?c=J7MNH66194&n=Blue+gate`. They
+are part of the address being handed over, the part a ten-character code cannot
+say, so they ride in the link and in the QR code made from it. Nothing about
+them is stored anywhere else, which is why the link is capped at 80 characters
+of them: a square code grows with every character, and one too dense to scan
+from a doorway defeats the reason it is there. A link with directions and no
+code shows no directions, since there is nothing for them to be directions to.
 
 ## The landmarks
 
