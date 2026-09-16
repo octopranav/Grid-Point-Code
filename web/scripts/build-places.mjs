@@ -20,26 +20,16 @@
 // https://download.geonames.org/export/dump/. Run it by hand when the list
 // changes; the output is committed, so a build never reaches for the network.
 //
-// Three sets, for three jobs.
+// Two sets, for two jobs.
 //
-// **Featured places** are what a visitor is shown first: a market, a bazaar,
-// an old quarter in their own country. Somewhere busy and well known where
-// the stalls, shops and doors have no address of their own, and directions are
-// given the way they are given there: beside this, behind that. That is the
-// problem the format exists for, so it is the example a visitor is shown. Not
-// a religious site, and not in territory two states contest.
-//
-// **Sights** are famous places with no address at all: waterfalls, canyons,
-// ruins. They keep a page each, because people search for them, but they are
-// not what the site opens on. A waterfall has no door to give an address to.
-//
-// Both are chosen by a person, in featured-places.txt and sights.txt, one
-// English Wikipedia title or Wikidata item per line. Every fact about a choice
-// is read, not typed: the title resolves through Wikipedia's own redirects to
-// exactly one Wikidata item, and its coordinates, its country and its region
-// come from there and from GeoNames. A name search was tried first and
-// resolved "Petra" to a given name, which is why the title is the key. An item
-// is accepted too, for a market with no English article.
+// **Featured places** are what a visitor is shown first: somewhere famous in
+// their own country, with no street address, that is not a religious site and
+// is not in territory two states contest. The choice is made by a person, in
+// featured-places.txt, one English Wikipedia title per line. Every fact about
+// a choice is read, not typed: the title resolves through Wikipedia's own
+// redirects to exactly one Wikidata item, and its coordinates, its country and
+// its region come from there and from GeoNames. A name search was tried first
+// and resolved "Petra" to a given name, which is why the title is the key.
 //
 // **Cities** are what a search engine is shown: every national capital, every
 // city of half a million or more, and every regional capital of a quarter
@@ -48,9 +38,7 @@
 //
 // The script refuses to write anything it cannot check. A title that does not
 // resolve, a place whose country does not match, or one that turns out to carry
-// a religion statement stops the run with the reason. So does a sight with a
-// street address. A market with one is only reported: the market as a whole
-// may have an address while none of the stalls inside it do.
+// a religion statement or a street address stops the run with the reason.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -172,16 +160,11 @@ const unspoken = (label) => {
 };
 
 /**
- * GeoNames records known to be wrong.
- *
- * 2180221, an Auckland suburb with a population of 5,550, placed on the South
- * Island's West Coast. It made Aoraki / Mount Cook "near" it.
- *
- * 2422488, Camayenne, a neighbourhood of Conakry recorded with 1.87 million
- * people, nearly the whole city's. It took a market in Conakry out of Conakry
- * and gave a neighbourhood a page as a city.
+ * A GeoNames record known to be wrong: an Auckland suburb with a population of
+ * 5,550, placed on the South Island's West Coast. It made Aoraki / Mount Cook
+ * "near" it.
  */
-const WRONG_IN_GEONAMES = new Set(['2180221', '2422488']);
+const WRONG_IN_GEONAMES = new Set(['2180221']);
 
 /** Where GeoNames' English name for a country is not the one a reader uses. */
 const COUNTRY_NAMES = {
@@ -333,48 +316,12 @@ async function geonames(dir) {
         return best;
     }
 
-    /**
-     * The city a place is said to be in, within 25 km and the same country.
-     *
-     * Neither the largest nor the nearest. Largest put the souq in Manama in
-     * Al Muharraq, across the water, and the market in Valletta in a larger
-     * town on the far side of Malta; nearest puts a market in an old city in
-     * whichever ward's centre is a little closer. People divided by distance
-     * weighs both: a capital a few hundred metres away beats a bigger town ten
-     * kilometres off, and a city of millions beats the ward next door. A
-     * capital counts double, because a capital is what a place is called by:
-     * Valletta has fewer people than the town across its harbour, and its
-     * market is still in Valletta. The reach is wide because a big city's
-     * recorded point can be far from its old centre: Mumbai's is 14 km from
-     * Crawford Market and Dubai's 21 km from the souks, and a 12 km reach put
-     * them in a village and a neighbourhood. Sections of a city and abandoned
-     * places are not cities.
-     */
-    const NOT_A_CITY = new Set(['PPLX', 'PPLH', 'PPLQ', 'PPLW']);
-    function cityOf(lat, lon, iso) {
-        let best = null;
-        for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-                for (const c of grid.get(`${Math.floor(lat) + dy},${Math.floor(lon) + dx}`) ?? []) {
-                    if (c.iso !== iso || NOT_A_CITY.has(c.code)) continue;
-                    const d = km([lat, lon], [c.lat, c.lon]);
-                    if (d > 25) continue;
-                    const weight = (c.code === 'PPLC' ? 2 : 1) * c.population / (1 + d);
-                    if (!best || weight > best.weight) best = { weight, name: c.name };
-                }
-            }
-        }
-        return best?.name ?? null;
-    }
-
-    return { countries, regions, cities, nearest, cityOf };
+    return { countries, regions, cities, nearest };
 }
 
-// ── featured places and sights ───────────────────────────────────────────────
+// ── featured places ──────────────────────────────────────────────────────────
 
-const ITEM = /^Q\d+$/;
-
-async function chosen(listPath, kind, geo) {
+async function featured(listPath, geo) {
     const wanted = [];
     for (const raw of (await readFile(listPath, 'utf8')).split('\n')) {
         const line = raw.trim();
@@ -383,15 +330,11 @@ async function chosen(listPath, kind, geo) {
         wanted.push({ iso, title: rest.join(' ') });
     }
 
-    // Title to item, through Wikipedia's own normalisation and redirects. An
-    // item is its own answer.
+    // Title to item, through Wikipedia's own normalisation and redirects.
     const qidOf = new Map();
     const pageOf = new Map();
     const problems = [];
-    const reported = [];
-    for (const w of wanted) if (ITEM.test(w.title)) qidOf.set(w.title, w.title);
-    const titles = wanted.map((w) => w.title).filter((t) => !ITEM.test(t));
-    for (const batch of batches([...new Set(titles)])) {
+    for (const batch of batches([...new Set(wanted.map((w) => w.title))])) {
         const data = await get('https://en.wikipedia.org/w/api.php?' + new URLSearchParams({
             action: 'query', format: 'json', redirects: '1', prop: 'pageprops',
             ppprop: 'wikibase_item|disambiguation', titles: batch.join('|'),
@@ -510,7 +453,7 @@ async function chosen(listPath, kind, geo) {
 
         if (current(e.claims, 'P140').length) problems.push(`${iso} ${title}: carries a religion statement`);
         if (current(e.claims, 'P6375').length || current(e.claims, 'P669').length) {
-            (kind === 'sight' ? problems : reported).push(`${iso} ${title}: has a street address`);
+            problems.push(`${iso} ${title}: has a street address`);
         }
         const ruled = types.filter((t) => RULED_OUT.some((w) => t.toLowerCase().includes(w)));
         if (ruled.length) problems.push(`${iso} ${title}: is a ${ruled.join(', ')}`);
@@ -525,35 +468,18 @@ async function chosen(listPath, kind, geo) {
             ?? (home && home.km <= 150 ? geo.regions.get(`${iso}.${home.city.admin1}`) : null);
         if (unspoken(region) || region === geo.countries.get(iso)) region = null;
 
-        const article = pageOf.get(title) ?? e.sitelinks?.enwiki?.title;
-        const label = article ?? e.labels?.en?.value;
-        if (!label) { problems.push(`${iso} ${title}: has no English name`); continue; }
-        let name = display(label, geo.countries.get(iso));
-        // Only a market is said to be in a city. A sight is out of town, and
-        // the place within reach of a mountain with the most people is a
-        // village that happens to be near its summit, not an address anyone
-        // uses. A city-state's city is its country, and is said once.
-        let city = kind === 'featured' ? geo.cityOf(lat, lon, iso) : null;
-        if (city === geo.countries.get(iso) || city === name) city = null;
-        // "Grand Bazaar, Tehran" is the Grand Bazaar, in Tehran: the city is
-        // said once, where every other place says it.
-        if (city && name.endsWith(`, ${city}`)) name = name.slice(0, -`, ${city}`.length);
+        const name = display(pageOf.get(title), geo.countries.get(iso));
         places.push({
-            kind, iso, name, region,
-            city,
-            // A sight is out of town, so the town it is near is worth saying.
-            // A market is in one, and the city already says which.
-            near: kind === 'sight' && town && town.km <= 60 && town.city.name !== name
-                ? town.city.name
-                : null,
+            kind: 'featured', iso, name, region,
+            near: town && town.km <= 60 && town.city.name !== name ? town.city.name : null,
             lat, lon,
             description: e.descriptions?.en?.value ?? null,
-            ...(article ? { wikipedia: article } : {}),
+            wikipedia: pageOf.get(title),
             wikidata: id,
         });
     }
 
-    return { places, problems, reported };
+    return { places, problems };
 }
 
 // ── cities ───────────────────────────────────────────────────────────────────
@@ -574,7 +500,7 @@ function cities(geo) {
         let region = geo.regions.get(`${c.iso}.${c.admin1}`) ?? null;
         if (unspoken(region) || region === c.name || region === geo.countries.get(c.iso)) region = null;
         chosen.push({
-            kind: 'city', iso: c.iso, name: c.name, region, city: null, near: null,
+            kind: 'city', iso: c.iso, name: c.name, region, near: null,
             lat: Number(c.lat.toFixed(6)), lon: Number(c.lon.toFixed(6)),
             population: c.population, capital: c.code === 'PPLC',
         });
@@ -595,8 +521,7 @@ function address(places, countries) {
     for (const [key, group] of byKey) {
         if (group.length === 1) { group[0].slug = key; continue; }
         // Two Suzhous: the region tells them apart, and failing that the kind.
-        // Two Grand Bazaars: the city does, before the region.
-        for (const p of group) p.slug = `${key}-${slugify(p.city ?? p.region ?? p.kind)}`;
+        for (const p of group) p.slug = `${key}-${slugify(p.region ?? p.kind)}`;
         const seen = new Map();
         for (const p of group) {
             const n = (seen.get(p.slug) ?? 0) + 1;
@@ -646,32 +571,17 @@ async function main() {
     const out = argument('out', path.join(web, 'src', 'data', 'places.json'));
 
     const geo = await geonames(dir);
-    const picked = await chosen(path.join(here, 'featured-places.txt'), 'featured', geo);
-    const sights = await chosen(path.join(here, 'sights.txt'), 'sight', geo);
-    const problems = [...picked.problems, ...sights.problems];
-    if (problems.length) {
-        console.error('Not written. These need a decision in featured-places.txt or sights.txt:\n');
-        for (const p of problems) console.error('  ' + p);
-        process.exit(1);
-    }
-
-    // A place in both lists is a mistake in one of them.
-    const listed = new Set(picked.places.map((p) => p.wikidata));
-    const twice = sights.places.filter((p) => listed.has(p.wikidata));
-    if (twice.length) {
-        console.error('Not written. Listed as both featured and a sight:\n');
-        for (const p of twice) console.error(`  ${p.iso} ${p.name}`);
+    const picked = await featured(path.join(here, 'featured-places.txt'), geo);
+    if (picked.problems.length) {
+        console.error('Not written. These need a decision in featured-places.txt:\n');
+        for (const p of picked.problems) console.error('  ' + p);
         process.exit(1);
     }
 
     const town = cities(geo);
-    const places = [...picked.places, ...sights.places, ...town.chosen];
-    // The article title too. Wikipedia keeps a hyphenated redirect for a
-    // title with a dash in it, so the plain spelling still reaches the article.
+    const places = [...picked.places, ...town.chosen];
     for (const p of places) {
-        for (const field of ['name', 'region', 'city', 'near', 'description', 'wikipedia']) {
-            p[field] = plain(p[field]);
-        }
+        for (const field of ['name', 'region', 'near', 'description']) p[field] = plain(p[field]);
     }
     for (const [iso, name] of geo.countries) geo.countries.set(iso, plain(name));
     address(places, geo.countries);
@@ -690,7 +600,7 @@ async function main() {
     const document = {
         about: [
             'Generated by web/scripts/build-places.mjs. Do not edit by hand: change',
-            'featured-places.txt, sights.txt or the rules in that script, and run it again.',
+            'featured-places.txt or the rules in that script, and run it again.',
             'Places from Wikidata (CC0) and GeoNames (CC BY 4.0).',
         ],
         countries: Object.fromEntries(Object.entries(countries).sort()),
@@ -704,13 +614,8 @@ async function main() {
     const featuredCountries = new Set(picked.places.map((p) => p.iso));
     console.log(`wrote ${path.relative(web, out)}`);
     console.log(`  ${picked.places.length} featured places in ${featuredCountries.size} countries`);
-    console.log(`  ${sights.places.length} sights in ${new Set(sights.places.map((p) => p.iso)).size} countries`);
     console.log(`  ${town.chosen.length} cities in ${new Set(town.chosen.map((c) => c.iso)).size} countries`);
     console.log(`  ${Object.keys(document.zones).length} timezones`);
-    if (picked.reported.length) {
-        console.log(`\n  ${picked.reported.length} featured places with an address of their own, for review:`);
-        for (const line of picked.reported) console.log('    ' + line);
-    }
     if (town.excluded.length) {
         console.log(`\n  ${town.excluded.length} cities left out as contested, for review:`);
         for (const line of town.excluded) console.log('    ' + line);

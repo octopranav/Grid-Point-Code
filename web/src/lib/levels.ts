@@ -31,14 +31,6 @@ export const LEVEL_NAMES = [
     'Doorway',
 ] as const;
 
-/**
- * Where a place's story starts: level four, a cell about 40 km across, which is
- * the size of a city. The three above it are continents, countries and regions,
- * and say nothing about where a door is, so the hero and the place pages begin
- * here and walk down to the doorway.
- */
-export const CITY_LEVEL = 4;
-
 export interface LevelCell {
     /** 1 for the coarsest cell, 10 for the doorway. */
     level: number;

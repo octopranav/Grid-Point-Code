@@ -19,7 +19,6 @@ import CodeMark from './CodeMark.astro';
 import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
 import { BASEMAPS } from '../lib/basemap';
 import { FORMS, PAD } from '../lib/forms';
-import { NOTE_MOST } from '../lib/permalink';
 import { DEFAULT_COUNTRY, shownFor } from '../lib/places';
 
 // Where the panel stands before it knows the visitor's country, and where it
@@ -115,10 +114,6 @@ const code = GPC.encode(START.latitude, START.longitude);
                 </button>
             </div>
 
-            <p class="directions" data-directions hidden>
-                <span class="label">Directions</span>{' '}<span data-directions-text></span>
-            </p>
-
             <p class="note" data-code-note></p>
         </div>
 
@@ -143,7 +138,7 @@ const code = GPC.encode(START.latitude, START.longitude);
                             <path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"></path>
                             <circle cx="12" cy="10" r="2.6"></circle>
                         </svg>
-                        Code my door
+                        Use my location
                     </button>
                     <p class="note" data-locate-note></p>
                     <p class="advisory" data-advisory hidden></p>
@@ -203,24 +198,13 @@ const code = GPC.encode(START.latitude, START.longitude);
             </details>
 
             <details class="group" name="playground">
-                <summary>Give this address</summary>
+                <summary>Share this place</summary>
                 <div class="body">
                     <p class="note quiet">
-                        A link to this exact cell, carrying directions when you add them.
-                        Scanning the square opens this page here. Nothing is kept on this
-                        site: the directions exist only in the link.
+                        A link to this exact cell. Scanning it opens the playground here,
+                        which is the whole of what is being shared. The coordinates are
+                        under "Also written as" for handing to a map instead.
                     </p>
-                    <label>
-                        <span class="label">Directions, if the code needs help</span>
-                        <input
-                            class="words"
-                            type="text"
-                            maxlength={NOTE_MOST}
-                            autocomplete="off"
-                            placeholder="Blue gate, second floor"
-                            data-note
-                        />
-                    </label>
                     <div class="share">
                         <span class="code address" data-address>—</span>
                         <button
@@ -297,7 +281,7 @@ const code = GPC.encode(START.latitude, START.longitude);
     import { GPC, CodeClass } from '@pranavpatel.ca/algo-gridpointcode';
     import { resolve, neighbourhood, type LevelCell } from '../lib/levels';
     import { FORMS, COMPASS, aloud } from '../lib/forms';
-    import { addressOf, codeIn, linkTo, noteIn, tidyNote } from '../lib/permalink';
+    import { addressOf, codeIn, linkTo } from '../lib/permalink';
     import { qrFor } from '../lib/qr';
     import { visitorCountry, placesFor } from '../lib/country';
     import { search, type Place } from '../lib/search';
@@ -343,7 +327,7 @@ const code = GPC.encode(START.latitude, START.longitude);
             latitude: number;
             longitude: number;
         };
-        const fallbackCountry = section.dataset.defaultCountry ?? 'EG';
+        const fallbackCountry = section.dataset.defaultCountry ?? 'PE';
 
         const mapHolder = section.querySelector<HTMLElement>('[data-map]')!;
         const hint = section.querySelector<HTMLElement>('[data-hint]')!;
@@ -365,13 +349,6 @@ const code = GPC.encode(START.latitude, START.longitude);
         const addressLine = section.querySelector<HTMLElement>('[data-address]')!;
         const addressCopy = section.querySelector<HTMLButtonElement>('[data-copy-address]')!;
         const qrFigure = section.querySelector<HTMLElement>('[data-qr]')!;
-        const noteField = section.querySelector<HTMLInputElement>('[data-note]')!;
-        const directionsLine = section.querySelector<HTMLElement>('[data-directions]')!;
-        const directionsText = section.querySelector<HTMLElement>('[data-directions-text]')!;
-
-        // Directions arrive only with the code they describe. A link carrying
-        // words and no code has nothing for them to be directions to.
-        if (codeIn(location.search) !== null) noteField.value = noteIn(location.search);
         const copyLabel = section.querySelector<HTMLElement>('[data-copy-label]')!;
         const basemapChooser = section.querySelector<HTMLSelectElement>('[data-basemap]')!;
         const aloudLine = section.querySelector<HTMLElement>('[data-aloud]')!;
@@ -425,9 +402,6 @@ const code = GPC.encode(START.latitude, START.longitude);
                 // one place and the map showing another.
                 button.addEventListener('click', () => {
                     const [latitude, longitude] = GPC.decode(hit.code);
-                    // Somewhere else by name is a different door, and the
-                    // directions written for the last one would mislead.
-                    noteField.value = '';
                     place(latitude, longitude, 'elsewhere');
                     findEntry.value = '';
                     foundList.hidden = true;
@@ -495,35 +469,6 @@ const code = GPC.encode(START.latitude, START.longitude);
          * the clipboard holding a code from several minutes ago -- which looks
          * exactly like the button handing back a stale answer.
          */
-        /**
-         * The link, the square made from it, and the directions shown back.
-         *
-         * They are the same fact three times, so they are written together and
-         * from nowhere else. A square that outlives its code, or directions
-         * that outlive their link, send someone to the wrong door.
-         */
-        function writeAddress() {
-            const said = tidyNote(noteField.value);
-            directionsText.textContent = said;
-            directionsLine.hidden = code === null || said === '';
-
-            const address = code === null ? null : addressOf(code, location, said);
-            addressLine.textContent = address ?? '—';
-            addressCopy.disabled = address === null;
-            qrFigure.hidden = address === null;
-            if (address !== null) {
-                const caption = qrFigure.querySelector('figcaption')!;
-                qrFigure.replaceChildren();
-                qrFigure.insertAdjacentHTML('afterbegin', qrFor(address));
-                qrFigure.append(caption);
-            }
-        }
-
-        noteField.addEventListener('input', () => {
-            writeAddress();
-            if (code !== null) rememberInUrl(code);
-        });
-
         function setCode(value: string | null, latitude?: number, longitude?: number) {
             code = value;
 
@@ -541,7 +486,20 @@ const code = GPC.encode(START.latitude, START.longitude);
             linkButton.disabled = value === null;
             linkLabel.textContent = 'Link';
 
-            writeAddress();
+            // The link and the square are the same fact twice, so they are
+            // written together, here, where everything else derived from the
+            // code is written. A QR that outlives its code is a scan that
+            // silently sends someone to the wrong place.
+            const address = value === null ? null : addressOf(value, location);
+            addressLine.textContent = address ?? '—';
+            addressCopy.disabled = address === null;
+            qrFigure.hidden = address === null;
+            if (address !== null) {
+                const caption = qrFigure.querySelector('figcaption')!;
+                qrFigure.replaceChildren();
+                qrFigure.insertAdjacentHTML('afterbegin', qrFor(address));
+                qrFigure.append(caption);
+            }
 
             // Everything below is derived from the code, so it is computed here
             // and nowhere else. Any form updated somewhere else is a form that
@@ -829,7 +787,7 @@ const code = GPC.encode(START.latitude, START.longitude);
         addressCopy.addEventListener('click', async () => {
             if (code === null) return;
             try {
-                await navigator.clipboard.writeText(addressOf(code, location, noteField.value));
+                await navigator.clipboard.writeText(addressOf(code, location));
             } catch {
                 /* a refused clipboard is not worth a message; the link is shown */
             }
@@ -838,7 +796,7 @@ const code = GPC.encode(START.latitude, START.longitude);
         linkButton.addEventListener('click', async () => {
             if (code === null) return;
             try {
-                await navigator.clipboard.writeText(addressOf(code, location, noteField.value));
+                await navigator.clipboard.writeText(addressOf(code, location));
                 linkLabel.textContent = 'Copied';
             } catch {
                 // A refused clipboard is not an error worth a message: the
@@ -1229,7 +1187,7 @@ const code = GPC.encode(START.latitude, START.longitude);
          */
         function rememberInUrl(value: string) {
             try {
-                history.replaceState(null, '', linkTo(value, noteField.value));
+                history.replaceState(null, '', linkTo(value));
             } catch {
                 /* a browser refusing history is no reason to stop working */
             }
@@ -2100,25 +2058,6 @@ const code = GPC.encode(START.latitude, START.longitude);
         justify-content: space-between;
         gap: var(--space-2);
     }
-
-    /* Directions are words, not a code, so they are set like words. */
-    .words {
-        font-family: inherit;
-        letter-spacing: normal;
-        font-variant-numeric: normal;
-    }
-
-    .directions {
-        margin: 0;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: baseline;
-        gap: var(--space-1);
-        color: var(--ink);
-        max-width: none;
-    }
-
-    .directions[hidden] { display: none; }
 
     .address {
         overflow-wrap: anywhere;
