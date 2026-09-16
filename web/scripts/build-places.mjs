@@ -334,7 +334,7 @@ async function geonames(dir) {
     }
 
     /**
-     * The city a place is said to be in, within 25 km and the same country.
+     * The city a place is said to be in, within 12 km and the same country.
      *
      * Neither the largest nor the nearest. Largest put the souq in Manama in
      * Al Muharraq, across the water, and the market in Valletta in a larger
@@ -344,11 +344,8 @@ async function geonames(dir) {
      * kilometres off, and a city of millions beats the ward next door. A
      * capital counts double, because a capital is what a place is called by:
      * Valletta has fewer people than the town across its harbour, and its
-     * market is still in Valletta. The reach is wide because a big city's
-     * recorded point can be far from its old centre: Mumbai's is 14 km from
-     * Crawford Market and Dubai's 21 km from the souks, and a 12 km reach put
-     * them in a village and a neighbourhood. Sections of a city and abandoned
-     * places are not cities.
+     * market is still in Valletta. Sections of a city and abandoned places are
+     * not cities.
      */
     const NOT_A_CITY = new Set(['PPLX', 'PPLH', 'PPLQ', 'PPLW']);
     function cityOf(lat, lon, iso) {
@@ -358,7 +355,7 @@ async function geonames(dir) {
                 for (const c of grid.get(`${Math.floor(lat) + dy},${Math.floor(lon) + dx}`) ?? []) {
                     if (c.iso !== iso || NOT_A_CITY.has(c.code)) continue;
                     const d = km([lat, lon], [c.lat, c.lon]);
-                    if (d > 25) continue;
+                    if (d > 12) continue;
                     const weight = (c.code === 'PPLC' ? 2 : 1) * c.population / (1 + d);
                     if (!best || weight > best.weight) best = { weight, name: c.name };
                 }

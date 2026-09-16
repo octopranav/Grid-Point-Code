@@ -185,15 +185,3 @@ VN  Bình Tây Market
 XK  Bazaar of Pristina
 ZA  Greenmarket Square
 ZW  Mbare Musika
-
-# Countries already using a national digital addressing system.
-
-AE  Dubai Spice Souk
-GH  Makola Market
-GM  Albert Market
-IN  Manek Chowk (Ahmedabad)
-IN  Chandni Chowk
-IN  Crawford Market
-MN  Narantuul Market
-NG  Balogun Market
-SA  Souq al-Zal
