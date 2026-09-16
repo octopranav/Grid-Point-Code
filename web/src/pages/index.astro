@@ -1,12 +1,15 @@
 ---
 import Base from '../layouts/Base.astro';
 import Resolve from '../components/Resolve.astro';
-import { resolve, SAMPLES } from '../lib/levels';
+import { resolve } from '../lib/levels';
+import { DEFAULT_COUNTRY, shownFor } from '../lib/places';
 
 // The ladder is the same ten cells the hero steps through, standing still.
 // computed by the package published to npm rather than written out here, so a
 // release that changed a cell size would change this table or fail the build.
-const { levels } = resolve(SAMPLES[0].latitude, SAMPLES[0].longitude);
+// It starts on the hero's opening place and follows the hero from there.
+const start = shownFor(DEFAULT_COUNTRY)[0];
+const { levels } = resolve(start.lat, start.lon);
 
 const description =
     'Ten characters name any location on Earth. Encoding and decoding are arithmetic, ' +
@@ -26,7 +29,7 @@ const description =
             </p>
         </div>
 
-        <ol class="levels">
+        <ol class="levels" data-ladder>
             {levels.map(({ level, symbol, name, size }) => (
                 <li>
                     <span class="tint" data-level={level} aria-hidden="true">{symbol}</span>
@@ -38,6 +41,19 @@ const description =
         </ol>
     </section>
 </Base>
+
+<script>
+    // The sizes are the same for every place, because a level is a level; the
+    // characters are not. When the hero moves to somewhere else, the symbol
+    // column moves with it, so the two never describe different codes.
+    const ladder = document.querySelector<HTMLElement>('[data-ladder]');
+    document.addEventListener('gpc:place', (event) => {
+        const symbols = (event as CustomEvent<{ symbols: string }>).detail.symbols;
+        ladder?.querySelectorAll<HTMLElement>('.tint').forEach((tint, index) => {
+            tint.textContent = symbols[index] ?? '';
+        });
+    });
+</script>
 
 <style>
     .ladder {

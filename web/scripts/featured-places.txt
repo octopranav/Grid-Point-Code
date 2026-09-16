@@ -1,0 +1,368 @@
+# Featured places, by country.
+#
+# One line each: the ISO 3166-1 code a visitor's connection reports, then the
+# English Wikipedia title of the place. The first line for a country is the one
+# its visitors see first. Every fact about a place (where it is, what it is,
+# what country it is in) is read from Wikidata and GeoNames and checked; only
+# the choice is made here.
+#
+# The rule for a choice: somewhere people travel to see, with no street
+# address, that is not a religious site and not in contested territory.
+
+AD  Madriu-Perafita-Claror Valley
+AE  Jebel Jais
+AE  Jebel Hafeet
+AE  Liwa Oasis
+AF  Band-e Amir National Park
+AF  Minaret of Jam
+AL  Butrint
+AL  Blue Eye, Albania
+AL  Valbonë Valley National Park
+AM  Lake Sevan
+AM  Mount Aragats
+AO  Kalandula Falls
+AO  Tundavala Gap
+AR  Perito Moreno Glacier
+AR  Iguazu Falls
+AR  Aconcagua
+AT  Grossglockner
+AT  Krimml Waterfalls
+AT  Hallstätter See
+AU  Twelve Apostles (Victoria)
+AU  Three Sisters (Australia)
+AU  Kings Canyon (Northern Territory)
+AW  Arikok National Park
+AZ  Gobustan State Reserve
+AZ  Yanar Dag
+AZ  Göygöl National Park
+BA  Kravica (waterfall)
+BA  Una National Park
+BA  Vjetrenica
+BB  Harrison's Cave
+BB  Animal Flower Cave
+BD  Ratargul Swamp Forest
+BD  Inani Beach
+BE  Caves of Han-sur-Lesse
+BE  High Fens
+BF  Cascades de Karfiguéla
+BF  Ruins of Loropéni
+BG  Seven Rila Lakes
+BG  Belogradchik Rocks
+BG  Perperikon
+BH  Tree of Life (Bahrain)
+BH  Qal'at al-Bahrain
+BI  Karera Falls
+BJ  Pendjari National Park
+BN  Ulu Temburong National Park
+BO  Salar de Uyuni
+BO  Tiwanaku
+BO  Laguna Colorada
+BR  Sugarloaf Mountain
+BR  Iguazu Falls
+BR  Lençóis Maranhenses National Park
+BS  Dean's Blue Hole
+BT  Phobjikha Valley
+BW  Okavango Delta
+BW  Chobe National Park
+BW  Tsodilo
+BY  Belovezhskaya Pushcha National Park
+BY  Lake Narach
+BZ  Great Blue Hole
+BZ  Xunantunich
+BZ  Caracol
+CA  Horseshoe Falls
+CA  Moraine Lake
+CA  Lake Louise (Alberta)
+CD  Mount Nyiragongo
+CD  Virunga National Park
+CG  Odzala-Kokoua National Park
+CH  Matterhorn
+CH  Rhine Falls
+CH  Aletsch Glacier
+CI  Taï National Park
+CI  Comoé National Park
+CL  Cordillera del Paine
+CL  Valle de la Luna (Chile)
+CL  Rano Raraku
+CM  Mount Cameroon
+CN  Zhangjiajie National Forest Park
+CN  Mutianyu
+CN  Huangshan
+CO  Caño Cristales
+CO  Ciudad Perdida
+CO  Cocora Valley
+CR  Arenal Volcano
+CR  Irazú Volcano
+CR  Manuel Antonio National Park
+CU  Viñales Valley
+CU  Castillo de San Pedro de la Roca
+CV  Pico do Fogo
+CY  Petra tou Romiou
+CY  Kourion
+CZ  Pravčická brána
+CZ  Macocha Gorge
+CZ  Adršpach-Teplice Rocks
+DE  Königssee
+DE  Bastei
+DE  Zugspitze
+DJ  Lake Assal (Djibouti)
+DJ  Lake Abbe
+DK  Møns Klint
+DK  Grenen
+DM  Boiling Lake
+DO  Pico Duarte
+DO  Saona Island
+DZ  Tassili n'Ajjer
+DZ  Timgad
+DZ  Djémila
+EC  Cotopaxi
+EC  Quilotoa
+EC  Chimborazo
+EE  Jägala Waterfall
+EE  Kaali crater
+EE  Lahemaa National Park
+EG  Giza pyramid complex
+EG  Valley of the Kings
+EG  White Desert National Park
+ES  Teide
+ES  Caminito del Rey
+ES  Caves of Nerja
+ET  Blue Nile Falls
+ET  Simien Mountains National Park
+ET  Dallol (hydrothermal system)
+FI  Koli National Park
+FI  Oulanka National Park
+FJ  Sigatoka Sand Dunes
+FM  Nan Madol
+FO  Sørvágsvatn
+FR  Gorges du Verdon
+FR  Dune of Pilat
+FR  Mont Blanc
+GA  Lopé National Park
+GA  Loango National Park
+GB  Stonehenge
+GB  Giant's Causeway
+GB  Ben Nevis
+GD  Grand Etang (Grenada)
+GE  Uplistsikhe
+GE  Prometheus Cave
+GE  Gachedili Canyon Natural Monument
+GH  Kakum National Park
+GH  Wli Waterfalls
+GH  Mole National Park
+GL  Ilulissat Icefjord
+GR  Navagio
+GR  Samaria Gorge
+GR  Mount Olympus
+GT  Tikal
+GT  Semuc Champey
+GT  Lake Atitlán
+HK  Victoria Peak
+HK  Dragon's Back
+HN  Copán
+HN  Pico Bonito National Park
+HR  Plitvice Lakes National Park
+HR  Krka National Park
+HR  Zlatni Rat
+HT  Citadelle Laferrière
+HU  Lake Hévíz
+HU  Baradla Cave
+ID  Mount Bromo
+ID  Ijen
+ID  Mount Rinjani
+IE  Cliffs of Moher
+IE  Newgrange
+IE  Carrauntoohil
+IL  Makhtesh Ramon
+IL  Rosh HaNikra grottoes
+IL  Timna Valley
+IN  Jog Falls
+IN  Dudhsagar Falls
+IN  Valley of Flowers National Park
+IQ  Babylon
+IQ  Ur
+IQ  Geli Ali Beg Waterfall
+IR  Mount Damavand
+IR  Persepolis
+IR  Badab-e Surt
+IS  Gullfoss
+IS  Strokkur
+IS  Jökulsárlón
+IT  Tre Cime di Lavaredo
+IT  Mount Vesuvius
+IT  Mount Etna
+JM  Dunn's River Falls
+JM  Blue Mountain Peak
+JO  Petra
+JO  Wadi Rum
+JP  Mount Fuji
+JP  Kegon Falls
+JP  Mount Aso
+KE  Mount Kenya
+KE  Hell's Gate National Park
+KE  Lake Nakuru
+KG  Issyk-Kul
+KG  Ala Archa National Park
+KG  Song-Köl
+KH  Tonlé Sap
+KH  Kirirom National Park
+KR  Seongsan Ilchulbong
+KR  Seoraksan
+KR  Hallasan
+KW  Failaka Island
+KZ  Charyn Canyon
+KZ  Big Almaty Lake
+KZ  Kolsay Lakes National Park
+LA  Kuang Si Falls
+LA  Plain of Jars
+LA  Khone Phapheng Falls
+LB  Jeita Grotto
+LC  Pitons (Saint Lucia)
+LK  Sigiriya
+LK  Horton Plains National Park
+LK  Ravana Falls
+LS  Maletsunyane Falls
+LT  Curonian Spit
+LT  Aukštaitija National Park
+LV  Gauja National Park
+LV  Ventas rumba
+LY  Leptis Magna
+LY  Tadrart Acacus
+MA  Ouzoud Falls
+MA  Erg Chebbi
+MA  Todgha Gorge
+ME  Durmitor National Park
+ME  Tara River Canyon
+ME  Lake Skadar
+MG  Avenue of the Baobabs
+MG  Tsingy de Bemaraha National Park
+MK  Matka Canyon
+MK  Lake Ohrid
+ML  Bandiagara Escarpment
+MM  Inle Lake
+MN  Khövsgöl Lake
+MN  Orkhon Valley
+MN  Gorkhi-Terelj National Park
+MT  Blue Grotto (Malta)
+MT  Ħaġar Qim
+MU  Le Morne Brabant
+MU  Seven Coloured Earths
+MW  Mount Mulanje
+MW  Lake Malawi National Park
+MX  Chichen Itza
+MX  Teotihuacan
+MX  Copper Canyon
+MY  Mount Kinabalu
+MY  Gunung Mulu National Park
+MZ  Bazaruto Archipelago
+MZ  Gorongosa National Park
+NA  Sossusvlei
+NA  Fish River Canyon
+NA  Etosha National Park
+NE  Aïr Mountains
+NG  Zuma Rock
+NG  Olumo Rock
+NI  Masaya Volcano
+NI  Cerro Negro
+NL  Hoge Veluwe National Park
+NO  Preikestolen
+NO  Geirangerfjord
+NO  Trolltunga
+NP  Mount Everest
+NP  Phewa Lake
+NZ  Milford Sound
+NZ  Aoraki / Mount Cook
+NZ  Lake Tekapo
+OM  Jebel Shams
+OM  Bimmah Sinkhole
+PA  Coiba National Park
+PA  Volcán Barú
+PE  Machu Picchu
+PE  Vinicunca
+PE  Colca Canyon
+PF  Mount Otemanu
+PG  Mount Wilhelm
+PH  Chocolate Hills
+PH  Mayon Volcano
+PH  Puerto Princesa Subterranean River National Park
+PK  Mohenjo-daro
+PK  Harappa
+PL  Morskie Oko
+PL  Słowiński National Park
+PR  El Yunque National Forest
+PR  Cueva Ventana
+PT  Ponta da Piedade
+PT  Mount Pico
+PW  Rock Islands
+QA  Khor Al Adaid
+QA  Zubarah
+RE  Piton de la Fournaise
+RO  Scărișoara Cave
+RO  Turda Gorge
+RS  Đavolja Varoš
+RS  Lepenski Vir
+RU  Lake Baikal
+RU  Mount Elbrus
+RU  Valley of Geysers
+RW  Volcanoes National Park
+RW  Nyungwe Forest
+SA  Hegra (Mada'in Salih)
+SC  Vallée de Mai
+SC  Anse Source d'Argent
+SD  Meroë
+SE  Abisko National Park
+SE  Kebnekaise
+SE  Ales stenar
+SG  Bukit Timah Nature Reserve
+SI  Lake Bled
+SI  Postojna Cave
+SI  Triglav
+SK  Slovak Paradise National Park
+SK  Dobšinská Ice Cave
+SN  Lake Retba
+SN  Niokolo-Koba National Park
+SR  Brownsberg Nature Park
+SV  Joya de Cerén
+SV  Santa Ana Volcano
+SY  Palmyra
+TD  Ennedi Plateau
+TH  Doi Inthanon
+TH  Erawan National Park
+TH  Maya Bay
+TJ  Iskanderkul
+TJ  Fann Mountains
+TN  Amphitheatre of El Jem
+TN  Chott el Djerid
+TR  Pamukkale
+TR  Ephesus
+TR  Mount Nemrut
+TT  Pitch Lake
+TW  Taroko National Park
+TW  Sun Moon Lake
+TW  Yehliu
+TZ  Mount Kilimanjaro
+TZ  Ngorongoro Crater
+TZ  Serengeti National Park
+UA  Hoverla
+UA  Dniester Canyon
+UG  Murchison Falls
+UG  Bwindi Impenetrable National Park
+US  Grand Canyon
+US  Old Faithful
+US  Half Dome
+VE  Angel Falls
+VE  Los Roques archipelago
+VN  Hạ Long Bay
+VN  Sơn Đoòng cave
+VN  Phong Nha-Kẻ Bàng National Park
+VU  Mount Yasur
+XK  Rugova Canyon
+YE  Socotra
+ZA  Table Mountain
+ZA  Blyde River Canyon
+ZA  Cape of Good Hope
+ZM  Victoria Falls
+ZM  South Luangwa National Park
+ZW  Victoria Falls
+ZW  Great Zimbabwe
+ZW  Matobo National Park

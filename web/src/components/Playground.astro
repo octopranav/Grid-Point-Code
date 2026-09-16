@@ -19,12 +19,22 @@ import CodeMark from './CodeMark.astro';
 import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
 import { BASEMAPS } from '../lib/basemap';
 import { FORMS, PAD } from '../lib/forms';
+import { DEFAULT_COUNTRY, shownFor } from '../lib/places';
 
-const START = { latitude: 43.65, longitude: -79.38 };
+// Where the panel stands before it knows the visitor's country, and where it
+// stays for a reader without scripts. The script moves it to somewhere in their
+// own country once it can tell which.
+const opening = shownFor(DEFAULT_COUNTRY)[0];
+const START = { latitude: opening.lat, longitude: opening.lon };
 const code = GPC.encode(START.latitude, START.longitude);
 ---
 
-<section class="playground" data-playground data-start={JSON.stringify(START)}>
+<section
+    class="playground"
+    data-playground
+    data-start={JSON.stringify(START)}
+    data-default-country={DEFAULT_COUNTRY}
+>
     <!-- The page has a name even though the design has nowhere to draw one: a
          full-height instrument has no room for a masthead heading, and a page
          with no h1 leaves anyone navigating by heading with nothing to land on. -->
@@ -273,6 +283,7 @@ const code = GPC.encode(START.latitude, START.longitude);
     import { FORMS, COMPASS, aloud } from '../lib/forms';
     import { addressOf, codeIn, linkTo } from '../lib/permalink';
     import { qrFor } from '../lib/qr';
+    import { visitorCountry, placesFor } from '../lib/country';
     import { search, type Place } from '../lib/search';
     import {
         nearby,
@@ -316,6 +327,7 @@ const code = GPC.encode(START.latitude, START.longitude);
             latitude: number;
             longitude: number;
         };
+        const fallbackCountry = section.dataset.defaultCountry ?? 'PE';
 
         const mapHolder = section.querySelector<HTMLElement>('[data-map]')!;
         const hint = section.querySelector<HTMLElement>('[data-hint]')!;
@@ -651,7 +663,7 @@ const code = GPC.encode(START.latitude, START.longitude);
                     anchorNote.textContent =
                         found.length > 0
                             ? ''
-                            : 'No landmark is near enough to anchor a short form here. Share the full ten characters instead \u2014 they resolve on their own.';
+                            : 'No landmark is near enough to anchor a short form here. Share the full ten characters instead: they resolve on their own.';
                     drawAnchors();
                     void showHeldHere(latitude, longitude, mine);
                 },
@@ -753,7 +765,7 @@ const code = GPC.encode(START.latitude, START.longitude);
                     const area = await keepArea(anchorAt.latitude, anchorAt.longitude);
                     offlineNote.textContent =
                         area.shards === 0
-                            ? 'Nothing to keep here \u2014 this area holds no landmarks.'
+                            ? 'Nothing to keep here: this area holds no landmarks.'
                             : 'Kept ' + area.shards + ' shard' + (area.shards === 1 ? '' : 's')
                               + ' (' + size(area.bytes) + ') around cell ' + area.cell + '.';
                 } catch {
@@ -1505,7 +1517,23 @@ const code = GPC.encode(START.latitude, START.longitude);
                 // watching it resolve is the right way to be shown a place.
                 const shared = codeIn(location.search);
                 if (shared === null) {
-                    place(start.latitude, start.longitude, 'elsewhere');
+                    // No link, so somewhere in the visitor's own country, when
+                    // that can be told in time, and the default otherwise. A
+                    // reader who has started typing while it looked is left
+                    // alone: their entry is the one that counts.
+                    const before = codeField.value;
+                    void (async () => {
+                        const lookup = (async () =>
+                            placesFor(await visitorCountry(), fallbackCountry))();
+                        const found = await Promise.race([
+                            lookup,
+                            new Promise<[]>((done) => setTimeout(() => done([]), 2500)),
+                        ]);
+                        if (codeField.value !== before) return;
+                        const first = found[0];
+                        if (first) place(first.lat, first.lon, 'elsewhere');
+                        else place(start.latitude, start.longitude, 'elsewhere');
+                    })();
                     return;
                 }
                 // Shown the way the format writes it, when it can be. The

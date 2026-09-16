@@ -64,6 +64,7 @@ const KEPT = 'gpc-kept-';
 const RUNTIME = 'gpc-landmarks-';
 
 const MANIFEST = new URL('landmarks/manifest.json', self.registration.scope).pathname;
+const PLACES = new URL('places/', self.registration.scope).pathname;
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -164,6 +165,10 @@ self.addEventListener('fetch', (event) => {
     if (url.origin !== self.location.origin) return;
 
     if (url.pathname === MANIFEST) return event.respondWith(freshest(request, META));
+    // A country's places, and the timezone table: small, and what the front page
+    // opens on, so a visitor who has been here before still gets their own
+    // country without a connection.
+    if (url.pathname.startsWith(PLACES)) return event.respondWith(freshest(request, META));
     if (isShard(url.pathname)) return event.respondWith(shard(request));
     if (STABLE.has(url.pathname)) return event.respondWith(freshest(request, SHELL));
     if (isHashed(url.pathname)) return event.respondWith(held(request, SHELL));
