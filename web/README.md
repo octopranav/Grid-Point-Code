@@ -1,7 +1,8 @@
 # The website
 
 [gridpointcode.com](https://gridpointcode.com): a playground, a specification
-and a proof, all of which keep working with the network cut.
+and a proof. Encoding and decoding need no network. The map does, for any place
+not already looked at.
 
 ```
 npm install
@@ -44,7 +45,7 @@ src/
   lib/            the level arithmetic, shared by the build and the browser
   styles/         global.css, and tokens.css generated from ../design
 scripts/          build-landmarks.mjs, which makes the landmark shards
-public/sw.js      keeps the site and its shards working with the network cut
+public/sw.js      keeps visited pages, shards and map tiles available offline
 landmarks/        generated, never committed: see below
 ```
 
