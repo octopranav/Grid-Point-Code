@@ -1,12 +1,10 @@
 ---
-// One page for one place: its code, and how to give it.
+// One page for one place: its code, and what the code says.
 //
 // These exist for the reader who searches for a place and not for the format.
-// Somebody typing "Manek Chowk" or "Toronto" is shown the code for it in the
-// result's title. The page they land on starts from the address people use
-// there today, a name and a city and then directions, and shows what a code
-// adds to it: one for every stall and door, said in five characters after a
-// name everyone already knows.
+// Somebody typing "Horseshoe Falls" or "Toronto" is shown the code for it in
+// the result's title, and the page they land on answers with the code first
+// and the arithmetic behind it second.
 //
 // Every figure on the page is computed here from the published package, not
 // stored: the file behind it holds only a name and a point, so a page and the
@@ -16,8 +14,8 @@
 import Base from '../../../layouts/Base.astro';
 import CodeMark from '../../../components/CodeMark.astro';
 import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
-import { CITY_LEVEL, resolve } from '../../../lib/levels';
-import { PLACES, where, spoken, neighboursOf, type Place } from '../../../lib/places';
+import { resolve } from '../../../lib/levels';
+import { PLACES, where, neighboursOf, type Place } from '../../../lib/places';
 
 export function getStaticPaths() {
     return PLACES.map((place) => {
@@ -50,28 +48,9 @@ const metres = (value: number) => `${value.toFixed(2)} m`;
 const kilometres = (value: number) => `${(value / 1000).toFixed(1)} km`;
 const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-/** A cell's size here, not at the equator: east-west narrows with latitude. */
-const sizeHere = (level: number) => {
-    const [, , ns, ewAtEquator] = GPC.cellDimensions(level);
-    const worded = (m: number) => m >= 1000
-        ? `${(m / 1000).toLocaleString('en', { maximumSignificantDigits: 3 })} km`
-        : `${m.toLocaleString('en', { maximumSignificantDigits: 3 })} m`;
-    return `${worded(ns)} by ${worded(ewAtEquator * narrowing)}`;
-};
-
-const COUNTED = ['none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
-
 const whereItIs = where(place);
-const today = spoken(place);
-const saidAloud = `${place.name} ${short}`;
-// Where the short form is understood: somewhere both people know the name.
-const among = place.city ?? place.region ?? place.country;
-const door = place.kind !== 'sight';
 const title = `${whereItIs} · ${code}`;
-const description = place.kind === 'featured'
-    ? `The Grid Point Code for ${whereItIs} is ${code}, said aloud as ${saidAloud}. `
-        + 'Every stall and door nearby has its own, found offline with no lookup.'
-    : place.kind === 'city'
+const description = place.kind === 'city'
     ? `The Grid Point Code for ${whereItIs} is ${code}: ten characters for a `
         + `${metres(northSouth)} by ${metres(eastWest)} cell, decoded on any device `
         + 'with no network and no lookup.'
@@ -81,27 +60,23 @@ const description = place.kind === 'featured'
         + 'decoded offline with no lookup.';
 
 const canonical = new URL(`/play/${place.slug}`, Astro.site).href;
-const wikipedia = place.wikipedia
-    ? `https://en.wikipedia.org/wiki/${encodeURIComponent(place.wikipedia.replaceAll(' ', '_'))}`
-    : null;
-const wikidata = place.wikidata ? `https://www.wikidata.org/wiki/${place.wikidata}` : null;
-const sameAs = [wikipedia, wikidata].filter(Boolean);
-const playHere = `/play?c=${plain}`;
+const sameAs = [
+    place.wikipedia && `https://en.wikipedia.org/wiki/${encodeURIComponent(place.wikipedia.replaceAll(' ', '_'))}`,
+    place.wikidata && `https://www.wikidata.org/wiki/${place.wikidata}`,
+].filter(Boolean);
 
 // Structured data, so a search engine can tell a place from a page about one.
 const structured = [
     {
         '@context': 'https://schema.org',
-        '@type': place.kind === 'city' ? 'City' : place.kind === 'sight' ? 'TouristAttraction' : 'Place',
+        '@type': place.kind === 'city' ? 'City' : 'TouristAttraction',
         name: place.name,
         ...(place.description ? { description: sentence(place.description) } : {}),
         url: canonical,
         geo: { '@type': 'GeoCoordinates', latitude: centreLatitude, longitude: centreLongitude },
         address: {
             '@type': 'PostalAddress',
-            ...(place.kind === 'city'
-                ? { addressLocality: place.name }
-                : place.city ? { addressLocality: place.city } : {}),
+            ...(place.kind === 'city' ? { addressLocality: place.name } : {}),
             ...(place.region ? { addressRegion: place.region } : {}),
             addressCountry: place.iso,
         },
@@ -130,8 +105,7 @@ const structuredJson = JSON.stringify(structured).replace(/</g, '\\u003c');
             <h1>{place.name}</h1>
             <p class="where">
                 {place.near && <span>near {place.near}</span>}
-                {place.city && <span>{place.city}</span>}
-                {place.region && place.region !== place.city && <span>{place.region}</span>}
+                {place.region && <span>{place.region}</span>}
                 <span>{place.country}</span>
             </p>
 
@@ -139,29 +113,8 @@ const structuredJson = JSON.stringify(structured).replace(/</g, '\\u003c');
                 <CodeMark code={code} size="hero" label={`Grid Point Code for ${place.name}`} />
             </div>
 
-            <dl class="lead">
-                {place.kind === 'featured' && (
-                    <div><dt>Without a code</dt><dd>{today}, and then directions</dd></div>
-                )}
-                <div><dt>With a code</dt><dd><code class="code">{code}</code></dd></div>
-                <div>
-                    <dt>Said aloud</dt>
-                    <dd>{place.name}{' '}<code class="code">{short}</code></dd>
-                </div>
-            </dl>
-
-            {place.kind === 'featured' && (
-                <p class="honest">
-                    This code is one spot in {place.name}, a cell {metres(northSouth)} by
-                    {' '}{metres(eastWest)}. Every stall front and doorway in it has a code of
-                    its own.
-                </p>
-            )}
-
             <p class="actions">
-                <a class="primary" href={playHere}>
-                    {door ? 'Get the code for your door' : 'Open in the playground'}
-                </a>
+                <a class="primary" href={`/play?c=${plain}`}>Open in the playground</a>
             </p>
         </div>
     </div>
@@ -196,7 +149,6 @@ const structuredJson = JSON.stringify(structured).replace(/</g, '\\u003c');
                     <dd><span class="code">{centreLatitude.toFixed(6)}, {centreLongitude.toFixed(6)}</span></dd>
                 </div>
                 <div><dt>Cell size</dt><dd>{metres(northSouth)} by {metres(eastWest)}</dd></div>
-                {place.city && <div><dt>City</dt><dd>{place.city}</dd></div>}
                 {place.region && <div><dt>Region</dt><dd>{place.region}</dd></div>}
                 <div><dt>Country</dt><dd>{place.country}</dd></div>
                 {place.population ? (
@@ -205,68 +157,37 @@ const structuredJson = JSON.stringify(structured).replace(/</g, '\\u003c');
             </dl>
         </section>
 
-        <section aria-labelledby="give">
-            <h2 id="give">How to give this address</h2>
-            <dl class="ways">
-                <div>
-                    <dt>On a sign, a form or a delivery note</dt>
-                    <dd>
-                        <p>
-                            The whole code, <code class="code">{code}</code>. It needs nothing
-                            else: no city, no street, no network to read it back.
-                        </p>
-                    </dd>
-                </div>
-                <div>
-                    <dt>Said aloud, in {among}</dt>
-                    <dd>
-                        <p>
-                            <strong>{saidAloud}</strong>: a name both people know, then the last
-                            five characters. They give back the exact code for anywhere within
-                            {' '}{kilometres(shortNorthSouth / 2)} north or south and
-                            {' '}{kilometres(shortEastWest / 2)} east or west of {place.name}.
-                            Further away the same five name somewhere else, which is why the
-                            whole code is what goes on a sign.
-                        </p>
-                    </dd>
-                </div>
-                <div>
-                    <dt>Copied by hand, or read over a phone</dt>
-                    <dd>
-                        <p>
-                            <code class="code">{checked}</code>. The character on the end
-                            catches any single mistyped symbol and any two neighbours swapped.
-                        </p>
-                    </dd>
-                </div>
-                <div>
-                    <dt>As a link or a square code</dt>
-                    <dd>
-                        <p>
-                            <a href={playHere}>Open it on the map</a>, move to the exact door,
-                            and add directions if the code needs help: "blue gate, second
-                            floor". The link and the square code carry them. Nothing is kept
-                            on this site.
-                        </p>
-                    </dd>
-                </div>
-            </dl>
+        <section aria-labelledby="short">
+            <h2 id="short">Saying less of it</h2>
+            <p>
+                Where {place.name} is already understood, the last five characters,{' '}
+                <code class="code">{short}</code>, are enough. They recover the full code
+                exactly from any reference within {kilometres(shortNorthSouth / 2)} north or
+                south and {kilometres(shortEastWest / 2)} east or west of the true point.
+                Further than that they do not fail: they name a different place with the
+                same last five, which is why the full ten are what belongs on a sign.
+            </p>
+            <p>
+                Read aloud or copied by hand, <code class="code">{checked}</code> adds one
+                character that catches any single mistyped symbol and any two neighbours
+                swapped.
+            </p>
         </section>
 
-        <section aria-labelledby="down">
-            <h2 id="down">From the city to the door</h2>
+        <section aria-labelledby="levels">
+            <h2 id="levels">Ten characters, ten cells</h2>
             <p>
-                The first {COUNTED[CITY_LEVEL]} characters name a cell about {sizeHere(CITY_LEVEL)} here.
-                Each one after that picks one of 25 inside the last, so the whole ten name a
-                spot about the size of a doorway.
+                Each character picks one cell inside the last, so every prefix of the code is
+                a place too: the first few name the region {place.name} is in, and the whole
+                ten name the few metres it is at.
             </p>
             <ol class="ladder">
-                {levels.slice(CITY_LEVEL - 1).map(({ level, prefix, name }) => (
+                {levels.map(({ level, prefix, name, size }) => (
                     <li>
                         <span class="tint" data-level={level} aria-hidden="true">{prefix.at(-1)}</span>
                         <span class="prefix code">{prefix}</span>
                         <span class="what">{name}</span>
-                        <span class="size code">{sizeHere(level)}</span>
+                        <span class="size code">{size}</span>
                     </li>
                 ))}
             </ol>
@@ -284,8 +205,8 @@ const structuredJson = JSON.stringify(structured).replace(/</g, '\\u003c');
         )}
 
         <p class="credit">
-            {place.kind !== 'city'
-                ? <>Place and region from <a href={wikidata!} rel="noreferrer">Wikidata</a>{wikipedia ? <>, described on <a href={wikipedia} rel="noreferrer">Wikipedia</a></> : null}{place.city || place.near ? <>; {place.city ? 'city' : 'nearby town'} from <a href="https://www.geonames.org/" rel="noreferrer">GeoNames</a>, under CC BY 4.0</> : null}.</>
+            {place.kind === 'featured'
+                ? <>Place and region from <a href={sameAs[1] as string} rel="noreferrer">Wikidata</a>, described on <a href={sameAs[0] as string} rel="noreferrer">Wikipedia</a>{place.near ? <>; nearby town from <a href="https://www.geonames.org/" rel="noreferrer">GeoNames</a></> : null}.</>
                 : <>City, region and population from <a href="https://www.geonames.org/" rel="noreferrer">GeoNames</a>, under CC BY 4.0.</>}
         </p>
     </div>
@@ -333,55 +254,6 @@ const structuredJson = JSON.stringify(structured).replace(/</g, '\\u003c');
 
     .specimen {
         margin-bottom: var(--space-4);
-    }
-
-    /* Today's address, the code, and the code said aloud: three lines a reader
-       compares, so they share one column of labels. */
-    .lead {
-        display: grid;
-        grid-template-columns: max-content minmax(0, 1fr);
-        gap: var(--space-1) var(--space-3);
-        margin: 0 0 var(--space-3);
-    }
-
-    .lead div {
-        display: contents;
-    }
-
-    .lead dt {
-        color: var(--ink-soft);
-    }
-
-    .lead dd {
-        margin: 0;
-        overflow-wrap: anywhere;
-    }
-
-    .honest {
-        margin: 0 0 var(--space-4);
-        color: var(--ink-mid);
-        font-size: var(--text-small-size);
-    }
-
-    .ways {
-        margin: var(--space-3) 0 0;
-    }
-
-    .ways div {
-        border-top: 1px solid var(--rule-soft);
-        padding-block: var(--space-2);
-    }
-
-    .ways dt {
-        font-weight: 500;
-    }
-
-    .ways dd {
-        margin: 0;
-    }
-
-    .ways p {
-        margin: var(--space-1) 0 0;
     }
 
     .actions {
@@ -493,15 +365,6 @@ const structuredJson = JSON.stringify(structured).replace(/</g, '\\u003c');
     }
 
     @media (max-width: 560px) {
-        .lead {
-            grid-template-columns: minmax(0, 1fr);
-            gap: 0;
-        }
-
-        .lead div + div dt {
-            margin-top: var(--space-2);
-        }
-
         .ladder li {
             grid-template-columns: 2rem minmax(0, 1fr) auto;
         }

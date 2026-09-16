@@ -14,19 +14,12 @@ import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
 import data from '../data/places.json';
 
 export interface Place {
-    /**
-     * `featured`: a market or old quarter, what a country's visitors are shown.
-     * `sight`: famous, with no address at all, and a page but never shown first.
-     * `city`: a capital or large city.
-     */
-    kind: 'featured' | 'sight' | 'city';
+    kind: 'featured' | 'city';
     /** ISO 3166-1 alpha-2, as a visitor's connection reports it. */
     iso: string;
     name: string;
     region: string | null;
-    /** The city it is in, as someone giving directions there would say. */
-    city: string | null;
-    /** A town within 60 km, for a sight out of town. */
+    /** A town within 60 km, for somewhere that is not one. */
     near: string | null;
     lat: number;
     lon: number;
@@ -49,37 +42,26 @@ export const ZONES = data.zones as Record<string, string>;
 /**
  * Where a visitor is taken when their country cannot be told.
  *
- * Egypt, for Khan el-Khalili: a souq known far beyond Cairo, whose lanes and
- * stalls are found the way the format is for, by landmark and not by number.
+ * Peru, for Machu Picchu: famous everywhere, no street address, and already
+ * one of the worked examples in the specification.
  */
-export const DEFAULT_COUNTRY = 'EG';
+export const DEFAULT_COUNTRY = 'PE';
 
 /**
- * "Manek Chowk, Ahmedabad, Gujarat, India", skipping whatever is not known and
+ * "Horseshoe Falls, Ontario, Canada", skipping whatever is not known and
  * whatever repeats: Singapore is not "Singapore, Singapore".
  */
 export function where(place: Place): string {
-    const parts = [place.name, place.city, place.region, place.country].filter(Boolean) as string[];
+    const parts = [place.name, place.region, place.country].filter(Boolean) as string[];
     return parts.filter((part, at) => part !== parts[at - 1]).join(', ');
-}
-
-/**
- * The address people use for it today: "Manek Chowk, Ahmedabad".
- *
- * A name and a city, which is what a market is called by the people who go
- * there, and all it is called. Everything finer is directions.
- */
-export function spoken(place: Place): string {
-    return place.city ? `${place.name}, ${place.city}` : place.name;
 }
 
 /**
  * What a country's visitors are shown first, best first.
  *
- * Its featured places in the order they were chosen: markets and old quarters,
- * where doors have no address of their own. A country with none gets its
- * capital, which is still somewhere in their own country, rather than a market
- * on another continent.
+ * Its featured places in the order they were chosen. A country with none gets
+ * its capital, which is still somewhere in their own country and still makes
+ * the point, rather than a waterfall on another continent.
  */
 export function shownFor(iso: string): Place[] {
     const featured = PLACES.filter((p) => p.iso === iso && p.kind === 'featured');
@@ -88,14 +70,12 @@ export function shownFor(iso: string): Place[] {
     return capital ? [capital] : [];
 }
 
-const ORDER: Record<Place['kind'], number> = { featured: 0, city: 1, sight: 2 };
-
-/** Other places in the same country, for a page to link to: markets first. */
+/** Other places in the same country, for a page to link to: chosen ones first. */
 export function neighboursOf(place: Place, most = 12): Place[] {
     return PLACES
         .filter((p) => p.iso === place.iso && p.slug !== place.slug)
         .sort((a, b) =>
-            ORDER[a.kind] - ORDER[b.kind]
+            (a.kind === b.kind ? 0 : a.kind === 'featured' ? -1 : 1)
             || (b.population ?? 0) - (a.population ?? 0))
         .slice(0, most);
 }
@@ -122,7 +102,7 @@ export function checkPlaces(): void {
         if (!/^[a-z0-9-]+\/[a-z0-9-]+$/.test(p.slug)) throw new Error(`bad address: ${p.slug}`);
         if (!(Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180)) throw new Error(`${p.slug} is off the planet`);
         if (!COUNTRIES[p.iso]) throw new Error(`${p.slug} names an unknown country ${p.iso}`);
-        for (const text of [p.name, p.region, p.city, p.near, p.description, p.country, p.wikipedia]) {
+        for (const text of [p.name, p.region, p.near, p.description, p.country]) {
             if (text && TYPOGRAPHIC.test(text)) {
                 throw new Error(`${p.slug} carries typographic punctuation: ${text}`);
             }
