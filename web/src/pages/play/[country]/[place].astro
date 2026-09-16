@@ -1,0 +1,376 @@
+---
+// One page for one place: its code, and what the code says.
+//
+// These exist for the reader who searches for a place and not for the format.
+// Somebody typing "Horseshoe Falls" or "Toronto" is shown the code for it in
+// the result's title, and the page they land on answers with the code first
+// and the arithmetic behind it second.
+//
+// Every figure on the page is computed here from the published package, not
+// stored: the file behind it holds only a name and a point, so a page and the
+// library cannot disagree about a code. That is also what makes each page
+// different from the next in something more than its name, which is the line
+// between a page for a place and a template with a name poured in.
+import Base from '../../../layouts/Base.astro';
+import CodeMark from '../../../components/CodeMark.astro';
+import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
+import { resolve } from '../../../lib/levels';
+import { PLACES, where, neighboursOf, type Place } from '../../../lib/places';
+
+export function getStaticPaths() {
+    return PLACES.map((place) => {
+        const [country, slug] = place.slug.split('/');
+        return { params: { country, place: slug }, props: { place } };
+    });
+}
+
+const { place } = Astro.props as { place: Place };
+
+const code = GPC.encode(place.lat, place.lon);
+const plain = code.replace(/[^0-9A-Z]/g, '');
+const [centreLatitude, centreLongitude] = GPC.decode(code);
+const { levels } = resolve(place.lat, place.lon);
+
+// A cell's north-south size holds everywhere; its east-west size is the
+// equator's, narrowed by the cosine of the latitude it sits at.
+const narrowing = Math.cos((centreLatitude * Math.PI) / 180);
+const [, , northSouth, eastWestAtEquator] = GPC.cellDimensions(10);
+const eastWest = eastWestAtEquator * narrowing;
+const [, , shortNorthSouth, shortEastWestAtEquator] = GPC.cellDimensions(5);
+const shortEastWest = shortEastWestAtEquator * narrowing;
+
+const short = GPC.shorten(code);
+const checked = GPC.withCheck(code, true);
+const dms = GPC.toDMS(centreLatitude, centreLongitude);
+const neighbours = neighboursOf(place);
+
+const metres = (value: number) => `${value.toFixed(2)} m`;
+const kilometres = (value: number) => `${(value / 1000).toFixed(1)} km`;
+const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+const whereItIs = where(place);
+const title = `${whereItIs} · ${code}`;
+const description = place.kind === 'city'
+    ? `The Grid Point Code for ${whereItIs} is ${code}: ten characters for a `
+        + `${metres(northSouth)} by ${metres(eastWest)} cell, decoded on any device `
+        + 'with no network and no lookup.'
+    : `The Grid Point Code for ${place.name}${place.near ? `, near ${place.near}` : ''}`
+        + `${place.region ? `, ${place.region}` : ''}, ${place.country}, is ${code}: `
+        + `ten characters for a ${metres(northSouth)} by ${metres(eastWest)} cell, `
+        + 'decoded offline with no lookup.';
+
+const canonical = new URL(`/play/${place.slug}`, Astro.site).href;
+const sameAs = [
+    place.wikipedia && `https://en.wikipedia.org/wiki/${encodeURIComponent(place.wikipedia.replaceAll(' ', '_'))}`,
+    place.wikidata && `https://www.wikidata.org/wiki/${place.wikidata}`,
+].filter(Boolean);
+
+// Structured data, so a search engine can tell a place from a page about one.
+const structured = [
+    {
+        '@context': 'https://schema.org',
+        '@type': place.kind === 'city' ? 'City' : 'TouristAttraction',
+        name: place.name,
+        ...(place.description ? { description: sentence(place.description) } : {}),
+        url: canonical,
+        geo: { '@type': 'GeoCoordinates', latitude: centreLatitude, longitude: centreLongitude },
+        address: {
+            '@type': 'PostalAddress',
+            ...(place.kind === 'city' ? { addressLocality: place.name } : {}),
+            ...(place.region ? { addressRegion: place.region } : {}),
+            addressCountry: place.iso,
+        },
+        identifier: { '@type': 'PropertyValue', propertyID: 'Grid Point Code', value: code },
+        ...(sameAs.length ? { sameAs } : {}),
+    },
+    {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Play', item: new URL('/play', Astro.site).href },
+            { '@type': 'ListItem', position: 2, name: place.name, item: canonical },
+        ],
+    },
+];
+// `<` escaped, so no string in the data can close the script element early.
+const structuredJson = JSON.stringify(structured).replace(/</g, '\\u003c');
+---
+
+<Base title={title} description={description}>
+    <script is:inline type="application/ld+json" set:html={structuredJson} />
+
+    <div class="band">
+        <div class="shell head">
+            <p class="crumb"><a href="/play">Play</a></p>
+            <h1>{place.name}</h1>
+            <p class="where">
+                {place.near && <span>near {place.near}</span>}
+                {place.region && <span>{place.region}</span>}
+                <span>{place.country}</span>
+            </p>
+
+            <div class="specimen">
+                <CodeMark code={code} size="hero" label={`Grid Point Code for ${place.name}`} />
+            </div>
+
+            <p class="actions">
+                <a class="primary" href={`/play?c=${plain}`}>Open in the playground</a>
+            </p>
+        </div>
+    </div>
+
+    <div class="shell body">
+        <section aria-labelledby="what-it-says">
+            <h2 id="what-it-says">What the code says</h2>
+            <p>
+                The Grid Point Code for {place.name} is <code class="code">{code}</code>. It
+                names a cell {metres(northSouth)} north to south and {metres(eastWest)} east to
+                west, centred on {dms}, and it turns back into that cell on any phone or
+                computer by arithmetic alone: no network, no account, no lookup table.
+            </p>
+            {place.kind === 'city' && (
+                <p>
+                    The point used is the one GeoNames records for {place.name}, near its
+                    centre{place.capital && place.name !== place.country
+                        ? `, and ${place.name} is the capital of ${place.country}`
+                        : ''}.
+                </p>
+            )}
+
+            <dl class="facts">
+                {place.description && (
+                    <div><dt>What it is</dt><dd>{sentence(place.description)}</dd></div>
+                )}
+                <div><dt>Code</dt><dd><code class="code">{code}</code></dd></div>
+                <div><dt>With a check character</dt><dd><code class="code">{checked}</code></dd></div>
+                <div><dt>Short form</dt><dd><code class="code">{short}</code></dd></div>
+                <div>
+                    <dt>Cell centre</dt>
+                    <dd><span class="code">{centreLatitude.toFixed(6)}, {centreLongitude.toFixed(6)}</span></dd>
+                </div>
+                <div><dt>Cell size</dt><dd>{metres(northSouth)} by {metres(eastWest)}</dd></div>
+                {place.region && <div><dt>Region</dt><dd>{place.region}</dd></div>}
+                <div><dt>Country</dt><dd>{place.country}</dd></div>
+                {place.population ? (
+                    <div><dt>Population</dt><dd>{place.population.toLocaleString('en')}</dd></div>
+                ) : null}
+            </dl>
+        </section>
+
+        <section aria-labelledby="short">
+            <h2 id="short">Saying less of it</h2>
+            <p>
+                Where {place.name} is already understood, the last five characters,{' '}
+                <code class="code">{short}</code>, are enough. They recover the full code
+                exactly from any reference within {kilometres(shortNorthSouth / 2)} north or
+                south and {kilometres(shortEastWest / 2)} east or west of the true point.
+                Further than that they do not fail: they name a different place with the
+                same last five, which is why the full ten are what belongs on a sign.
+            </p>
+            <p>
+                Read aloud or copied by hand, <code class="code">{checked}</code> adds one
+                character that catches any single mistyped symbol and any two neighbours
+                swapped.
+            </p>
+        </section>
+
+        <section aria-labelledby="levels">
+            <h2 id="levels">Ten characters, ten cells</h2>
+            <p>
+                Each character picks one cell inside the last, so every prefix of the code is
+                a place too: the first few name the region {place.name} is in, and the whole
+                ten name the few metres it is at.
+            </p>
+            <ol class="ladder">
+                {levels.map(({ level, prefix, name, size }) => (
+                    <li>
+                        <span class="tint" data-level={level} aria-hidden="true">{prefix.at(-1)}</span>
+                        <span class="prefix code">{prefix}</span>
+                        <span class="what">{name}</span>
+                        <span class="size code">{size}</span>
+                    </li>
+                ))}
+            </ol>
+        </section>
+
+        {neighbours.length > 0 && (
+            <section aria-labelledby="more">
+                <h2 id="more">More in {place.country}</h2>
+                <ul class="more">
+                    {neighbours.map((other) => (
+                        <li><a href={`/play/${other.slug}`}>{other.name}</a></li>
+                    ))}
+                </ul>
+            </section>
+        )}
+
+        <p class="credit">
+            {place.kind === 'featured'
+                ? <>Place and region from <a href={sameAs[1] as string} rel="noreferrer">Wikidata</a>, described on <a href={sameAs[0] as string} rel="noreferrer">Wikipedia</a>{place.near ? <>; nearby town from <a href="https://www.geonames.org/" rel="noreferrer">GeoNames</a></> : null}.</>
+                : <>City, region and population from <a href="https://www.geonames.org/" rel="noreferrer">GeoNames</a>, under CC BY 4.0.</>}
+        </p>
+    </div>
+</Base>
+
+<style>
+    .band {
+        background: var(--surface);
+        border-bottom: 1px solid var(--rule-soft);
+    }
+
+    .head {
+        padding-block: var(--space-5);
+    }
+
+    .crumb {
+        margin: 0 0 var(--space-2);
+        font-size: var(--text-small-size);
+    }
+
+    h1 {
+        margin: 0 0 var(--space-1);
+    }
+
+    .where {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+        margin: 0 0 var(--space-4);
+        color: var(--ink-mid);
+    }
+
+    /* A thin separator drawn by the layout, not typed into the text, so a
+       screen reader reads three names rather than two dots. */
+    .where span + span::before {
+        content: '';
+        display: inline-block;
+        width: 4px;
+        height: 4px;
+        margin-right: var(--space-2);
+        border-radius: 50%;
+        background: var(--rule);
+        vertical-align: middle;
+    }
+
+    .specimen {
+        margin-bottom: var(--space-4);
+    }
+
+    .actions {
+        margin: 0;
+    }
+
+    .primary {
+        display: inline-block;
+        padding: var(--space-2) var(--space-3);
+        border-radius: var(--radius-card);
+        background: var(--prussian);
+        color: var(--surface);
+        font-weight: 500;
+        text-decoration: none;
+    }
+
+    .primary:hover {
+        text-decoration: underline;
+    }
+
+    .body {
+        padding-block: var(--space-4) var(--space-6);
+    }
+
+    h2 {
+        margin: var(--space-5) 0 var(--space-2);
+    }
+
+    .facts {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+        gap: var(--space-3) var(--space-4);
+        margin: var(--space-4) 0 0;
+    }
+
+    .facts div {
+        border-top: 1px solid var(--rule-soft);
+        padding-top: var(--space-2);
+    }
+
+    .facts dt {
+        font-size: var(--text-label-size);
+        color: var(--ink-soft);
+    }
+
+    .facts dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .ladder {
+        list-style: none;
+        margin: var(--space-3) 0 0;
+        padding: 0;
+        max-width: 48rem;
+    }
+
+    .ladder li {
+        display: grid;
+        grid-template-columns: 2rem 8rem minmax(0, 1fr) auto;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-1) 0;
+        border-bottom: 1px solid var(--rule-soft);
+    }
+
+    .tint {
+        display: grid;
+        place-items: center;
+        width: 1.6rem;
+        height: 1.6rem;
+        border-radius: var(--radius-cell);
+        font-family: var(--font-mono);
+        font-weight: 600;
+    }
+
+    /* The same ten tints the home page ladder and the code mark use, so a level
+       is one colour everywhere on the site. */
+    .tint[data-level='1']  { background: var(--level-1);  color: var(--level-1-ink); }
+    .tint[data-level='2']  { background: var(--level-2);  color: var(--level-2-ink); }
+    .tint[data-level='3']  { background: var(--level-3);  color: var(--level-3-ink); }
+    .tint[data-level='4']  { background: var(--level-4);  color: var(--level-4-ink); }
+    .tint[data-level='5']  { background: var(--level-5);  color: var(--level-5-ink); }
+    .tint[data-level='6']  { background: var(--level-6);  color: var(--level-6-ink); }
+    .tint[data-level='7']  { background: var(--level-7);  color: var(--level-7-ink); }
+    .tint[data-level='8']  { background: var(--level-8);  color: var(--level-8-ink); }
+    .tint[data-level='9']  { background: var(--level-9);  color: var(--level-9-ink); }
+    .tint[data-level='10'] { background: var(--level-10); color: var(--level-10-ink); }
+
+    .size {
+        color: var(--ink-mid);
+        font-size: var(--text-small-size);
+        white-space: nowrap;
+    }
+
+    .more {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2) var(--space-4);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .credit {
+        margin-top: var(--space-5);
+        font-size: var(--text-label-size);
+        color: var(--ink-soft);
+    }
+
+    @media (max-width: 560px) {
+        .ladder li {
+            grid-template-columns: 2rem minmax(0, 1fr) auto;
+        }
+
+        .prefix {
+            display: none;
+        }
+    }
+</style>

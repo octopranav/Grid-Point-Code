@@ -224,7 +224,10 @@ function discovery() {
                 // a reader sees has no suffix and no trailing slash. The
                 // pathnames here arrive with neither, or with a slash on the
                 // front, depending on the route, so both ends are trimmed.
+                // Pages only. The per-country place files are routes too, and a
+                // JSON file is not something to send a searcher to.
                 const urls = pages
+                    .filter((page) => !/\.[a-z0-9]+$/i.test(page.pathname.replace(/\/+$/, '')))
                     .map((page) => page.pathname.replace(/^\/+/, '').replace(/\/+$/, ''))
                     .map((slug) => (slug ? `${ORIGIN}/${slug}` : `${ORIGIN}/`))
                     .sort();

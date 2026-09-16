@@ -13,25 +13,42 @@
 // somebody else's server is down.
 
 import CodeMark from './CodeMark.astro';
-import { resolve, SAMPLES, checkSamples } from '../lib/levels';
+import { resolve, checkSamples } from '../lib/levels';
+import { DEFAULT_COUNTRY, checkPlaces, shownFor } from '../lib/places';
 
 // Fails the build if the site and section 9.4 of the specification ever
-// disagree about what these places encode to.
+// disagree about what these places encode to, or if the place data stops
+// being true.
 checkSamples();
+checkPlaces();
 
-const start = SAMPLES[0];
-const initial = resolve(start.latitude, start.longitude);
+// What a reader sees before any script runs, and what a search engine reads:
+// the default country's first place. The script replaces it with somewhere in
+// the visitor's own country as soon as it knows which country that is.
+const start = shownFor(DEFAULT_COUNTRY)[0];
+const initial = resolve(start.lat, start.lon);
+const opening = {
+    label: start.name === start.country ? start.name : `${start.name}, ${start.country}`,
+    slug: start.slug,
+    lat: start.lat,
+    lon: start.lon,
+};
 const first = initial.levels[0];
 
 // The plate a reader gets before any script runs: level one, the world divided
-// four ways by six, with Toronto's block lit. It is the first step of the story
+// four ways by six, with the opening place's block lit. It is the first step of the story
 // and it stands on its own.
 const PLATE = 300;
 const cellWidth = PLATE / first.columns;
 const cellHeight = PLATE / first.rows;
 ---
 
-<section class="resolve" data-resolve>
+<section
+    class="resolve"
+    data-resolve
+    data-default-country={DEFAULT_COUNTRY}
+    data-opening={JSON.stringify(opening)}
+>
     <div class="statement">
         <p class="label">A code for every 2.56 by 3.42 metres on Earth</p>
         <h1>A shared prefix is a shared cell.</h1>
@@ -44,7 +61,7 @@ const cellHeight = PLATE / first.rows;
         <div class="specimen">
             <CodeMark code={initial.code} size="hero" />
             <p class="readout">
-                <span class="place" data-place>{start.name}</span>
+                <a class="place" data-place href={`/play/${start.slug}`}>{opening.label}</a>
                 <span class="dot" aria-hidden="true">·</span>
                 <span class="code" data-coords>
                     {initial.centre[0].toFixed(6)}, {initial.centre[1].toFixed(6)}
@@ -128,6 +145,7 @@ const cellHeight = PLATE / first.rows;
     // playground will want the control styles it carries.
     import 'maplibre-gl/dist/maplibre-gl.css';
     import { resolve, SAMPLES, type Resolution, type LevelCell } from '../lib/levels';
+    import { visitorCountry, placesFor, label, type Shown } from '../lib/country';
     import type { Map as MapLibreMap, GeoJSONSource } from 'maplibre-gl';
 
     const PLATE = 300;
@@ -143,7 +161,7 @@ const cellHeight = PLATE / first.rows;
         const glyphs = boxes.map((box) => box.querySelector<HTMLElement>('.symbol')!);
         const spoken = section.querySelector<HTMLElement>('.mark .visually-hidden')!;
         const coords = section.querySelector<HTMLElement>('[data-coords]')!;
-        const place = section.querySelector<HTMLElement>('[data-place]')!;
+        const place = section.querySelector<HTMLAnchorElement>('[data-place]')!;
         const status = section.querySelector<HTMLElement>('[data-status]')!;
         const plateCells = section.querySelector<SVGGElement>('[data-plate-cells]')!;
         const plateLevel = section.querySelector<HTMLElement>('[data-plate-level]')!;
@@ -152,9 +170,30 @@ const cellHeight = PLATE / first.rows;
 
         const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
-        let current: Resolution = resolve(SAMPLES[0].latitude, SAMPLES[0].longitude);
+        /** Somewhere the hero can be showing: a label, and a page if it has one. */
+        interface Stop {
+            label: string;
+            slug?: string;
+            lat: number;
+            lon: number;
+        }
+
+        const opening = JSON.parse(section.dataset.opening ?? '{}') as Stop;
+        const fallbackCountry = section.dataset.defaultCountry ?? 'PE';
+
+        let current: Resolution = resolve(opening.lat, opening.lon);
+        let here: Stop = opening;
         let showing: LevelCell = current.levels[0];
-        let sample = 0;
+
+        // What "Somewhere else" steps through: the visitor's own country first,
+        // once it is known, then the worked examples from the specification.
+        const samples: Stop[] = SAMPLES.map((s) => ({
+            label: s.name,
+            lat: s.latitude,
+            lon: s.longitude,
+        }));
+        let rotation: Stop[] = [opening, ...samples];
+        let turn = 0;
         let generation = 0;
         let playing = false;
         let settleHere: () => void = () => {};
@@ -385,6 +424,22 @@ const cellHeight = PLATE / first.rows;
                 resolution.centre[0].toFixed(6) + ', ' + resolution.centre[1].toFixed(6);
         }
 
+        /** Point the label at a place, and at its page when it has one. */
+        function name(stop: Stop) {
+            place.textContent = stop.label;
+            if (stop.slug) place.href = `/play/${stop.slug}`;
+            else place.removeAttribute('href');
+        }
+
+        /** Tell the rest of the page which code is showing, so it can follow. */
+        function announce(resolution: Resolution) {
+            document.dispatchEvent(
+                new CustomEvent('gpc:place', {
+                    detail: { symbols: resolution.code.replace(/[^0-9A-Z]/g, '') },
+                }),
+            );
+        }
+
         /**
          * Descend through the ten levels.
          *
@@ -395,13 +450,15 @@ const cellHeight = PLATE / first.rows;
          * between levels instead of travelling between them -- every level is
          * still shown and still held, and only the motion goes.
          */
-        async function play(resolution: Resolution, label: string, asked = false) {
+        async function play(resolution: Resolution, stop: Stop, asked = false) {
             const mine = (generation += 1);
             const alive = () => mine === generation;
 
             current = resolution;
-            place.textContent = label;
+            here = stop;
+            name(stop);
             setCode(resolution);
+            announce(resolution);
 
             const levels = resolution.levels;
             const views = levels.map(viewFor);
@@ -657,15 +714,15 @@ const cellHeight = PLATE / first.rows;
                 settleHere();
                 return;
             }
-            void play(current, place.textContent ?? '', true);
+            void play(current, here, true);
         });
 
         section.querySelector('[data-next-sample]')?.addEventListener('click', () => {
-            sample = (sample + 1) % SAMPLES.length;
-            const next = SAMPLES[sample];
+            turn = (turn + 1) % rotation.length;
+            const next = rotation[turn];
             status.textContent = '';
             status.dataset.tone = 'plain';
-            void play(resolve(next.latitude, next.longitude), next.name, true);
+            void play(resolve(next.lat, next.lon), next, true);
         });
 
         section.querySelector('[data-locate]')?.addEventListener('click', (event) => {
@@ -695,7 +752,7 @@ const cellHeight = PLATE / first.rows;
                               ' m</b>, which is inside a single cell.'
                             : 'Your browser placed you to within about <b>' + within +
                               ' m</b>. The code below is exact for the point it was ' +
-                              'given \u2014 at this accuracy that point may not be your ' +
+                              'given, but at this accuracy that point may not be your ' +
                               'doorway. A phone with a satellite fix is usually far ' +
                               'closer than a computer, which is often located from ' +
                               'nearby wireless networks.';
@@ -703,7 +760,11 @@ const cellHeight = PLATE / first.rows;
 
                     void play(
                         resolve(position.coords.latitude, position.coords.longitude),
-                        'Your location',
+                        {
+                            label: 'Your location',
+                            lat: position.coords.latitude,
+                            lon: position.coords.longitude,
+                        },
                         true,
                     );
                 },
@@ -723,10 +784,36 @@ const cellHeight = PLATE / first.rows;
         // Starting over half-drawn tiles is what made the opening look like a
         // fault rather than a film. The plate is ready immediately either way,
         // and nothing waits on a map that is not coming.
+        // The visitor's own country, looked up while the map loads. A repeat
+        // visit answers from the browser's store, with no request at all.
+        const local = (async () => placesFor(await visitorCountry(), fallbackCountry))();
+
+        void local.then((places) => {
+            if (!places.length) return;
+            const stops = places.map((p: Shown) => ({
+                label: label(p),
+                slug: p.slug,
+                lat: p.lat,
+                lon: p.lon,
+            }));
+            rotation = [...stops, ...samples];
+            turn = 0;
+            // Only while nothing has been played or pressed: a reader who has
+            // already asked for somewhere else is not overruled by a lookup.
+            if (generation === 0) {
+                here = stops[0];
+                current = resolve(here.lat, here.lon);
+                name(here);
+                setCode(current);
+                announce(current);
+            }
+        });
+
         void (async () => {
             await Promise.race([mapArrived, wait(3000)]);
+            await Promise.race([local, wait(1500)]);
             await wait(900);
-            void play(current, SAMPLES[0].name);
+            if (generation === 0) void play(current, here);
         })();
 
         void loadMap();
@@ -778,6 +865,11 @@ const cellHeight = PLATE / first.rows;
     .place {
         color: var(--ink-mid);
         font-weight: 500;
+        text-decoration: none;
+    }
+
+    .place[href]:hover {
+        text-decoration: underline;
     }
 
     .dot { color: var(--rule); }

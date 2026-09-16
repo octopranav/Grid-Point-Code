@@ -33,7 +33,10 @@ only the Latin ranges are shipped: anything outside them falls back to the
 reader's own system font, which is the right answer for a name we did not
 typeset.
 
-There are no cookies, no analytics and nothing to dismiss.
+There are no cookies and no analytics. The one thing that leaves the page about
+a visitor is their IP address, sent at most once a week to a country lookup
+service so the front page can open on a place in their own country; see
+[Places](#places) for which services and why.
 
 ## Layout
 
@@ -44,7 +47,8 @@ src/
   pages/          one file per route
   lib/            the level arithmetic, shared by the build and the browser
   styles/         global.css, and tokens.css generated from ../design
-scripts/          build-landmarks.mjs, which makes the landmark shards
+scripts/          build-landmarks.mjs, which makes the landmark shards, and
+                  build-places.mjs, which makes src/data/places.json
 public/sw.js      keeps visited pages, shards and map tiles available offline
 landmarks/        generated, never committed: see below
 ```
@@ -107,6 +111,85 @@ wrong theme and then correcting it is worse than either theme.
 Every colour comes from a token defined for both. A value that exists only
 inside a media query is the bug that renders one theme's text on the other's
 paper.
+
+## Places
+
+The front page and the playground open on somewhere in the visitor's own
+country, and every place the site knows has a page of its own under `/play`,
+titled the way somebody would search for it:
+`Toronto, Ontario, Canada · #G3RJF-4318R`.
+
+### Two sets
+
+**Featured places** are chosen by hand, in
+[`scripts/featured-places.txt`](scripts/featured-places.txt): somewhere people
+travel to see, with no street address, that is not a religious site and not in
+territory two states contest. Up to three a country, first line first. 357 of
+them, across 164 countries.
+
+**Cities** are chosen by rule: every national capital, every city of half a
+million or more, and every regional capital of a quarter million or more. 1,676
+of them, across 240 countries. A country with no featured place opens on its
+capital.
+
+### The choice is made by a person; the facts are not
+
+A featured place is listed by its English Wikipedia title, because a title
+resolves to exactly one Wikidata item through Wikipedia's own redirects. A name
+search was tried first and matched "Petra" to a given name, "Gullfoss" and
+"Moraine Lake" to unrelated items with no links at all, which is why the list is
+of titles.
+
+Everything else is read. `build-places.mjs` takes the coordinates and country
+from Wikidata, reading only statements that are current, so Lake Baikal is not
+disqualified for once having been in the Soviet Union. It takes the region by
+walking Wikidata's administrative hierarchy to the country, because the nearest
+town is a poor guide to a state: the nearest town to Old Faithful is in Montana.
+It takes the nearby town from GeoNames, only from the listed country, because
+taking the nearest place of any country put Horseshoe Falls in New York.
+
+The script will not write a file it cannot check. A title that does not resolve,
+a place whose country does not match, or one carrying a religion statement or a
+street address stops the run and says which. What it cannot catch is a title
+that resolves cleanly to the wrong thing, and that is found by reading the
+output: the first pass turned "Trafalgar Falls" into a village and "Maracas Bay"
+into the whole island of Trinidad.
+
+Contested territory is a set of shapes, printed against every city they exclude.
+The first version was boxes, and it held Islamabad, Chisinau, Nicosia and a
+Brazilian state capital.
+
+```
+node scripts/build-places.mjs --geonames <dir>
+```
+
+`<dir>` needs `countryInfo.txt`, `admin1CodesASCII.txt` and `cities1000.txt`
+from GeoNames. The output is committed, so a build never reaches the network,
+and `checkPlaces()` fails the build if the file stops being true.
+
+### Which country a visitor is in
+
+`src/lib/country.ts`, in this order:
+
+| Step | Where the answer comes from | What leaves the browser |
+| --- | --- | --- |
+| a week's memory | `localStorage` | a returning visitor sends nothing |
+| `api.country.is` | Cloudflare's geolocation, then MaxMind's | sends the IP address |
+| `get.geojs.io` | MaxMind's | sends the IP address, only if the first fails |
+| the device's timezone | `/places/zones.json`, from the IANA database | stays in the browser |
+| the device's language | its region, when it has one | stays in the browser |
+
+Both services are free, need no key and answer with a country code and nothing
+else. They were chosen over others that answer the same question on terms a
+public site could not rely on; one alternative's free plan, for instance, is
+marked "not for production use".
+
+The timezone step exists because content blockers commonly block these
+services, and a visitor who runs one is still somewhere. A guess from the device
+is not remembered, so the services are asked again next time.
+
+A country's places are fetched as `/places/<ISO>.json`, a few hundred bytes,
+rather than shipping the whole set to every visitor.
 
 ## The landmarks
 

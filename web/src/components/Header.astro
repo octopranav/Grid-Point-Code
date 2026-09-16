@@ -40,7 +40,10 @@ const sections = [
         <ul>
             {sections.map(({ href, name }) => (
                 <li>
-                    <a href={href} aria-current={route === href ? 'page' : undefined}>{name}</a>
+                    <a
+                        href={href}
+                        aria-current={route === href ? 'page' : route.startsWith(`${href}/`) ? 'true' : undefined}
+                    >{name}</a>
                 </li>
             ))}
         </ul>
@@ -126,7 +129,10 @@ const sections = [
 
     nav a:hover { color: var(--prussian); }
 
-    nav a[aria-current='page'] {
+    /* The section a page is inside is marked the same as the page itself:
+       /play/canada/toronto is in Play, and /docs/java is in Docs. */
+    nav a[aria-current='page'],
+    nav a[aria-current='true'] {
         color: var(--ink);
         font-weight: 500;
         border-bottom: 2px solid var(--brass);
