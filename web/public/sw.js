@@ -1,4 +1,4 @@
-// Keeps the site, and the landmarks it looks up, working with the network cut.
+// Keeps the pages, and the landmarks already looked up, available offline.
 //
 // A Grid Point Code needs no lookup: turning a coordinate into ten characters
 // is arithmetic the browser does on its own, and that has been true since the
@@ -21,7 +21,7 @@
 //                 first and never written from here: it is theirs.
 //
 //   seen shards   Whatever this worker served along the way, which is why a
-//                 place already looked at still works with the network cut.
+//                 place already looked at still works without a connection.
 //
 // Both shard stores are named for the moment the archive was built. Shard
 // names do not change between builds, only what is inside them, so without
@@ -65,79 +65,6 @@ const RUNTIME = 'gpc-landmarks-';
 
 const MANIFEST = new URL('landmarks/manifest.json', self.registration.scope).pathname;
 
-// ── the switch ──────────────────────────────────────────────────────────────
-//
-// The site claims that cutting the network changes nothing except the basemap.
-// A claim like that is worth very little if testing it means finding a setting
-// in the operating system, so the page can close the door itself.
-//
-// **It fails the way the real thing fails.** A dead connection rejects a fetch
-// with a TypeError, and so does this -- which means every fallback already
-// written below is the code being exercised, rather than a second path built to
-// imitate it. A simulation that failed differently would be testing the
-// simulation.
-//
-// The state outlives the worker, which is stopped and restarted freely, so it
-// is kept in a cache rather than a variable. It outlives a reload too, on
-// purpose: reloading is the interesting test, because it is the one that finds
-// out whether the page really came from the cache.
-
-const SWITCH = new URL('__network', self.registration.scope).pathname;
-
-let switched = null;
-
-// The same answer, readable without waiting.
-//
-// `fetch` has to decide synchronously whether to take a request over at all,
-// and for the requests this worker otherwise leaves alone -- another origin's
-// map tiles above all -- there is nothing to await inside. It starts closed-
-// door-open on a fresh worker and is corrected by the first same-origin
-// request, which always precedes a tile.
-let shut = false;
-
-async function cut() {
-    switched ??= (async () => {
-        const cache = await caches.open(META);
-        const held = await cache.match(SWITCH);
-        return held ? (await held.text()) === 'off' : false;
-    })();
-    shut = await switched;
-    return shut;
-}
-
-async function setCut(off) {
-    const cache = await caches.open(META);
-    await cache.put(SWITCH, new Response(off ? 'off' : 'on'));
-    switched = Promise.resolve(off);
-    shut = off;
-    await announce();
-}
-
-async function announce(to) {
-    const off = await cut();
-    const clients = to ? [to] : await self.clients.matchAll({ includeUncontrolled: true });
-    for (const client of clients) client.postMessage({ gpc: 'network', off });
-}
-
-/**
- * The only place this worker touches the network.
- *
- * Everything below goes through it, so the switch is one condition rather than
- * four, and a fifth caller added later cannot forget.
- */
-async function reach(input, init) {
-    if (await cut()) throw new TypeError('the network is switched off in this page');
-    return fetch(input, init);
-}
-
-self.addEventListener('message', (event) => {
-    const asked = event.data;
-    if (!asked || asked.gpc !== 'network') return;
-    event.waitUntil(
-        asked.ask ? announce(event.source) : setCut(Boolean(asked.off)),
-    );
-});
-
 self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', (event) => {
@@ -145,6 +72,12 @@ self.addEventListener('activate', (event) => {
         (async () => {
             await self.clients.claim();
             await sweep();
+            // The page once had a control that made this worker refuse the
+            // network, and it kept its state here. The control is gone; a reader
+            // who left it switched off should not carry the leftover forever.
+            await (await caches.open(META)).delete(
+                new URL('__network', self.registration.scope).pathname,
+            );
         })(),
     );
 });
@@ -167,7 +100,7 @@ let naming = null;
 async function manifest() {
     const cache = await caches.open(META);
     try {
-        const fresh = await reach(MANIFEST, { cache: 'no-store' });
+        const fresh = await fetch(MANIFEST, { cache: 'no-store' });
         if (fresh.ok) {
             await cache.put(MANIFEST, fresh.clone());
             return await fresh.json();
@@ -215,8 +148,8 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(request.url);
 
     // The basemap. Held as it is used, so a place already looked at is still
-    // drawn with the network cut -- and so the switch refuses tiles only after
-    // the cache has been asked, rather than instead of asking it.
+    // drawn without a connection. A place never looked at needs the network,
+    // and nothing here can change that.
     if (url.origin === BASEMAP) {
 
         // The style and the tile index are not versioned, so they are asked
@@ -227,27 +160,15 @@ self.addEventListener('fetch', (event) => {
         );
     }
 
-    // Any other origin: nothing on this site uses one, and a switch that let an
-    // unknown third party through would be reporting something it had not
-    // tested.
-    if (url.origin !== self.location.origin) {
-        if (shut) event.respondWith(refused());
-        return;
-    }
+    // Any other origin is the browser's business, not this worker's.
+    if (url.origin !== self.location.origin) return;
 
     if (url.pathname === MANIFEST) return event.respondWith(freshest(request, META));
     if (isShard(url.pathname)) return event.respondWith(shard(request));
     if (STABLE.has(url.pathname)) return event.respondWith(freshest(request, SHELL));
     if (isHashed(url.pathname)) return event.respondWith(held(request, SHELL));
     if (isPage(request)) return event.respondWith(freshest(request, SHELL));
-
-    // Anything else of ours that has no rule above: served normally, refused
-    // when shut. Shut has to mean shut, or the experiment proves nothing.
-    if (shut) event.respondWith(refused());
 });
-
-const refused = () =>
-    Promise.reject(new TypeError('the network is switched off in this page'));
 
 /** Cache first. For things whose name changes when their contents do. */
 async function held(request, name) {
@@ -255,7 +176,7 @@ async function held(request, name) {
     const hit = await cache.match(request, { ignoreVary: true });
     if (hit) return hit;
 
-    const response = await reach(request);
+    const response = await fetch(request);
     if (response.ok) {
         await cache.put(request, response.clone());
         if (name === MAP) await keepBounded(cache);
@@ -282,7 +203,7 @@ async function keepBounded(cache) {
 async function freshest(request, name) {
     const cache = await caches.open(name);
     try {
-        const response = await reach(request);
+        const response = await fetch(request);
         if (response.ok) await cache.put(request, response.clone());
         return response;
     } catch (offline) {
@@ -292,76 +213,13 @@ async function freshest(request, name) {
         // for that reason is a shell that was never there.
         const hit = await cache.match(request, { ignoreVary: true });
         if (hit) return hit;
-
-        // A page, with the door shut and nothing held: this is the one case
-        // that must not become the browser's own error screen. There would be
-        // no way back from it -- every page on this origin is refused, so
-        // nothing can load to offer the switch again, and the reader would be
-        // left with a site that looks broken by us rather than by them.
-        if (shut && isPage(request)) return wayBack();
         throw offline;
     }
 }
 
-/**
- * The page that exists so the switch can never strand anybody.
- *
- * Self-contained on purpose: no stylesheet, no module, nothing that would have
- * to be fetched through a worker that is currently refusing to fetch.
- */
-function wayBack() {
-    const body = `<!doctype html>
-<html lang="en">
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The network is switched off</title>
-<style>
-  :root { color-scheme: light dark; }
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center;
-         background: #E9EEEF; color: #0E1F28; padding: 1.5rem;
-         font: 16px/1.6 "IBM Plex Sans", system-ui, sans-serif; }
-  main { max-width: 34rem; }
-  h1 { font-family: Bitter, Georgia, serif; font-size: 1.4rem; margin: 0 0 .75rem; }
-  p { margin: 0 0 1rem; color: #47606B; }
-  button { font: inherit; padding: .5rem 1rem; border: 1px solid #C2CED3;
-           border-radius: 3px; background: #FDFEFE; color: #0E1F28; cursor: pointer; }
-  button:hover { border-color: #8A6110; }
-  @media (prefers-color-scheme: dark) {
-    body { background: #0A151B; color: #DFE9EC; }
-    p { color: #9FB4BC; }
-    button { background: #102028; color: #DFE9EC; border-color: #273C46; }
-  }
-</style>
-<main>
-  <h1>The network is switched off</h1>
-  <p>
-    You switched it off on this site to see what still works. This page was not
-    one of the ones already held, so there was nothing to show you, which is
-    exactly what would have happened on a train.
-  </p>
-  <p>Letting the network back in needs no network of its own.</p>
-  <button type="button" id="back">Let the network back in</button>
-</main>
-<script>
-  document.getElementById('back').addEventListener('click', async () => {
-    const registration = await navigator.serviceWorker.ready;
-    (navigator.serviceWorker.controller || registration.active)
-        .postMessage({ gpc: 'network', off: false });
-    try { localStorage.setItem('gpc-network', 'on'); } catch (blocked) {}
-    setTimeout(() => location.reload(), 250);
-  });
-</script>
-</html>`;
-
-    return new Response(body, {
-        status: 503,
-        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
-    });
-}
-
 async function shard(request) {
     const names = await shardCaches();
-    if (!names) return reach(request);       // nothing deployed to cache against
+    if (!names) return fetch(request);       // nothing deployed to cache against
 
     // What the reader asked to keep is looked at first, then what happened to
     // be cached before.
@@ -373,7 +231,7 @@ async function shard(request) {
     const seen = await runtime.match(request);
     if (seen) return seen;
 
-    const response = await reach(request);
+    const response = await fetch(request);
 
     // A 404 is a real answer here -- most of the planet is ocean and has no
     // shard -- but not one worth keeping, since a later build may put something
