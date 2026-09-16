@@ -15,8 +15,8 @@ export function getStaticPaths() {
 
 export const GET: APIRoute = ({ params }) => {
     const iso = params.iso!;
-    const places = shownFor(iso).map(({ name, region, country, lat, lon, slug }) => ({
-        name, region, country, lat, lon, slug,
+    const places = shownFor(iso).map(({ kind, name, city, region, country, lat, lon, slug }) => ({
+        kind, name, city, region, country, lat, lon, slug,
     }));
     return new Response(JSON.stringify({ iso, places }), {
         headers: { 'Content-Type': 'application/json; charset=utf-8' },

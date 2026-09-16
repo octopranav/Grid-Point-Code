@@ -1,5 +1,12 @@
 ---
-// The front door: a coordinate arriving one character at a time.
+// The front door: an address arriving one character at a time.
+//
+// It starts from a city, not from the world. The place shown is a market or an
+// old quarter in the visitor's own country, where doors are found by landmarks
+// rather than numbers, and the descent runs from the city's cell down to a
+// doorway. The first three characters are still there, filled in from the
+// start: they are continents and countries, and nobody gives directions in
+// those.
 //
 // Two surfaces show the same step. The PLATE is a drawing of the subdivision
 // the current level performs: the world four by six, everything under it five
@@ -13,8 +20,9 @@
 // somebody else's server is down.
 
 import CodeMark from './CodeMark.astro';
-import { resolve, checkSamples } from '../lib/levels';
-import { DEFAULT_COUNTRY, checkPlaces, shownFor } from '../lib/places';
+import { CITY_LEVEL, resolve, checkSamples } from '../lib/levels';
+import { DEFAULT_COUNTRY, checkPlaces, shownFor, spoken } from '../lib/places';
+import { label } from '../lib/country';
 
 // Fails the build if the site and section 9.4 of the specification ever
 // disagree about what these places encode to, or if the place data stops
@@ -28,16 +36,20 @@ checkPlaces();
 const start = shownFor(DEFAULT_COUNTRY)[0];
 const initial = resolve(start.lat, start.lon);
 const opening = {
-    label: start.name === start.country ? start.name : `${start.name}, ${start.country}`,
+    label: label(start),
+    kind: start.kind,
+    name: start.name,
+    city: start.city,
     slug: start.slug,
     lat: start.lat,
     lon: start.lon,
 };
-const first = initial.levels[0];
+const first = initial.levels[CITY_LEVEL - 1];
+const short = initial.code.slice(-5);
 
-// The plate a reader gets before any script runs: level one, the world divided
-// four ways by six, with the opening place's block lit. It is the first step of the story
-// and it stands on its own.
+// The plate a reader gets before any script runs: the city's cell divided five
+// by five, with the opening place's part of it lit. It is the first step of the
+// story and it stands on its own.
 const PLATE = 300;
 const cellWidth = PLATE / first.columns;
 const cellHeight = PLATE / first.rows;
@@ -50,12 +62,12 @@ const cellHeight = PLATE / first.rows;
     data-opening={JSON.stringify(opening)}
 >
     <div class="statement">
-        <p class="label">A code for every 2.56 by 3.42 metres on Earth</p>
+        <p class="label">An address for every door, stall and gate</p>
         <h1>A shared prefix is a shared cell.</h1>
         <p class="lede">
-            Ten characters name any doorway on the planet. Each one narrows the world
-            by twenty-five, from a block of it spanning two continents down to the
-            step outside a front door.
+            Where streets have no numbers, directions stand in for an address: beside
+            the tea stall, behind the blue gate. Ten characters give every door its own,
+            worked out on any phone with no network.
         </p>
 
         <div class="specimen">
@@ -67,6 +79,21 @@ const cellHeight = PLATE / first.rows;
                     {initial.centre[0].toFixed(6)}, {initial.centre[1].toFixed(6)}
                 </span>
             </p>
+
+            <!-- The address in use there today, then the code said the way it
+                 would be said there. Both follow the place the hero shows. -->
+            <dl class="said">
+                <div data-today hidden={start.kind !== 'featured'}>
+                    <dt>Without a code</dt>
+                    <dd data-today-text>{spoken(start)}, and then directions</dd>
+                </div>
+                <div data-aloud>
+                    <dt>Said aloud</dt>
+                    <dd>
+                        <span data-aloud-name>{start.name}</span>{' '}<code class="code" data-aloud-short>{short}</code>
+                    </dd>
+                </div>
+            </dl>
         </div>
 
         <!-- Hidden until the script is running: without it these do nothing,
@@ -77,7 +104,7 @@ const cellHeight = PLATE / first.rows;
                     <path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"></path>
                     <circle cx="12" cy="10" r="2.6"></circle>
                 </svg>
-                Code my location
+                Get the code for your door
             </button>
             <button type="button" class="secondary" data-next-sample>Somewhere else</button>
             <button type="button" class="quiet" data-replay data-state="idle">
@@ -93,6 +120,9 @@ const cellHeight = PLATE / first.rows;
         </div>
 
         <p class="status" data-status role="status"></p>
+        <p class="share" data-share hidden>
+            <a data-share-link href="/play">Add directions and share it</a>
+        </p>
     </div>
 
     <div class="stage">
@@ -144,7 +174,7 @@ const cellHeight = PLATE / first.rows;
     // nothing. At 10 KB compressed it is not worth hand-trimming, and the
     // playground will want the control styles it carries.
     import 'maplibre-gl/dist/maplibre-gl.css';
-    import { resolve, SAMPLES, type Resolution, type LevelCell } from '../lib/levels';
+    import { CITY_LEVEL, resolve, SAMPLES, type Resolution, type LevelCell } from '../lib/levels';
     import { visitorCountry, placesFor, label, type Shown } from '../lib/country';
     import type { Map as MapLibreMap, GeoJSONSource } from 'maplibre-gl';
 
@@ -167,28 +197,45 @@ const cellHeight = PLATE / first.rows;
         const plateLevel = section.querySelector<HTMLElement>('[data-plate-level]')!;
         const plateSize = section.querySelector<HTMLElement>('[data-plate-size]')!;
         const mapHolder = section.querySelector<HTMLElement>('[data-map]')!;
+        const todayLine = section.querySelector<HTMLElement>('[data-today]')!;
+        const todayText = section.querySelector<HTMLElement>('[data-today-text]')!;
+        const aloudLine = section.querySelector<HTMLElement>('[data-aloud]')!;
+        const aloudName = section.querySelector<HTMLElement>('[data-aloud-name]')!;
+        const aloudShort = section.querySelector<HTMLElement>('[data-aloud-short]')!;
+        const share = section.querySelector<HTMLElement>('[data-share]')!;
+        const shareLink = section.querySelector<HTMLAnchorElement>('[data-share-link]')!;
+
+        // The cells above a city are filled from the start and never animated.
+        const FROM = CITY_LEVEL - 1;
 
         const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
         /** Somewhere the hero can be showing: a label, and a page if it has one. */
         interface Stop {
             label: string;
+            /** A name both people would know, for saying the code aloud. */
+            name?: string;
+            city?: string | null;
+            kind?: 'featured' | 'sight' | 'city';
             slug?: string;
             lat: number;
             lon: number;
+            /** The reader's own position, which is theirs to share or not. */
+            own?: boolean;
         }
 
         const opening = JSON.parse(section.dataset.opening ?? '{}') as Stop;
-        const fallbackCountry = section.dataset.defaultCountry ?? 'PE';
+        const fallbackCountry = section.dataset.defaultCountry ?? 'EG';
 
         let current: Resolution = resolve(opening.lat, opening.lon);
         let here: Stop = opening;
-        let showing: LevelCell = current.levels[0];
+        let showing: LevelCell = current.levels[FROM];
 
         // What "Somewhere else" steps through: the visitor's own country first,
         // once it is known, then the worked examples from the specification.
         const samples: Stop[] = SAMPLES.map((s) => ({
             label: s.name,
+            name: s.name,
             lat: s.latitude,
             lon: s.longitude,
         }));
@@ -213,13 +260,13 @@ const cellHeight = PLATE / first.rows;
         // between levels or by skipping to the answer; both read as a fault
         // rather than a decision, and both withheld the one thing worth seeing.
         //
-        // The descent is one continuous fall from the world to a doorway.
+        // The descent is one continuous fall from a city to a doorway.
         // DESCENT is the whole of it; there is deliberately no per-level pause,
         // because a pause is a stop and a sequence of stops is a slideshow
-        // however short the gaps are. Ten levels across ten seconds gives each
-        // about a second of screen time, which is also long enough for tiles to
-        // arrive at each scale before the next is wanted.
-        const DESCENT = 10000;
+        // however short the gaps are. Seven levels across seven seconds gives
+        // each about a second of screen time, which is also long enough for
+        // tiles to arrive at each scale before the next is wanted.
+        const DESCENT = 7000;
 
         // What a cut-between-levels version waits instead, when a reader has
         // asked for less movement.
@@ -431,6 +478,29 @@ const cellHeight = PLATE / first.rows;
             else place.removeAttribute('href');
         }
 
+        /**
+         * How the place is given today, and how its code is said.
+         *
+         * Only a market or an old quarter has a "without a code" line: that is
+         * where the address in use is a name and then directions. The code is
+         * said aloud after a name both people know, so a reader's own position,
+         * which has no such name, gets neither, and gets a way to share it.
+         */
+        function describe(stop: Stop, resolution: Resolution) {
+            const today = stop.kind === 'featured' && stop.name
+                ? (stop.city ? `${stop.name}, ${stop.city}` : stop.name)
+                : null;
+            todayLine.hidden = today === null;
+            todayText.textContent = today === null ? '' : `${today}, and then directions`;
+
+            aloudLine.hidden = !stop.name;
+            aloudName.textContent = stop.name ?? '';
+            aloudShort.textContent = resolution.code.slice(-5);
+
+            share.hidden = !stop.own;
+            shareLink.href = '/play?c=' + resolution.code.replace(/[^0-9A-Z]/g, '');
+        }
+
         /** Tell the rest of the page which code is showing, so it can follow. */
         function announce(resolution: Resolution) {
             document.dispatchEvent(
@@ -458,22 +528,25 @@ const cellHeight = PLATE / first.rows;
             here = stop;
             name(stop);
             setCode(resolution);
+            describe(stop, resolution);
             announce(resolution);
 
-            const levels = resolution.levels;
+            // From the city down. Indexes below are into this list, so the
+            // character a level lights is FROM further along the code.
+            const levels = resolution.levels.slice(FROM);
             const views = levels.map(viewFor);
 
             const arrive = (index: number) => {
                 const cell = levels[index];
                 showing = cell;
                 boxes.forEach((box, at) => {
-                    box.dataset.filled = String(at <= index);
+                    box.dataset.filled = String(at <= index + FROM);
                 });
                 drawPlate(cell);
             };
 
-            boxes.forEach((box) => {
-                box.dataset.filled = 'false';
+            boxes.forEach((box, at) => {
+                box.dataset.filled = String(at < FROM);
             });
 
             const seats = map ? views.map(cameraFor) : [];
@@ -570,7 +643,7 @@ const cellHeight = PLATE / first.rows;
 
             // Where a descent of the current point starts from.
             function openingBounds(): [[number, number], [number, number]] {
-                const first = viewFor(current.levels[0]);
+                const first = viewFor(current.levels[FROM]);
                 return [[first.west, first.south], [first.east, first.north]];
             }
 
@@ -644,9 +717,7 @@ const cellHeight = PLATE / first.rows;
                 section.dataset.mapState = 'ready';
                 section.dataset.mapped = 'true';
 
-                // Join whatever step the sequence has already reached rather
-                // than restarting it underneath the reader.
-                // The map is built looking at the whole world, which is where
+                // The map is built looking at the city's cell, which is where
                 // a descent begins, so there is nothing to frame here. Whatever
                 // runs next decides what the reader sees.
                 mapIsHere();
@@ -764,6 +835,7 @@ const cellHeight = PLATE / first.rows;
                             label: 'Your location',
                             lat: position.coords.latitude,
                             lon: position.coords.longitude,
+                            own: true,
                         },
                         true,
                     );
@@ -773,7 +845,7 @@ const cellHeight = PLATE / first.rows;
                     status.dataset.tone = 'plain';
                     status.textContent =
                         error.code === error.PERMISSION_DENIED
-                            ? 'No location given. The places above work just as well.'
+                            ? 'No location given. Your door can be found on the map under Play instead.'
                             : 'Your location could not be read just now.';
                 },
                 { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
@@ -790,8 +862,11 @@ const cellHeight = PLATE / first.rows;
 
         void local.then((places) => {
             if (!places.length) return;
-            const stops = places.map((p: Shown) => ({
+            const stops: Stop[] = places.map((p: Shown) => ({
                 label: label(p),
+                name: p.name,
+                city: p.city,
+                kind: p.kind,
                 slug: p.slug,
                 lat: p.lat,
                 lon: p.lon,
@@ -805,6 +880,7 @@ const cellHeight = PLATE / first.rows;
                 current = resolve(here.lat, here.lon);
                 name(here);
                 setCode(current);
+                describe(here, current);
                 announce(current);
             }
         });
@@ -873,6 +949,25 @@ const cellHeight = PLATE / first.rows;
     }
 
     .dot { color: var(--rule); }
+
+    /* Two lines a reader compares, so they share one column of labels. */
+    .said {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        gap: var(--space-1) var(--space-3);
+        margin: 0;
+        font-size: var(--text-small-size);
+    }
+
+    .said div { display: contents; }
+    .said div[hidden] { display: none; }
+    .said dt { color: var(--ink-soft); }
+    .said dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+
+    .share {
+        margin: 0;
+        font-size: var(--text-small-size);
+    }
 
     .controls { display: none; }
 
