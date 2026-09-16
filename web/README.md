@@ -136,9 +136,9 @@ souq or old quarter that people in that country know by name, where the stalls,
 shops and doors inside have no address of their own and are found by landmark.
 That is the problem the format exists for, so it is what a visitor is shown.
 Not a religious site, not in territory two states contest, and not a shopping
-centre, whose units are numbered. Up to three a country, first line first. 170
-of them, across 107 countries. Countries that already use a national digital
-addressing system are added last.
+centre, whose units are numbered. Up to three a country, first line first. 179
+of them, across 114 countries. Countries that already use a national digital
+addressing system were done last, and are in their own block at the end.
 
 **Sights** are in [`scripts/sights.txt`](scripts/sights.txt): famous places
 with no address at all, such as waterfalls, canyons and ruins. 357 of them,
@@ -168,8 +168,10 @@ town is a poor guide to a state: the nearest town to Old Faithful is in Montana.
 It takes a sight's nearby town from GeoNames, only from the listed country,
 because taking the nearest place of any country put Horseshoe Falls in New York.
 
-A market's city is the GeoNames place within 12 km with the most people for its
-distance, capitals counted double. Neither simpler rule worked. The largest
+A market's city is the GeoNames place within 25 km with the most people for its
+distance, capitals counted double. The reach is that wide because a city's
+recorded point can be far from its old centre: Mumbai's is 14 km from Crawford
+Market. Neither simpler rule worked. The largest
 place in reach put the souq in Manama in Al Muharraq and the market in Valletta
 in a bigger town across the harbour; the nearest puts a market in an old city in
 whichever ward's centre is a little closer. GeoNames records Camayenne, one
