@@ -507,6 +507,13 @@ jobs:
       # failed: every row was right and the answer was wrong.
       - name: The name index answers with the place that was meant
         run: node scripts/test-names.mjs
+
+      # A sitemap date that moves on every deploy is one a search engine learns
+      # to ignore, and one that never moves hides a real change. Neither fails
+      # anything by itself.
+      - name: A sitemap date moves when a page changes, and only then
+        run: node scripts/test-lastmod.mjs
+
       # The site imports the package from the registry, not the source next
       # door. So this job is also a standing test of the published artifact: if
       # a release ever shipped a broken build or dropped an operation the site

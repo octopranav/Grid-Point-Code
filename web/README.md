@@ -381,6 +381,27 @@ To reproduce any of it, point `STYLES` in `src/lib/basemap.ts` at
 `http://127.0.0.1:9/` and load `/play?c=6LK4X-N2242`. The field should say
 `#6LK4X-N2242` and the coordinates should say `-33.868788, 151.209293`.
 
+## The sitemap's dates
+
+`sitemap.xml` and `robots.txt` are written at the end of every build, from the
+pages that were built. Each page's `lastmod` is the day what it says last
+changed, not the build date. A build date on every page tells a crawler that
+all two thousand changed whenever one did, and a date that is wrong that often
+is one it learns to ignore.
+
+A build cannot tell a changed page from an unchanged one by itself, so every
+deployment also publishes `lastmod.json`: a fingerprint of each page and the day
+that fingerprint was first seen. The next build reads it back from the live
+site. A page whose fingerprint matches keeps its date; a changed or new page
+gets the build's date. The fingerprint covers the title, the description and
+the words inside `<main>`, so a new footer line or a renamed stylesheet does not
+redate the site.
+
+If the live file cannot be read, a build on CI stops rather than dating every
+page today. A build on a desk warns and carries on, since it deploys nothing.
+The very first deployment with this dated every page that day, because there
+was nothing earlier to read. `scripts/test-lastmod.mjs` holds the rules.
+
 ## Deployment
 
 Pushing to `main` builds and publishes through
