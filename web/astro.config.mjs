@@ -1,11 +1,13 @@
 // @ts-check
 import { createReadStream, existsSync, statSync } from 'node:fs';
-import { cp, writeFile } from 'node:fs/promises';
+import { cp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'astro/config';
 import { satteri } from '@astrojs/markdown-satteri';
+
+import { STATE, dated, fingerprint, readState } from './scripts/lastmod.mjs';
 
 // The site is a pile of static files and nothing else: no server, no database,
 // no API. Everything a visitor asks of it is arithmetic their own browser can
@@ -207,14 +209,48 @@ const scrollableTables = {
  * indexed, and the specification only if something leads it there. Nothing did.
  *
  * Written from `pages` rather than from a list kept by hand, so a route added
- * later is in the sitemap without anybody remembering to add it. There is no
- * `lastmod`: every page would carry the build date, which would tell a crawler
- * that all thirteen changed every time one did, and a date that is wrong every
- * time is worse than no date.
+ * later is in the sitemap without anybody remembering to add it.
+ *
+ * Each page's `lastmod` is the day what it says last changed, not the build
+ * date: the build date would tell a crawler that every page changed whenever
+ * one did, and a date that is wrong that often is one it learns to ignore.
+ * scripts/lastmod.mjs explains how a build can know, which is by reading back
+ * what the last deployment published.
  *
  * The archive is disallowed. It is 82,000 shards and a name index, none of it
  * anything a search result should point at, and all of it expensive to crawl.
  */
+
+/**
+ * What the site currently deployed says each page said, and when.
+ *
+ * Asked of the live site, because that is the only place the last deployment's
+ * answer exists. Not found means nothing has been published yet, and every page
+ * starts from today. Any other failure stops a build on CI rather than guessing:
+ * a guess would redate every page on the site, which is the one thing this is
+ * for not doing. A build on a desk only warns, since it deploys nothing.
+ */
+async function published(logger) {
+    try {
+        const response = await fetch(`${ORIGIN}/${STATE}?at=${Date.now()}`, {
+            cache: 'no-store',
+            signal: AbortSignal.timeout(20_000),
+        });
+        if (response.status === 404) {
+            logger.warn(`no ${STATE} is published yet; every page is dated today`);
+            return {};
+        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return readState(await response.json());
+    } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        if (process.env.CI) {
+            throw new Error(`could not read ${ORIGIN}/${STATE} (${reason}), so every page would be redated`);
+        }
+        logger.warn(`could not read ${ORIGIN}/${STATE} (${reason}); dating every page today`);
+        return {};
+    }
+}
 function discovery() {
     return {
         name: 'discovery',
@@ -226,16 +262,26 @@ function discovery() {
                 // front, depending on the route, so both ends are trimmed.
                 // Pages only. The per-country place files are routes too, and a
                 // JSON file is not something to send a searcher to.
-                const urls = pages
+                const slugs = pages
                     .filter((page) => !/\.[a-z0-9]+$/i.test(page.pathname.replace(/\/+$/, '')))
                     .map((page) => page.pathname.replace(/^\/+/, '').replace(/\/+$/, ''))
-                    .map((slug) => (slug ? `${ORIGIN}/${slug}` : `${ORIGIN}/`))
                     .sort();
+
+                // `format: 'file'` puts /play at play.html, and the front page
+                // at index.html.
+                const current = {};
+                for (const slug of slugs) {
+                    const file = fileURLToPath(new URL(`${slug || 'index'}.html`, dir));
+                    current[`/${slug}`] = fingerprint(await readFile(file, 'utf8'));
+                }
+                const today = new Date().toISOString().slice(0, 10);
+                const state = dated(current, await published(logger), today);
 
                 const sitemap = [
                     '<?xml version="1.0" encoding="UTF-8"?>',
                     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-                    ...urls.map((url) => `  <url><loc>${url}</loc></url>`),
+                    ...Object.entries(state).map(([page, [, date]]) =>
+                        `  <url><loc>${ORIGIN}${page}</loc><lastmod>${date}</lastmod></url>`),
                     '</urlset>',
                     '',
                 ].join('\n');
@@ -254,9 +300,21 @@ function discovery() {
                     '',
                 ].join('\n');
 
+                const record = {
+                    about: [
+                        'What each page said, as a fingerprint, and the day that was first seen.',
+                        'Read back by the next build to date the sitemap. See web/scripts/lastmod.mjs.',
+                    ],
+                    pages: state,
+                };
+
                 await writeFile(fileURLToPath(new URL('sitemap.xml', dir)), sitemap, 'utf8');
+                await writeFile(fileURLToPath(new URL(STATE, dir)), JSON.stringify(record), 'utf8');
                 await writeFile(fileURLToPath(new URL('robots.txt', dir)), robots, 'utf8');
-                logger.info(`sitemap.xml lists ${urls.length} pages; robots.txt written`);
+                const moved = Object.values(state).filter(([, date]) => date === today).length;
+                logger.info(
+                    `sitemap.xml lists ${slugs.length} pages, ${moved} dated today; robots.txt written`,
+                );
             },
         },
     };
