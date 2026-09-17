@@ -12,8 +12,9 @@ const start = shownFor(DEFAULT_COUNTRY)[0];
 const { levels } = resolve(start.lat, start.lon);
 
 const description =
-    'Ten characters name any location on Earth. Encoding and decoding are arithmetic, ' +
-    'offline, with no lookup table and no network, and a shared prefix is a shared region.';
+    'Ten characters give every door, stall and gate an address, including where streets ' +
+    'have no numbers. Encoding and decoding are arithmetic, offline, with no lookup table ' +
+    'and no network.';
 ---
 
 <Base title="Home" description={description}>
