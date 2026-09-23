@@ -36,6 +36,7 @@ android {
 dependencies {
     implementation(project(":core"))
     implementation(project(":designsystem"))
+    implementation(project(":map"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)

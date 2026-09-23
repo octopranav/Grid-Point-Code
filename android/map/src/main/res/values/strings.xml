@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="map_failed">No map yet. It needs a connection the first time a place is shown, and it will appear when one returns. Everything else on this screen works without it.</string>
+</resources>

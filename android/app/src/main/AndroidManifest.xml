@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- No permissions yet. Location arrives with the locate button, and the
-         network with the map; everything on this screen is arithmetic. -->
+    <!-- The map is the only thing that needs the network: tiles, and nothing
+         else. Every code, check and correction is arithmetic on the device.
+         Location arrives with the locate button. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <queries>
         <!-- Read aloud uses whichever speech engine the device has. -->

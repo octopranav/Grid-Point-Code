@@ -8,10 +8,24 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.platform.LocalConfiguration
+import com.gridpointcode.core.selectionAt
+import com.gridpointcode.map.PlaceMap
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,7 +41,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,62 +72,133 @@ import com.gridpointcode.core.Problem
 import com.gridpointcode.core.Source
 import java.util.Locale
 
+/** Wider than this, the panel sits beside the map instead of over it. */
+private const val WIDE_DP = 840
+
+/** The panel's width beside the map, the same as the website's side panel. */
+private const val PANE_DP = 420
+
+/** How much of the panel shows over the map before it is pulled up: the code and its actions. */
+private const val PEEK_DP = 260
+
+/** The search bar's height over the map, with its margin. */
+private const val SEARCH_DP = 96
+
 /**
- * The place, and everything that can be said about it.
+ * The place, on the map and in words.
  *
- * The same six groups the website's playground has, in the same order, minus
- * the ones that need a network until the map and the landmark archive arrive.
+ * A phone shows the map with the panel as a sheet over it; a wide window puts
+ * the panel beside it, laid out by the width of the window rather than by what
+ * kind of device it is, so a tablet in a narrow split gets the phone layout.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
     val ui by model.ui.collectAsState()
-    val context = LocalContext.current
+    val wide = LocalConfiguration.current.screenWidthDp >= WIDE_DP
+    val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + SEARCH_DP.dp
+    val bottom = if (wide) WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else PEEK_DP.dp
 
-    Scaffold(containerColor = MaterialTheme.colorScheme.background) { insets ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(insets)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = Space.step3, vertical = Space.step2),
-            verticalArrangement = Arrangement.spacedBy(Space.step3),
-        ) {
-            Search(onOpen = { model.open(it) }, problem = ui.problem)
-            Head(
-                ui = ui,
-                speak = { speak(ui.spoken) },
-                share = { share(context, ui.formatted + "\n" + ui.link) },
-                copy = { copy(context, ui.formatted) },
+    val map: @Composable (Modifier) -> Unit = { modifier ->
+        Box(modifier) {
+            PlaceMap(
+                selection = ui.selection,
+                onPick = { model.place(selectionAt(it, Source.MAP)) },
+                padding = PaddingValues(top = top, bottom = bottom),
+                modifier = Modifier.fillMaxSize(),
             )
-            Nudge(ui.selection.code, ui.pad, onNudge = model::nudge)
-            WrittenForms(ui.forms, copy = { copy(context, it) })
-            GiveAddress(ui.note, ui.link, onNote = model::describeTheWay, share = { share(context, ui.formatted + "\n" + ui.link) })
-            Aloud(ui.spoken, speak = { speak(ui.spoken) })
-            Spacer(Modifier.height(Space.step5))
+            Search(
+                onOpen = { model.open(it) },
+                problem = ui.problem,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(Space.step2),
+            )
+        }
+    }
+
+    if (wide) {
+        Row(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            map(Modifier.weight(1f).fillMaxHeight())
+            Panel(
+                ui = ui,
+                model = model,
+                speak = speak,
+                modifier = Modifier
+                    .width(PANE_DP.dp)
+                    .fillMaxHeight()
+                    .statusBarsPadding()
+                    .navigationBarsPadding(),
+            )
+        }
+    } else {
+        BottomSheetScaffold(
+            sheetContent = {
+                Panel(ui = ui, model = model, speak = speak, modifier = Modifier.navigationBarsPadding())
+            },
+            sheetPeekHeight = PEEK_DP.dp,
+            sheetContainerColor = MaterialTheme.colorScheme.background,
+            sheetShape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp),
+        ) {
+            map(Modifier.fillMaxSize())
         }
     }
 }
 
+/** The same groups the website's playground has, in the same order. */
 @Composable
-private fun Search(onOpen: (String) -> Unit, problem: Problem?) {
-    var text by rememberSaveable { mutableStateOf("") }
-    Column(verticalArrangement = Arrangement.spacedBy(Space.step0)) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
-            label = { Text(stringResource(R.string.search_label)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = { onOpen(text) }),
-            trailingIcon = { TextButton(onClick = { onOpen(text) }) { Text(stringResource(R.string.search_go)) } },
-            modifier = Modifier.fillMaxWidth(),
+private fun Panel(ui: PlaceView, model: PlaceViewModel, speak: (String) -> Unit, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    Column(
+        modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Space.step3, vertical = Space.step2),
+        verticalArrangement = Arrangement.spacedBy(Space.step3),
+    ) {
+        Head(
+            ui = ui,
+            speak = { speak(ui.spoken) },
+            share = { share(context, ui.formatted + "\n" + ui.link) },
+            copy = { copy(context, ui.formatted) },
         )
-        if (problem != null) {
-            Text(
-                text = describe(problem),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
+        Nudge(ui.selection.code, ui.pad, onNudge = model::nudge)
+        WrittenForms(ui.forms, copy = { copy(context, it) })
+        GiveAddress(ui.note, ui.link, onNote = model::describeTheWay, share = { share(context, ui.formatted + "\n" + ui.link) })
+        Aloud(ui.spoken, speak = { speak(ui.spoken) })
+        Spacer(Modifier.height(Space.step5))
+    }
+}
+
+@Composable
+private fun Search(onOpen: (String) -> Unit, problem: Problem?, modifier: Modifier = Modifier) {
+    var text by rememberSaveable { mutableStateOf("") }
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(Radius.card),
+        shadowElevation = 2.dp,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(Space.step1), verticalArrangement = Arrangement.spacedBy(Space.step0)) {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text(stringResource(R.string.search_label)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+                keyboardActions = KeyboardActions(onGo = { onOpen(text) }),
+                trailingIcon = { TextButton(onClick = { onOpen(text) }) { Text(stringResource(R.string.search_go)) } },
+                modifier = Modifier.fillMaxWidth(),
             )
+            if (problem != null) {
+                Text(
+                    text = describe(problem),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = Space.step1, vertical = Space.step0),
+                )
+            }
         }
     }
 }
