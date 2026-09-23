@@ -84,6 +84,15 @@ fun PlaceState.opened(text: String, source: Source): PlaceState =
         is Reading.Unread -> copy(problem = Problem.Unread(reading.reason))
     }
 
+/**
+ * A place chosen by name. Somewhere else by name is a different door, so it is a
+ * new place like any other, and the directions written for the last one go.
+ */
+fun PlaceState.found(place: Named): PlaceState =
+    runCatching { selectionOf(place.code, Source.SEARCH) }
+        .map { placed(it) }
+        .getOrDefault(copy(problem = Problem.Unread(null)))
+
 /** New directions for the place already selected. */
 fun PlaceState.described(text: String): PlaceState = copy(note = tidyNote(text))
 

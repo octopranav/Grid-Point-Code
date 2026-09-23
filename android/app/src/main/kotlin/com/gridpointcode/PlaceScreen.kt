@@ -19,6 +19,13 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.runtime.remember
 import com.gridpointcode.map.Basemap
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.Role
+import com.gridpointcode.core.Named
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -67,7 +74,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,6 +109,9 @@ private const val PEEK_DP = 260
 /** The search bar's height over the map, with its margin. */
 private const val SEARCH_DP = 96
 
+/** The tallest the list of places gets before it scrolls: four and a half rows, so it plainly does. */
+private const val FOUND_DP = 270
+
 /**
  * The place, on the map and in words.
  *
@@ -115,6 +124,7 @@ private const val SEARCH_DP = 96
 fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
     val ui by model.ui.collectAsState()
     val basemap by model.basemap.collectAsState()
+    val finding by model.found.collectAsState()
     val wide = LocalConfiguration.current.screenWidthDp >= WIDE_DP
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + SEARCH_DP.dp
     val bottom = if (wide) WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else PEEK_DP.dp
@@ -140,7 +150,11 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
                 modifier = Modifier.fillMaxSize(),
             )
             Search(
-                onOpen = { model.open(it) },
+                text = model.query,
+                onType = model::type,
+                onGo = model::go,
+                finding = finding,
+                onPick = model::pick,
                 problem = ui.problem,
                 onSettings = { openSettings(context) },
                 modifier = Modifier
@@ -214,9 +228,28 @@ private fun Panel(ui: PlaceView, model: PlaceViewModel, speak: (String) -> Unit,
     }
 }
 
+/**
+ * One field for everything: a code, a point, a link, or the name of a place,
+ * which lists the places it could mean as it is typed.
+ */
 @Composable
-private fun Search(onOpen: (String) -> Unit, problem: Problem?, onSettings: () -> Unit, modifier: Modifier = Modifier) {
-    var text by rememberSaveable { mutableStateOf("") }
+private fun Search(
+    text: String,
+    onType: (String) -> Unit,
+    onGo: (String) -> Unit,
+    finding: Finding,
+    onPick: (Named) -> Unit,
+    problem: Problem?,
+    onSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focus = LocalFocusManager.current
+    // The map is what answers, so the keyboard gets out of its way.
+    val go = {
+        keyboard?.hide()
+        onGo(text)
+    }
     Surface(
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(Radius.card),
@@ -226,13 +259,21 @@ private fun Search(onOpen: (String) -> Unit, problem: Problem?, onSettings: () -
         Column(Modifier.padding(Space.step1), verticalArrangement = Arrangement.spacedBy(Space.step0)) {
             OutlinedTextField(
                 value = text,
-                onValueChange = { text = it },
+                onValueChange = onType,
                 label = { Text(stringResource(R.string.search_label)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-                keyboardActions = KeyboardActions(onGo = { onOpen(text) }),
-                trailingIcon = { TextButton(onClick = { onOpen(text) }) { Text(stringResource(R.string.search_go)) } },
+                keyboardActions = KeyboardActions(onGo = { go() }),
+                trailingIcon = { TextButton(onClick = go) { Text(stringResource(R.string.search_go)) } },
                 modifier = Modifier.fillMaxWidth(),
+            )
+            Found(
+                finding = finding,
+                onPick = { place ->
+                    keyboard?.hide()
+                    focus.clearFocus()
+                    onPick(place)
+                },
             )
             if (problem != null) {
                 Text(
@@ -243,6 +284,58 @@ private fun Search(onOpen: (String) -> Unit, problem: Problem?, onSettings: () -
                 )
                 if (problem == Problem.LocationRefused) {
                     TextButton(onClick = onSettings) { Text(stringResource(R.string.settings)) }
+                }
+            }
+        }
+    }
+}
+
+/** The places a name could mean, and why there are none when there are none. */
+@Composable
+private fun Found(finding: Finding, onPick: (Named) -> Unit) {
+    val looking = stringResource(R.string.names_looking)
+    if (finding.status == Finding.Status.LOOKING) {
+        LinearProgressIndicator(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Space.step1)
+                .semantics { contentDescription = looking },
+        )
+    }
+    val note = when (finding.status) {
+        Finding.Status.MISSING -> stringResource(R.string.names_missing, finding.query)
+        Finding.Status.OFFLINE -> stringResource(R.string.names_offline)
+        else -> null
+    }
+    if (note != null) {
+        Text(
+            text = note,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Space.step1, vertical = Space.step0),
+        )
+    }
+    if (finding.places.isEmpty()) return
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(max = FOUND_DP.dp)
+            .verticalScroll(rememberScrollState()),
+    ) {
+        finding.places.forEach { place ->
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button) { onPick(place) }
+                    .padding(horizontal = Space.step2, vertical = Space.step1),
+            ) {
+                Text(place.name, style = MaterialTheme.typography.bodyLarge)
+                if (place.region.isNotEmpty()) {
+                    Text(
+                        text = place.region,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }

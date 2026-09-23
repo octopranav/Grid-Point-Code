@@ -5,6 +5,9 @@
 
     <string name="search_label">Place, code, coordinates or link</string>
     <string name="search_go">Go</string>
+    <string name="names_looking">Looking up place names</string>
+    <string name="names_missing">No place in the index is called \"%1$s\".</string>
+    <string name="names_offline">Place names need a connection. A code, coordinates or a link still work.</string>
 
     <string name="source_sample">An example: the specification\'s own</string>
     <string name="source_device">Here</string>
