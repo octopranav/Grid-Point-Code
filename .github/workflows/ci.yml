@@ -521,6 +521,12 @@ jobs:
       - name: A sitemap date moves when a page changes, and only then
         run: node scripts/test-lastmod.mjs
 
+      # The cell took the page theme's brass whatever map was under it, and the
+      # light theme's brass on fiord is 1.4:1. The cell was drawn, in the right
+      # place, and could not be seen.
+      - name: The cell is drawn in inks its basemap can carry
+        run: node scripts/test-basemap.mjs
+
       # The site imports the package from the registry, not the source next
       # door. So this job is also a standing test of the published artifact: if
       # a release ever shipped a broken build or dropped an operation the site
