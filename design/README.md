@@ -12,10 +12,15 @@ node design/build-tokens.mjs --check    write nothing; fail if a target has drif
 | Generated file | Read by |
 | --- | --- |
 | `../web/src/styles/tokens.css` | The website, as custom properties |
-| `generated/android/values/colors.xml` | An Android application, light |
+| `generated/android/values/colors.xml` | Android views, light |
 | `generated/android/values-night/colors.xml` | The same, dark |
 | `generated/android/values/dimens.xml` | Spacing, radii and type sizes |
-| `generated/android/Palette.kt` | The same palette for Compose |
+| `generated/android/Palette.kt` | The Android app, every colour for Compose |
+| `generated/android/Scheme.kt` | The Android app, Material's colour roles filled from the palette |
+| `generated/android/Tokens.kt` | The Android app, spacing, radii and the type scale |
+
+The Android app compiles the three Kotlin files from where they are written
+here, so there is no second copy of them in [`../android`](../android) to drift.
 
 The check mode runs in continuous integration. A generated file somebody edited
 by hand is a fork of the design system that nobody announced, and the next
@@ -24,7 +29,7 @@ exists. Edit `tokens.json` and regenerate.
 
 The generator has no dependencies, like everything else here.
 
-## Two decisions worth knowing before editing
+## Three decisions worth knowing before editing
 
 **Both themes carry literal values rather than one theme plus opacities.** A
 translucent colour has to be composited against whatever sits behind it, which
@@ -35,6 +40,14 @@ prussian stepped into the ground in ten equal parts, so depth reads as weight an
 the eye starts where the world does. The ramp inverts on the dark theme: level
 one is brightest there and level ten sinks into the page. Each tint carries the
 type colour that stays legible on it, which changes at level six on both themes.
+
+**Material's colour roles name colours, never values.** The `material` block
+says which of the twelve colours, or which level, fills each of the thirty-odd
+roles Material asks for, so a colour is still decided in one place. The
+generator measures every role against the role drawn on it before it writes
+anything: 4.5:1 for type, 3:1 for the outline a text field is drawn with. The
+first draft put brass on the sunken tint at 4.38 and was refused. Brass is never
+a fill anyway; it is the ink codes are set in, so its container is the surface.
 
 ## The typeface was chosen by measurement
 

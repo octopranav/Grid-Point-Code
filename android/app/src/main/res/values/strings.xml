@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Grid Point Code</string>
+    <string name="process_text">Open in Grid Point Code</string>
+
+    <string name="search_label">Place, code, coordinates or link</string>
+    <string name="search_go">Go</string>
+
+    <string name="source_sample">An example: the specification\'s own</string>
+    <string name="source_device">Here</string>
+    <string name="source_code">The code you gave</string>
+    <string name="source_link">From a link</string>
+    <string name="source_nudge">One cell over</string>
+    <string name="source_map">Picked on the map</string>
+    <string name="source_search">Found by name</string>
+
+    <string name="cell_size">Cell %1$s m north to south, %2$s m east to west</string>
+    <string name="fix_inside">Your device placed you to within about %1$d m, which is inside a single cell.</string>
+    <string name="fix_wider">Your device placed you to within about %1$d m. The code is exact for the point it was given, and at this accuracy that point may not be your doorway.</string>
+
+    <string name="read_aloud">Read aloud</string>
+    <string name="share">Share</string>
+    <string name="copy">Copy</string>
+    <string name="copied">Copied</string>
+
+    <string name="nudge_title">Nudge one cell</string>
+    <string name="nudge_here">Here</string>
+    <string name="nudge_note">Each step moves one cell, about two and a half metres.</string>
+    <string name="nudge_pole">The grid does not wrap at the poles, so there is no pad here.</string>
+
+    <string name="forms_title">Also written as</string>
+    <string name="form_short">Short</string>
+    <string name="form_short_caution">local only</string>
+    <string name="form_check">Check</string>
+    <string name="form_check_caution">for voice and paper</string>
+    <string name="form_integer">Integer</string>
+    <string name="form_integer_caution">48-bit, six bytes</string>
+    <string name="form_dms">Degrees, minutes, seconds</string>
+    <string name="form_geo">Geo URI</string>
+
+    <string name="address_title">Give this address</string>
+    <string name="address_note">Directions, carried in the link</string>
+    <string name="address_count">%1$d / %2$d</string>
+
+    <string name="aloud_title">Read aloud</string>
+
+    <string name="problem_unread">That is not a code, a pair of coordinates or a link this app can read.</string>
+    <string name="problem_unread_reason">That is not a code this app can read (%1$s).</string>
+    <string name="problem_reserved">%1$s is from the reserved range. It is well formed, and it does not name a place.</string>
+    <string name="problem_short">%1$s is shaped like a short form, but uses symbols no code contains.</string>
+</resources>

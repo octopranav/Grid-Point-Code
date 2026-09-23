@@ -99,7 +99,7 @@ ${themed(dark, level.dark)}
 `;
 }
 
-// ── the Android resources, for when that application starts ──────────────────
+// ── the Android resources ────────────────────────────────────────────────────
 
 const androidName = (name) => name.replace(/-/g, '_');
 const androidColours = (palette, tints) => `<?xml version="1.0" encoding="utf-8"?>
@@ -151,7 +151,108 @@ ${scheme(dark, tokens.level.dark, 'Dark')}
 `;
 };
 
+// ── Material's colour roles, and the scales Compose reads ────────────────────
+
+/**
+ * A colour named in the material block: a palette name, a level as 'level-N',
+ * or that level's ink as 'level-N-ink'. A name that is none of these stops the
+ * build, because a role quietly left at Material's default is a purple button
+ * in an application that has no purple in it.
+ */
+function named(theme, name) {
+    const level = /^level-(\d+)(-ink)?$/.exec(name);
+    const found = level
+        ? tokens.level[theme][level[2] ? 'ink' : 'tint'][Number(level[1]) - 1]
+        : real(tokens.colour[theme])[name];
+    if (found === undefined) {
+        console.error(`material.${theme} names '${name}', which is not a colour in tokens.json`);
+        process.exit(1);
+    }
+    return found;
+}
+
+const composeColour = (value) => `Color(0xFF${value.slice(1).toUpperCase()})`;
+
+const composeScheme = () => {
+    const roles = (theme) => Object.entries(real(tokens.material[theme]))
+        .map(([role, name]) => `    ${role} = ${composeColour(named(theme, name))}, // ${name}`)
+        .join('\n');
+
+    return `// ${BANNER('design/tokens.json')}
+
+package ca.pranavpatel.algo.gridpointcode.design
+
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.Color
+
+val GpcLightColors = lightColorScheme(
+${roles('light')}
+)
+
+val GpcDarkColors = darkColorScheme(
+${roles('dark')}
+)
+`;
+};
+
+// '16.5px' is 16.5 and '44px' is 44, written the way Kotlin reads a literal.
+const figure = (value) => String(parseFloat(value));
+
+const composeTokens = () => {
+    const space = Object.entries(real(tokens.space))
+        .map(([step, value]) => `    val step${step} = ${figure(value)}.dp`)
+        .join('\n');
+    const radius = Object.entries(real(tokens.radius))
+        .map(([name, value]) => `    val ${kotlinName(name)} = ${figure(value)}.dp`)
+        .join('\n');
+    const scale = Object.entries(real(tokens.type.scale))
+        .map(([name, face]) => `    val ${kotlinName(name)} = Face(${figure(face.size)}.sp, `
+            + `${figure(face.line)}.sp, ${face.weight}, Family.${face.family.toUpperCase()})`)
+        .join('\n');
+
+    return `// ${BANNER('design/tokens.json')}
+
+package ca.pranavpatel.algo.gridpointcode.design
+
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+/** Which of the three typefaces a step of the scale is set in. */
+enum class Family { DISPLAY, BODY, MONO }
+
+/** One step of the type scale. */
+class Face(val size: TextUnit, val lineHeight: TextUnit, val weight: Int, val family: Family)
+
+object Space {
+${space}
+}
+
+object Radius {
+${radius}
+}
+
+object TypeScale {
+${scale}
+}
+
+/** How far apart the characters of a code are set, in em. */
+const val CODE_TRACKING_EM = ${figure(tokens.type.code['letter-spacing'])}f
+`;
+};
+
 // ── write, or check ──────────────────────────────────────────────────────────
+
+const channel = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const luminance = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => channel(parseInt(hex.slice(i, i + 2), 16) / 255));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const ratio = (a, b) => {
+    const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m);
+    return (x + 0.05) / (y + 0.05);
+};
 
 /**
  * Every level tint must carry its own ink at 4.5:1.
@@ -167,16 +268,6 @@ ${scheme(dark, tokens.level.dark, 'Dark')}
  * somebody who could not read the page.
  */
 function contrastHolds() {
-    const channel = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-    const luminance = (hex) => {
-        const [r, g, b] = [1, 3, 5].map((i) => channel(parseInt(hex.slice(i, i + 2), 16) / 255));
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    };
-    const ratio = (a, b) => {
-        const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m);
-        return (x + 0.05) / (y + 0.05);
-    };
-
     const WANTED = 4.5;
     const failures = [];
 
@@ -204,7 +295,57 @@ function contrastHolds() {
     }
 }
 
+/**
+ * Every Material role that carries type must be readable on the one beneath it.
+ *
+ * Material assigns roles in pairs, a colour and the colour drawn on it, and a
+ * component takes both without asking. So a pairing that fails here fails in
+ * every button, chip and field that uses it, which is a great deal further than
+ * one tint on one page. Type wants 4.5:1. The outline wants 3:1, because it is
+ * the border that shows where to type, not the type.
+ */
+function materialHolds() {
+    const pairs = [
+        ['primary', 'onPrimary', 4.5],
+        ['primaryContainer', 'onPrimaryContainer', 4.5],
+        ['secondary', 'onSecondary', 4.5],
+        ['secondaryContainer', 'onSecondaryContainer', 4.5],
+        ['tertiary', 'onTertiary', 4.5],
+        ['tertiaryContainer', 'onTertiaryContainer', 4.5],
+        ['error', 'onError', 4.5],
+        ['errorContainer', 'onErrorContainer', 4.5],
+        ['background', 'onBackground', 4.5],
+        ['surface', 'onSurface', 4.5],
+        ['surfaceVariant', 'onSurfaceVariant', 4.5],
+        ['inverseSurface', 'inverseOnSurface', 4.5],
+        ['inverseSurface', 'inversePrimary', 4.5],
+        ['surface', 'outline', 3],
+        ['background', 'outline', 3],
+    ];
+    const failures = [];
+
+    for (const theme of ['light', 'dark']) {
+        const roles = real(tokens.material[theme]);
+        for (const [under, over, wanted] of pairs) {
+            const measured = ratio(named(theme, roles[under]), named(theme, roles[over]));
+            if (measured < wanted) {
+                failures.push(
+                    `  ${theme} ${over} (${roles[over]}) on ${under} (${roles[under]})`
+                    + ` is ${measured.toFixed(2)}:1, wanted ${wanted}`,
+                );
+            }
+        }
+    }
+
+    if (failures.length > 0) {
+        console.error('Material roles that cannot be read on the role beneath them:');
+        for (const line of failures) console.error(line);
+        process.exit(1);
+    }
+}
+
 contrastHolds();
+materialHolds();
 
 const targets = [
     ['web/src/styles/tokens.css', css()],
@@ -212,6 +353,8 @@ const targets = [
     ['design/generated/android/values-night/colors.xml', androidColours(real(tokens.colour.dark), tokens.level.dark)],
     ['design/generated/android/values/dimens.xml', androidDimens()],
     ['design/generated/android/Palette.kt', compose()],
+    ['design/generated/android/Scheme.kt', composeScheme()],
+    ['design/generated/android/Tokens.kt', composeTokens()],
 ];
 
 let drifted = 0;

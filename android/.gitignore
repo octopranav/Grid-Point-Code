@@ -1,0 +1,13 @@
+# Everything Gradle and the Android build write. None of it is source.
+.gradle/
+.kotlin/
+build/
+.cxx/
+captures/
+local.properties
+*.apk
+*.aab
+
+# A signing key never belongs in a public repository, not even by accident.
+*.jks
+*.keystore

@@ -109,3 +109,9 @@ web/src/styles/tokens.css text eol=lf
 ###############################################################################
 web/public/favicon.svg      text eol=lf
 web/public/site.webmanifest text eol=lf
+
+# The wrapper script is run by a POSIX shell, which reads a carriage return as
+# part of the command. The jar is a binary that CI checks against its known hash.
+android/gradlew text eol=lf
+android/gradlew.bat text eol=crlf
+android/gradle/wrapper/gradle-wrapper.jar binary
