@@ -176,3 +176,28 @@ private fun bearing(point: Point, latitude: Double, longitude: Double): String {
     val degrees = atan2(y, x) * 180 / PI
     return OCTANTS[(((degrees + 360) % 360) / 45).roundToInt() % 8]
 }
+
+/**
+ * The area kept offline around a point: the cell one level above the archive's
+ * shards, 200 km north to south. Large enough to be worth keeping before a
+ * journey, small enough that it is a few hundred kilobytes rather than the
+ * eighty-odd megabytes the whole archive weighs. The same size the website keeps.
+ */
+fun areaFor(point: Point, level: Int): String? =
+    runCatching { GPC.Cell(GPC.Encode(point.latitude, point.longitude, false), level - 1) }.getOrNull()
+
+/** The shards in an area: its cell followed by each of the format's twenty-five symbols. */
+fun shardsIn(area: String): List<String> = SYMBOLS.map { area + it }
+
+/** An area's size on the ground at a latitude, in metres: north to south, then east to west. */
+fun areaMetres(latitude: Double, level: Int): Pair<Double, Double> {
+    val cell = GPC.CellDimensions(level - 1)
+    return cell.NorthSouth to cell.EastWest * cos(radians(latitude))
+}
+
+/**
+ * The alphabet, in order, as the library writes it: the last character of the
+ * first twenty-five integers. Read from the library rather than copied here,
+ * because this module adds nothing to the format.
+ */
+private val SYMBOLS: List<Char> = (0L until 25L).map { GPC.FromInteger(it, false).last() }

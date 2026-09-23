@@ -69,6 +69,11 @@ code, check and correction is arithmetic on the device.
   same landmark first. A place that cannot be found, a name several places
   answer to, one that is not unique in its own region, and no connection are
   each refused with the reason, and the place stays where it was.
+- Keeps an area offline on request: the cell around the place, 200 km north to
+  south, its 25 shards of the archive on the device, a few hundred kilobytes.
+  There the anchor list and reading an anchored line both work with no
+  connection. An area is kept whole or not at all, only what was asked for is
+  ever counted as kept, and Forget gives it all back.
 
 ## Building
 
@@ -155,12 +160,21 @@ cannot be, names somewhere plausible and wrong: `-98NM9` read against London is
 nothing moves until one landmark is certain, and `core` has a test that fails if
 it ever does.
 
+**Kept means asked for.** Shards fetched while looking around are held in
+memory and gone when the app closes; only an area the reader chose to keep is
+written to the device or reported as kept, because an area merely glanced at is
+not ready for a journey. A kept shard is used when it comes from the archive the
+site is serving, or when there is no connection to ask; offline, an older
+landmark is better than none. With no connection, an anchored line is read
+against the kept landmarks only when it gives its region, since nothing on the
+device can show that a name alone is unique.
+
 **Three SDK levels, three meanings.** `compileSdk` 37 because current AndroidX
 libraries compile against it. `targetSdk` 36 for runtime behaviour. `minSdk` 26,
 which covers the streaming calls in the library, which need 24.
 
 ## Not here yet
 
-Keeping an area's landmarks for use offline, the bundled typefaces, the launcher icon, verified links (which need the signing
+The bundled typefaces, the launcher icon, verified links (which need the signing
 fingerprint published in `/.well-known/assetlinks.json`), and the Wear OS, car
 and headset modules.

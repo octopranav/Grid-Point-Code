@@ -62,3 +62,32 @@ private fun described(place: Named): String =
     if (place.region.isEmpty()) place.name else "${place.name}, ${place.region}"
 
 private val SPACES = Regex("\\s+")
+
+/**
+ * The landmark a reference names among those kept offline, for reading an
+ * anchored line with no connection.
+ *
+ * Only a reference with its region. A name on its own names one place only if
+ * nothing in the whole index shares it, and nothing kept on the device can show
+ * that. With the region, the archive's own rule does: a name is in it only when
+ * it is unique within its region.
+ */
+fun keptReference(reference: String, landmarks: List<Landmark>): KeptMatch {
+    if (!reference.contains(',')) return KeptMatch.None
+    val rows = landmarks.map { Named(it.name, "", it.region) }
+    return when (val match = matchReference(reference, rows)) {
+        is ReferenceMatch.One -> landmarkFor(match.place, landmarks)?.let { KeptMatch.One(it) } ?: KeptMatch.None
+        ReferenceMatch.Several -> KeptMatch.Several
+        ReferenceMatch.None -> KeptMatch.None
+    }
+}
+
+/** What a reference came to among the landmarks kept offline. */
+sealed interface KeptMatch {
+    data class One(val landmark: Landmark) : KeptMatch
+
+    data object Several : KeptMatch
+
+    /** Not among them, which says nothing about the rest of the world. */
+    data object None : KeptMatch
+}

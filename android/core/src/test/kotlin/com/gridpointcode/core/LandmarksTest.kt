@@ -164,6 +164,26 @@ class LandmarksTest {
     }
 
     @Test
+    fun anAreaIsTheCellAboveTheShardsAndHoldsTwentyFiveOfThem() {
+        assertEquals("G3R", areaFor(example, 4))
+        val shards = shardsIn("G3R")
+        assertEquals(25, shards.size)
+        assertEquals("0123456789CDFGHJKLMNPRTWX", shards.joinToString("") { it.last().toString() })
+        assertTrue("G3RJ" in shards, "the example's own shard is in its area")
+        // Every shard the example's box reaches into is in the area kept for it.
+        assertTrue(shards.containsAll(shardsFor(example, 4)))
+    }
+
+    @Test
+    fun anAreaIsTwoHundredKilometresTallAndNarrowsTowardThePoles() {
+        val (equatorTall, equatorWide) = areaMetres(0.0, 4)
+        assertEquals(200_037.6, equatorTall, 0.1)
+        assertEquals(267_166.8, equatorWide, 0.1)
+        val (_, torontoWide) = areaMetres(example.latitude, 4)
+        assertEquals(193_308.0, torontoWide, 100.0)
+    }
+
+    @Test
     fun theLineIsTheShortFormThenThePlace() {
         val line = anchored(code(example), toronto[0])
         assertEquals("-98NM9 near Old Toronto, Ontario, Canada", line)

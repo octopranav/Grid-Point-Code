@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.gridpointcode.core.Anchor
 import com.gridpointcode.core.Compass
+import com.gridpointcode.core.KeptMatch
 import com.gridpointcode.core.Landmark
 import com.gridpointcode.core.Locating
 import com.gridpointcode.core.Named
@@ -21,6 +22,8 @@ import com.gridpointcode.core.Selection
 import com.gridpointcode.core.Source
 import com.gridpointcode.core.anchored
 import com.gridpointcode.core.anchoredAt
+import com.gridpointcode.core.areaMetres
+import com.gridpointcode.core.keptReference
 import com.gridpointcode.core.described
 import com.gridpointcode.core.found
 import com.gridpointcode.core.isName
@@ -40,6 +43,8 @@ import com.gridpointcode.core.selectionAt
 import com.gridpointcode.core.stoppedLocating
 import com.gridpointcode.core.view
 import com.gridpointcode.map.Basemap
+import java.io.File
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -72,8 +77,9 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     private val names = NameIndex()
     private val finding = MutableStateFlow(Finding())
     private var looking: Job? = null
-    private val archive = LandmarkArchive()
+    private val archive = LandmarkArchive(KeptLandmarks(File(application.noBackupFilesDir, "kept-landmarks")))
     private val anchoring = MutableStateFlow(Anchoring())
+    private val keeping = MutableStateFlow(Keeping())
 
     /** Which landmark the reader chose, by name and region, so it survives a nudge that keeps it in reach. */
     private var anchorChoice: String? = null
@@ -103,6 +109,9 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     /** The landmarks the current place's short form can be given with. */
     val anchors: StateFlow<Anchoring> = anchoring
 
+    /** Whether the area around the current place is kept on the device. */
+    val offline: StateFlow<Keeping> = keeping
+
     init {
         // Looked up again whenever the code changes, and only then: a finer fix
         // inside the same cell names the same code and needs the same list. A
@@ -114,10 +123,49 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
                 anchoring.value = Anchoring(code = code)
                 anchoring.value = when (val near = archive.near(current.selection.point)) {
                     LandmarkArchive.Near.Unreachable -> Anchoring(code, Anchoring.Status.UNREACHABLE)
-                    is LandmarkArchive.Near.Found -> reach(code, near.anchors)
+                    is LandmarkArchive.Near.Found -> reach(code, near.anchors).copy(partial = near.partial)
                 }
             }
         }
+        viewModelScope.launch {
+            state.distinctUntilChangedBy { it.selection.code }.collectLatest { current ->
+                val fresh = keepingAt(current.selection.point)
+                keeping.update { fresh.copy(busy = it.busy) }
+            }
+        }
+    }
+
+    /** Keep the area around the current place, so its landmarks work with no connection. */
+    fun keepArea() {
+        val point = state.value.selection.point
+        keeping.update { it.copy(busy = true, note = null) }
+        viewModelScope.launch {
+            val outcome = archive.keep(point)
+            val fresh = keepingAt(state.value.selection.point)
+            keeping.value = fresh.copy(note = if (outcome is LandmarkArchive.Keeping.Failed) Keeping.Note.FAILED else null)
+        }
+    }
+
+    /** Give back every area kept. */
+    fun forgetKept() {
+        viewModelScope.launch {
+            archive.forget()
+            keeping.value = keepingAt(state.value.selection.point).copy(note = Keeping.Note.FORGOTTEN)
+        }
+    }
+
+    private suspend fun keepingAt(point: Point): Keeping {
+        val here = archive.area(point) ?: return Keeping()
+        val all = archive.keptAreas()
+        val (northSouth, eastWest) = areaMetres(point.latitude, here.first.length + 1)
+        return Keeping(
+            area = here.first,
+            here = here.second,
+            northSouthKm = (northSouth / 1000).roundToInt(),
+            eastWestKm = (eastWest / 1000).roundToInt(),
+            areas = all.size,
+            bytes = all.sumOf { it.bytes },
+        )
     }
 
     /** A place from the map. */
@@ -167,7 +215,7 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun resolve(reading: Reading.Anchored): Resolved {
         val places = names.find(referenceName(reading.reference), REFERENCE_ROWS)
-            ?: return Resolved.Refused(Problem.Unanchored.Why.UNREACHABLE)
+            ?: return resolveKept(reading)
         val place = when (val match = matchReference(reading.reference, places)) {
             ReferenceMatch.None -> return Resolved.Refused(Problem.Unanchored.Why.NOT_FOUND)
             ReferenceMatch.Several -> return Resolved.Refused(Problem.Unanchored.Why.SEVERAL)
@@ -179,6 +227,19 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
             is LandmarkArchive.Held.Found -> Resolved.At(held.landmark)
         }
     }
+
+    /**
+     * With no connection to the name index, the areas kept on the device are
+     * searched instead. Found there, the landmark is the archive's own, so the
+     * line reads exactly as it would online; not found there says nothing about
+     * the rest of the world, so the reader is told a connection is needed.
+     */
+    private suspend fun resolveKept(reading: Reading.Anchored): Resolved =
+        when (val match = keptReference(reading.reference, archive.keptLandmarks())) {
+            is KeptMatch.One -> Resolved.At(match.landmark)
+            KeptMatch.Several -> Resolved.Refused(Problem.Unanchored.Why.SEVERAL)
+            KeptMatch.None -> Resolved.Refused(Problem.Unanchored.Why.UNREACHABLE)
+        }
 
     private sealed interface Resolved {
         data class At(val landmark: Landmark) : Resolved
@@ -329,6 +390,8 @@ data class Anchoring(
     val status: Status = Status.LOOKING,
     val anchors: List<Anchor> = emptyList(),
     val chosen: Anchor? = null,
+    /** Part of the box could not be read, so the list is missing places, and says so. */
+    val partial: Boolean = false,
 ) {
     /** The line to share: the short form, then the place, as section 12.1 writes it. */
     val line: String? get() = chosen?.let { anchored(code, it.landmark) }
@@ -343,6 +406,23 @@ data class Anchoring(
         /** The archive could not be read, which is not the same as nothing near. */
         UNREACHABLE,
     }
+}
+
+/** The area around the current place, and what is kept of it and of everywhere. */
+data class Keeping(
+    /** The area's cell, or null while the archive is not known and there is nothing to offer. */
+    val area: String? = null,
+    /** The area as kept, when it is. */
+    val here: KeptLandmarks.Area? = null,
+    val northSouthKm: Int = 0,
+    val eastWestKm: Int = 0,
+    val busy: Boolean = false,
+    val note: Note? = null,
+    /** Every area kept, anywhere. */
+    val areas: Int = 0,
+    val bytes: Long = 0,
+) {
+    enum class Note { FAILED, FORGOTTEN }
 }
 
 /** What the search field has turned up by name. */
