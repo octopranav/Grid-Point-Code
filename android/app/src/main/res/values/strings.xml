@@ -47,5 +47,12 @@
     <string name="problem_unread">That is not a code, a pair of coordinates or a link this app can read.</string>
     <string name="problem_unread_reason">That is not a code this app can read (%1$s).</string>
     <string name="problem_reserved">%1$s is from the reserved range. It is well formed, and it does not name a place.</string>
+    <string name="locate">Find my location</string>
+    <string name="locating_seeking">Finding where you are.</string>
+    <string name="locating_refining">Hold still. The fix is getting tighter.</string>
+    <string name="settings">Settings</string>
+    <string name="problem_location_refused">The app is not allowed to use your location. A code can still be typed, pasted or picked on the map.</string>
+    <string name="problem_location_off">Location is switched off on this device. A code can still be typed, pasted or picked on the map.</string>
+    <string name="problem_no_fix">No fix arrived. Outdoors or by a window, one usually comes within a minute.</string>
     <string name="problem_short">%1$s is shaped like a short form, but uses symbols no code contains.</string>
 </resources>

@@ -1,5 +1,18 @@
 package com.gridpointcode
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.core.content.ContextCompat
+import com.gridpointcode.core.Locating
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -99,6 +112,17 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + SEARCH_DP.dp
     val bottom = if (wide) WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else PEEK_DP.dp
 
+    val context = LocalContext.current
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+        if (granted.values.any { it }) model.locate() else model.refused()
+    }
+    // Precise and approximate are asked for together; Android lets the reader
+    // choose, and an approximate fix is shown with the accuracy it admits to.
+    val locate = {
+        if (hasLocation(context)) model.locate()
+        else ask.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+    }
+
     val map: @Composable (Modifier) -> Unit = { modifier ->
         Box(modifier) {
             PlaceMap(
@@ -110,10 +134,18 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
             Search(
                 onOpen = { model.open(it) },
                 problem = ui.problem,
+                onSettings = { openSettings(context) },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
                     .padding(Space.step2),
+            )
+            Locate(
+                locating = ui.locating,
+                onClick = locate,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = Space.step3, bottom = bottom + Space.step3),
             )
         }
     }
@@ -172,7 +204,7 @@ private fun Panel(ui: PlaceView, model: PlaceViewModel, speak: (String) -> Unit,
 }
 
 @Composable
-private fun Search(onOpen: (String) -> Unit, problem: Problem?, modifier: Modifier = Modifier) {
+private fun Search(onOpen: (String) -> Unit, problem: Problem?, onSettings: () -> Unit, modifier: Modifier = Modifier) {
     var text by rememberSaveable { mutableStateOf("") }
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -198,6 +230,9 @@ private fun Search(onOpen: (String) -> Unit, problem: Problem?, modifier: Modifi
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(horizontal = Space.step1, vertical = Space.step0),
                 )
+                if (problem == Problem.LocationRefused) {
+                    TextButton(onClick = onSettings) { Text(stringResource(R.string.settings)) }
+                }
             }
         }
     }
@@ -212,6 +247,32 @@ private fun describe(problem: Problem): String = when (problem) {
     }
     is Problem.Reserved -> stringResource(R.string.problem_reserved, problem.code)
     is Problem.UnreadShort -> stringResource(R.string.problem_short, problem.short)
+    Problem.LocationRefused -> stringResource(R.string.problem_location_refused)
+    Problem.LocationOff -> stringResource(R.string.problem_location_off)
+    Problem.NoFix -> stringResource(R.string.problem_no_fix)
+}
+
+/** The locate button. It shows that it is waiting while no fix has come yet. */
+@Composable
+private fun Locate(locating: Locating, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val label = stringResource(R.string.locate)
+    FloatingActionButton(
+        onClick = onClick,
+        shape = ButtonShape,
+        containerColor = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
+        modifier = modifier.semantics { contentDescription = label },
+    ) {
+        if (locating == Locating.SEEKING) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                color = MaterialTheme.colorScheme.onPrimary,
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Icon(Crosshair, contentDescription = null)
+        }
+    }
 }
 
 @Composable
@@ -236,6 +297,19 @@ private fun Head(ui: PlaceView, speak: () -> Unit, share: () -> Unit, copy: () -
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            when (ui.locating) {
+                Locating.SEEKING -> Text(
+                    stringResource(R.string.locating_seeking),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Locating.REFINING -> Text(
+                    stringResource(R.string.locating_refining),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Locating.IDLE -> Unit
+            }
             ui.fix?.let { fix ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.step1)) {
                     if (!fix.insideOneCell) {
@@ -399,4 +473,16 @@ private fun share(context: Context, text: String) {
 private fun copy(context: Context, text: String) {
     context.getSystemService(ClipboardManager::class.java)
         ?.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.app_name), text))
+}
+
+private fun hasLocation(context: Context): Boolean =
+    listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION).any {
+        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+    }
+
+/** Once refused twice, Android stops asking, and only the app's settings page can change the answer. */
+private fun openSettings(context: Context) {
+    context.startActivity(
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
+    )
 }

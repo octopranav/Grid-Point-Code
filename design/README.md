@@ -45,9 +45,13 @@ type colour that stays legible on it, which changes at level six on both themes.
 says which of the twelve colours, or which level, fills each of the thirty-odd
 roles Material asks for, so a colour is still decided in one place. The
 generator measures every role against the role drawn on it before it writes
-anything: 4.5:1 for type, 3:1 for the outline a text field is drawn with. The
-first draft put brass on the sunken tint at 4.38 and was refused. Brass is never
-a fill anyway; it is the ink codes are set in, so its container is the surface.
+anything: 4.5:1 for type, 3:1 for the outline a text field is drawn with. It
+then replays the order Material uses to choose a text colour for a container it
+was not told about, because two roles that share a value share the earlier one's
+text colour. That is how the tertiary container, once set to the surface, turned
+every surface's text brass while every pairing measured fine. Brass and crimson
+mean a code and a fault; they are set by hand where they mean that, and never
+reach a component as a default.
 
 ## The typeface was chosen by measurement
 
