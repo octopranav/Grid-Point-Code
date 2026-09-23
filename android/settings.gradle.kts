@@ -17,4 +17,5 @@ rootProject.name = "gridpointcode-android"
 
 include(":core")
 include(":designsystem")
+include(":map")
 include(":app")

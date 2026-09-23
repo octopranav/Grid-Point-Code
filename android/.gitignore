@@ -11,3 +11,7 @@ local.properties
 # A signing key never belongs in a public repository, not even by accident.
 *.jks
 *.keystore
+
+# The root ignore file is written for .NET, where a folder called debug is build
+# output. Here it is the source set for debug builds, so it comes back.
+!**/src/debug/

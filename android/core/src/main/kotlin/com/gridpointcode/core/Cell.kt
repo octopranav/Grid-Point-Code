@@ -22,6 +22,24 @@ fun cellSize(latitude: Double, level: Int = 10): CellSize {
     )
 }
 
+/** A cell's edges, in degrees. */
+data class Box(val south: Double, val west: Double, val north: Double, val east: Double) {
+    fun contains(point: Point): Boolean =
+        point.latitude in south..north && point.longitude in west..east
+}
+
+/**
+ * The cell a code names, with its edges as the library computes them.
+ *
+ * The map draws this rectangle rather than a pin, because a pin implies a point
+ * and a code names an area: two and a half metres each way, which is a doorway
+ * and not a spot on it.
+ */
+fun cellBox(code: String): Box = GPC.DecodeToArea(code).let { Box(it.South, it.West, it.North, it.East) }
+
+/** The cells a nudge would step into, drawn faintly so the grid shows where the next door is. */
+fun neighbourBoxes(code: String): List<Box> = GPC.Neighbours(code).map(::cellBox)
+
 /**
  * The accuracy below which a fix is called a single cell.
  *

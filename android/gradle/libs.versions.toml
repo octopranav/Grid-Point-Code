@@ -6,10 +6,14 @@ composeBom = "2026.09.00"
 activityCompose = "1.13.0"
 lifecycle = "2.11.0"
 coreKtx = "1.19.0"
+maplibre = "13.6.1"
 
 [libraries]
 # The format itself, installed from Maven Central like anybody else installs it.
 gridpointcode = { module = "ca.pranavpatel.algo:gridpointcode", version.ref = "gridpointcode" }
+
+# The basemap. The same renderer family as the website, drawing the same styles.
+maplibre = { module = "org.maplibre.gl:android-sdk", version.ref = "maplibre" }
 
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
