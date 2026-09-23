@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.gridpointcode.core.Anchor
 import com.gridpointcode.core.Compass
 import com.gridpointcode.core.Locating
 import com.gridpointcode.core.Named
@@ -14,6 +15,7 @@ import com.gridpointcode.core.PlaceView
 import com.gridpointcode.core.Point
 import com.gridpointcode.core.Selection
 import com.gridpointcode.core.Source
+import com.gridpointcode.core.anchored
 import com.gridpointcode.core.described
 import com.gridpointcode.core.found
 import com.gridpointcode.core.isName
@@ -33,6 +35,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -58,6 +62,11 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     private val names = NameIndex()
     private val finding = MutableStateFlow(Finding())
     private var looking: Job? = null
+    private val archive = LandmarkArchive()
+    private val anchoring = MutableStateFlow(Anchoring())
+
+    /** Which landmark the reader chose, by name and region, so it survives a nudge that keeps it in reach. */
+    private var anchorChoice: String? = null
 
     val ui: StateFlow<PlaceView> = state
         .map { it.view() }
@@ -80,6 +89,26 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
 
     /** What the search field has turned up by name. */
     val found: StateFlow<Finding> = finding
+
+    /** The landmarks the current place's short form can be given with. */
+    val anchors: StateFlow<Anchoring> = anchoring
+
+    init {
+        // Looked up again whenever the code changes, and only then: a finer fix
+        // inside the same cell names the same code and needs the same list. A
+        // lookup still running when the reader moves on is cancelled, so a slow
+        // answer for the last place cannot land on this one.
+        viewModelScope.launch {
+            state.distinctUntilChangedBy { it.selection.code }.collectLatest { current ->
+                val code = current.selection.code
+                anchoring.value = Anchoring(code = code)
+                anchoring.value = when (val near = archive.near(current.selection.point)) {
+                    LandmarkArchive.Near.Unreachable -> Anchoring(code, Anchoring.Status.UNREACHABLE)
+                    is LandmarkArchive.Near.Found -> reach(code, near.anchors)
+                }
+            }
+        }
+    }
 
     /** A place from the map. */
     fun place(next: Selection) {
@@ -113,6 +142,26 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
             finding.value = answer(text, names.find(text))
         }
     }
+
+    /** The landmark the reader wants the short form given with. */
+    fun anchorTo(anchor: Anchor) {
+        anchorChoice = identity(anchor)
+        anchoring.update { if (anchor in it.anchors) it.copy(chosen = anchor) else it }
+    }
+
+    /**
+     * The list for a code, keeping the reader's choice while it is still within
+     * reach. When a nudge carries it out of the box it is dropped rather than
+     * left standing, and the nearest takes its place.
+     */
+    private fun reach(code: String, anchors: List<Anchor>): Anchoring {
+        if (anchors.isEmpty()) return Anchoring(code, Anchoring.Status.NONE)
+        val kept = anchors.firstOrNull { identity(it) == anchorChoice }
+        return Anchoring(code, Anchoring.Status.FOUND, anchors, kept ?: anchors.first())
+    }
+
+    /** Two landmarks can share a name; within one region they cannot. */
+    private fun identity(anchor: Anchor) = anchor.landmark.name + "\n" + anchor.landmark.region
 
     /** A place chosen from the list. */
     fun pick(place: Named) {
@@ -200,6 +249,28 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
 
         /** The pause in typing that counts as having typed something, the same as the website's. */
         const val TYPING_MS = 180L
+    }
+}
+
+/** The landmarks near enough to anchor the short form, and the one chosen. */
+data class Anchoring(
+    val code: String = "",
+    val status: Status = Status.LOOKING,
+    val anchors: List<Anchor> = emptyList(),
+    val chosen: Anchor? = null,
+) {
+    /** The line to share: the short form, then the place, as section 12.1 writes it. */
+    val line: String? get() = chosen?.let { anchored(code, it.landmark) }
+
+    enum class Status {
+        LOOKING,
+        FOUND,
+
+        /** Open country: nothing near enough. The full code needs no reference. */
+        NONE,
+
+        /** The archive could not be read, which is not the same as nothing near. */
+        UNREACHABLE,
     }
 }
 

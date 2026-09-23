@@ -20,6 +20,10 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.runtime.remember
 import com.gridpointcode.map.Basemap
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import com.gridpointcode.core.Anchor
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.ui.platform.LocalFocusManager
@@ -207,6 +211,7 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
 @Composable
 private fun Panel(ui: PlaceView, model: PlaceViewModel, speak: (String) -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val anchoring by model.anchors.collectAsState()
     Column(
         modifier
             .fillMaxWidth()
@@ -223,6 +228,12 @@ private fun Panel(ui: PlaceView, model: PlaceViewModel, speak: (String) -> Unit,
         Nudge(ui.selection.code, ui.pad, onNudge = model::nudge)
         WrittenForms(ui.forms, copy = { copy(context, it) })
         GiveAddress(ui.note, ui.link, onNote = model::describeTheWay, share = { share(context, ui.formatted + "\n" + ui.link) })
+        AnchorShort(
+            anchoring = anchoring,
+            onChoose = model::anchorTo,
+            copy = { copy(context, it) },
+            share = { share(context, it) },
+        )
         Aloud(ui.spoken, speak = { speak(ui.spoken) })
         Spacer(Modifier.height(Space.step5))
     }
@@ -486,6 +497,98 @@ private fun sourceLabel(source: Source): String = stringResource(
         Source.SEARCH -> R.string.source_search
     },
 )
+
+/** How many landmarks show before the reader asks for the rest. */
+private const val ANCHORS_SHOWN = 5
+
+/**
+ * The places near enough to give the short form with, and the line that gives it.
+ *
+ * Every one listed is inside the recovery box, so each is a safe choice, and the
+ * nearest is chosen to begin with. Anything further off is left out rather than
+ * listed lower: it would not fail, it would name somewhere else.
+ */
+@Composable
+private fun AnchorShort(
+    anchoring: Anchoring,
+    onChoose: (Anchor) -> Unit,
+    copy: (String) -> Unit,
+    share: (String) -> Unit,
+) {
+    var all by remember(anchoring.code) { mutableStateOf(false) }
+    val colours = LocalGpcColors.current
+    Section(stringResource(R.string.anchor_title)) {
+        Quiet(stringResource(R.string.anchor_explain))
+        when (anchoring.status) {
+            Anchoring.Status.LOOKING -> Quiet(stringResource(R.string.anchor_looking))
+            Anchoring.Status.NONE -> Quiet(stringResource(R.string.anchor_none))
+            Anchoring.Status.UNREACHABLE -> Quiet(stringResource(R.string.anchor_unreachable))
+            Anchoring.Status.FOUND -> Unit
+        }
+        val shown = if (all) anchoring.anchors else anchoring.anchors.take(ANCHORS_SHOWN)
+        Column(Modifier.selectableGroup()) {
+            shown.forEach { anchor ->
+                val selected = anchor == anchoring.chosen
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectable(selected = selected, role = Role.RadioButton) { onChoose(anchor) }
+                        .padding(vertical = Space.step1),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Space.step2),
+                ) {
+                    RadioButton(selected = selected, onClick = null)
+                    Column(Modifier.weight(1f)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(Space.step1), verticalAlignment = Alignment.CenterVertically) {
+                            Text(anchor.landmark.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f, fill = false))
+                            if (anchor.exact) {
+                                Text(stringResource(R.string.anchor_exact), style = MaterialTheme.typography.labelSmall, color = colours.code)
+                            }
+                        }
+                        Text(
+                            text = stringResource(R.string.anchor_where, distance(anchor.metres), anchor.bearing, anchor.landmark.region),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+        if (!all && anchoring.anchors.size > ANCHORS_SHOWN) {
+            TextButton(onClick = { all = true }) {
+                Text(stringResource(R.string.anchor_show_all, anchoring.anchors.size))
+            }
+        }
+        if (shown.any { it.exact }) Quiet(stringResource(R.string.anchor_exact_note))
+        anchoring.line?.let { line ->
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(Radius.card),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, colours.rule, RoundedCornerShape(Radius.card)),
+            ) {
+                Text(line, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(Space.step2))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(Space.step1)) {
+                FilledTonalButton(onClick = { share(line) }, shape = ButtonShape) { Text(stringResource(R.string.share)) }
+                OutlinedButton(onClick = { copy(line) }, shape = ButtonShape) { Text(stringResource(R.string.copy)) }
+            }
+        }
+    }
+}
+
+/** A note in the quieter ink. */
+@Composable
+private fun Quiet(text: String) {
+    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/** Metres under a kilometre, tenths of a kilometre above. */
+@Composable
+private fun distance(metres: Double): String =
+    if (metres < 1000) stringResource(R.string.distance_metres, metres.roundToInt())
+    else stringResource(R.string.distance_kilometres, metres / 1000)
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {
