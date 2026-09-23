@@ -362,6 +362,16 @@ private fun describe(problem: Problem): String = when (problem) {
     }
     is Problem.Reserved -> stringResource(R.string.problem_reserved, problem.code)
     is Problem.UnreadShort -> stringResource(R.string.problem_short, problem.short)
+    is Problem.Unanchored -> stringResource(
+        when (problem.why) {
+            Problem.Unanchored.Why.NOT_FOUND -> R.string.problem_anchor_not_found
+            Problem.Unanchored.Why.SEVERAL -> R.string.problem_anchor_several
+            Problem.Unanchored.Why.NOT_UNIQUE -> R.string.problem_anchor_not_unique
+            Problem.Unanchored.Why.UNREACHABLE -> R.string.problem_anchor_unreachable
+        },
+        problem.short,
+        problem.reference,
+    )
     Problem.LocationRefused -> stringResource(R.string.problem_location_refused)
     Problem.LocationOff -> stringResource(R.string.problem_location_off)
     Problem.NoFix -> stringResource(R.string.problem_no_fix)
@@ -495,6 +505,7 @@ private fun sourceLabel(source: Source): String = stringResource(
         Source.NUDGE -> R.string.source_nudge
         Source.MAP -> R.string.source_map
         Source.SEARCH -> R.string.source_search
+        Source.ANCHORED -> R.string.source_anchored
     },
 )
 

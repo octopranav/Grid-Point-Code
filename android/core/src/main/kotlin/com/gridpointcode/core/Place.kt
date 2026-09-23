@@ -15,6 +15,27 @@ sealed interface Problem {
     /** Something shaped like a short form whose symbols the library refused. */
     data class UnreadShort(val short: String) : Problem
 
+    /** A short form given with a place that could not be used as its reference. */
+    data class Unanchored(val short: String, val reference: String, val why: Why) : Problem {
+        enum class Why {
+            /** Nothing in the index is called that. */
+            NOT_FOUND,
+
+            /** More than one place answers to what was written, so a region would settle it. */
+            SEVERAL,
+
+            /**
+             * The place shares its name with another in its own region, so the
+             * archive left it out. The short form could be read against the
+             * wrong one, and no region can settle it.
+             */
+            NOT_UNIQUE,
+
+            /** The index or the archive could not be reached. */
+            UNREACHABLE,
+        }
+    }
+
     /** The reader declined to let the app use the device's location. */
     data object LocationRefused : Problem
 
@@ -80,6 +101,10 @@ fun PlaceState.opened(text: String, source: Source): PlaceState =
         is Reading.Short -> recover(reading.text, selection.point)
             ?.let { placed(it) }
             ?: copy(problem = Problem.UnreadShort(reading.text))
+        // The place has to be looked up first, which is the caller's to do
+        // (see [anchoredAt]). Recovering against wherever the screen happens to
+        // be would name somewhere plausible and wrong.
+        is Reading.Anchored -> unanchored(reading, Problem.Unanchored.Why.UNREACHABLE)
         is Reading.Reserved -> copy(problem = Problem.Reserved(reading.code))
         is Reading.Unread -> copy(problem = Problem.Unread(reading.reason))
     }
@@ -92,6 +117,19 @@ fun PlaceState.found(place: Named): PlaceState =
     runCatching { selectionOf(place.code, Source.SEARCH) }
         .map { placed(it) }
         .getOrDefault(copy(problem = Problem.Unread(null)))
+
+/**
+ * A short form read against the landmark it was given with, at the archive's
+ * coordinates for it. A new place like any other, so the directions go.
+ */
+fun PlaceState.anchoredAt(short: String, landmark: Landmark): PlaceState =
+    recover(short, Point(landmark.latitude, landmark.longitude))
+        ?.let { placed(it.copy(source = Source.ANCHORED)) }
+        ?: copy(problem = Problem.UnreadShort(short))
+
+/** A short form whose landmark could not be used. The place stays where it was. */
+fun PlaceState.unanchored(reading: Reading.Anchored, why: Problem.Unanchored.Why): PlaceState =
+    copy(problem = Problem.Unanchored(reading.short, reading.reference, why))
 
 /** New directions for the place already selected. */
 fun PlaceState.described(text: String): PlaceState = copy(note = tidyNote(text))

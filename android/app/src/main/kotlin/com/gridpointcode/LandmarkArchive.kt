@@ -1,11 +1,14 @@
 package com.gridpointcode
 
+import ca.pranavpatel.algo.gridpointcode.GPC
 import com.gridpointcode.core.Anchor
 import com.gridpointcode.core.Landmark
 import com.gridpointcode.core.LandmarkKind
+import com.gridpointcode.core.Named
 import com.gridpointcode.core.Point
 import com.gridpointcode.core.SITE
 import com.gridpointcode.core.anchorsFor
+import com.gridpointcode.core.landmarkFor
 import com.gridpointcode.core.shardsFor
 import java.net.HttpURLConnection
 import java.net.URL
@@ -39,6 +42,16 @@ class LandmarkArchive(private val site: String = SITE) {
         data object Unreachable : Near
     }
 
+    /** What looking up one landmark came to. */
+    sealed interface Held {
+        data class Found(val landmark: Landmark) : Held
+
+        /** Not in the archive: its name is not unique within its region. */
+        data object Missing : Held
+
+        data object Unreachable : Held
+    }
+
     private val lock = Mutex()
     private var level: Int? = null
     private val shards = HashMap<String, List<Landmark>>()
@@ -50,6 +63,19 @@ class LandmarkArchive(private val site: String = SITE) {
         }
         if (held.any { it == null }) return@withContext Near.Unreachable
         Near.Found(anchorsFor(point, held.flatMap { it.orEmpty() }))
+    }
+
+    /**
+     * The archive's entry for a place from the name index. The index row carries
+     * the place's code, and the code's cell at the archive's level is the shard
+     * it lives in, so one shard is all it takes.
+     */
+    suspend fun landmark(place: Named): Held = withContext(Dispatchers.IO) {
+        val level = level() ?: return@withContext Held.Unreachable
+        val shard = runCatching { GPC.Cell(place.code, level) }.getOrNull()
+            ?: return@withContext Held.Missing
+        val held = shard(shard) ?: return@withContext Held.Unreachable
+        landmarkFor(place, held)?.let { Held.Found(it) } ?: Held.Missing
     }
 
     /**
