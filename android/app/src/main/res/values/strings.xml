@@ -48,6 +48,13 @@
     <string name="problem_unread_reason">That is not a code this app can read (%1$s).</string>
     <string name="problem_reserved">%1$s is from the reserved range. It is well formed, and it does not name a place.</string>
     <string name="locate">Find my location</string>
+    <string name="basemap">Basemap</string>
+    <string name="basemap_auto">Match theme</string>
+    <string name="basemap_positron">Positron</string>
+    <string name="basemap_bright">Bright</string>
+    <string name="basemap_liberty">Liberty</string>
+    <string name="basemap_dark">Dark</string>
+    <string name="basemap_fiord">Fiord</string>
     <string name="locating_seeking">Finding where you are.</string>
     <string name="locating_refining">Hold still. The fix is getting tighter.</string>
     <string name="settings">Settings</string>

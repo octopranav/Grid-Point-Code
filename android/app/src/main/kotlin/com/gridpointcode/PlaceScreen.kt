@@ -13,6 +13,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.core.content.ContextCompat
 import com.gridpointcode.core.Locating
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.runtime.remember
+import com.gridpointcode.map.Basemap
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -108,6 +114,7 @@ private const val SEARCH_DP = 96
 @Composable
 fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
     val ui by model.ui.collectAsState()
+    val basemap by model.basemap.collectAsState()
     val wide = LocalConfiguration.current.screenWidthDp >= WIDE_DP
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + SEARCH_DP.dp
     val bottom = if (wide) WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else PEEK_DP.dp
@@ -129,6 +136,7 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
                 selection = ui.selection,
                 onPick = { model.place(selectionAt(it, Source.MAP)) },
                 padding = PaddingValues(top = top, bottom = bottom),
+                basemap = basemap,
                 modifier = Modifier.fillMaxSize(),
             )
             Search(
@@ -140,13 +148,16 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
                     .statusBarsPadding()
                     .padding(Space.step2),
             )
-            Locate(
-                locating = ui.locating,
-                onClick = locate,
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = Space.step3, bottom = bottom + Space.step3),
-            )
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(Space.step2),
+            ) {
+                Basemaps(chosen = basemap, onChoose = model::choose)
+                Locate(locating = ui.locating, onClick = locate)
+            }
         }
     }
 
@@ -250,6 +261,45 @@ private fun describe(problem: Problem): String = when (problem) {
     Problem.LocationRefused -> stringResource(R.string.problem_location_refused)
     Problem.LocationOff -> stringResource(R.string.problem_location_off)
     Problem.NoFix -> stringResource(R.string.problem_no_fix)
+}
+
+/** The six basemaps the website offers, the chosen one marked. */
+@Composable
+private fun Basemaps(chosen: Basemap, onChoose: (Basemap) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val label = stringResource(R.string.basemap)
+    Box {
+        SmallFloatingActionButton(
+            onClick = { open = true },
+            shape = ButtonShape,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.semantics { contentDescription = label },
+        ) {
+            Icon(Layers, contentDescription = null)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            Basemap.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(basemapName(option))) },
+                    leadingIcon = { RadioButton(selected = option == chosen, onClick = null) },
+                    onClick = {
+                        onChoose(option)
+                        open = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+private fun basemapName(basemap: Basemap): Int = when (basemap) {
+    Basemap.AUTO -> R.string.basemap_auto
+    Basemap.POSITRON -> R.string.basemap_positron
+    Basemap.BRIGHT -> R.string.basemap_bright
+    Basemap.LIBERTY -> R.string.basemap_liberty
+    Basemap.DARK -> R.string.basemap_dark
+    Basemap.FIORD -> R.string.basemap_fiord
 }
 
 /** The locate button. It shows that it is waiting while no fix has come yet. */

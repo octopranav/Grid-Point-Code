@@ -3,6 +3,7 @@ package com.gridpointcode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
@@ -38,5 +39,30 @@ val Crosshair: ImageVector = ImageVector.Builder(
         arcTo(2.2f, 2.2f, 0f, isMoreThanHalf = true, isPositiveArc = true, x1 = 9.8f, y1 = 12f)
         arcTo(2.2f, 2.2f, 0f, isMoreThanHalf = true, isPositiveArc = true, x1 = 14.2f, y1 = 12f)
         close()
+    }
+}.build()
+
+/** Two stacked sheets, for choosing what the map is drawn from. */
+val Layers: ImageVector = ImageVector.Builder(
+    name = "Layers",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+).apply {
+    path(
+        stroke = SolidColor(Color.Black),
+        strokeLineWidth = 1.8f,
+        strokeLineCap = StrokeCap.Round,
+        strokeLineJoin = StrokeJoin.Round,
+    ) {
+        moveTo(12f, 3.5f)
+        lineTo(21f, 8.5f)
+        lineTo(12f, 13.5f)
+        lineTo(3f, 8.5f)
+        close()
+        moveTo(3f, 12.8f)
+        lineTo(12f, 17.8f)
+        lineTo(21f, 12.8f)
     }
 }.build()

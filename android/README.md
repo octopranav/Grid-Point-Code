@@ -15,7 +15,7 @@ code, check and correction is arithmetic on the device.
 | --- | --- |
 | [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, and the rules for what survives a move |
 | [`designsystem`](designsystem) | The theme, the type scale, the shapes and the ten-cell mark, built from the files [`design/build-tokens.mjs`](../design/build-tokens.mjs) generates |
-| [`map`](map) | MapLibre Native on the website's tile provider, the cell drawn in brass with its eight neighbours faint around it, and a tap to place a point |
+| [`map`](map) | MapLibre Native on the website's tile provider, its five styles, the cell drawn in brass with its eight neighbours faint around it, and a tap to place a point |
 | [`app`](app) | The place screen, the view model that holds the place, read aloud, and the ways a place arrives from another app |
 
 ## What it does today
@@ -29,8 +29,11 @@ code, check and correction is arithmetic on the device.
 - Says what went wrong when it cannot: the permission refused, with a way to
   the app's settings; location switched off; or no fix in thirty seconds.
 - Draws the place on a map as the cell it names, not a pin, with the eight
-  cells around it. Tap the map to move there. The basemap follows the theme,
-  positron by day and fiord by night, as the site's does, and north stays up.
+  cells around it. Tap the map to move there. North stays up.
+- Offers the website's basemaps from a button on the map: match the theme
+  (positron by day, fiord by night), positron, bright, liberty, dark or fiord.
+  The choice is remembered, and the cell is drawn in inks that suit the map
+  chosen rather than the app's theme.
 - On a phone the panel is a sheet over the map; in a window wider than 840 dp it
   sits beside it.
 - Says so, after a few seconds, when the map has not arrived, and lets it
@@ -92,6 +95,13 @@ never reads from it. A tap or a nudge leaves the camera where the reader
 is looking; anything arriving from elsewhere is flown to. The camera is padded
 for the search bar and the sheet, so the cell is centred in what can be seen.
 
+**The drawing wears the map's colours, not the app's.** A reader can choose a
+light map in the dark theme or a dark map in the light one. Measured against
+each style's own background, the light theme's brass is about 5:1 on the light
+maps and 1.4:1 on fiord; the dark theme's is 3.5:1 on fiord, 8.5:1 on dark and
+2.1:1 on the light maps. So a light map is drawn on in the light theme's inks and
+a dark map in the dark theme's, whatever the rest of the screen is wearing.
+
 **A fix is kept, never averaged.** Fixes a second apart from one device share
 their errors, so an average would claim an accuracy it has not got. The app
 keeps the tightest fix and the device's own estimate for it. A looser fix never
@@ -106,7 +116,7 @@ which covers the streaming calls in the library, which need 24.
 
 ## Not here yet
 
-A choice of basemap, search by place name, the landmark that anchors a short
+Search by place name, the landmark that anchors a short
 form, the bundled typefaces, the launcher icon, verified links (which need the signing
 fingerprint published in `/.well-known/assetlinks.json`), and the Wear OS, car
 and headset modules.

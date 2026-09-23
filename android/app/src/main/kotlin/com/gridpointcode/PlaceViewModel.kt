@@ -21,6 +21,7 @@ import com.gridpointcode.core.placed
 import com.gridpointcode.core.selectionAt
 import com.gridpointcode.core.stoppedLocating
 import com.gridpointcode.core.view
+import com.gridpointcode.map.Basemap
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,12 +44,22 @@ import kotlinx.coroutines.withTimeoutOrNull
 class PlaceViewModel(application: Application) : AndroidViewModel(application) {
 
     private val device = DeviceLocation(application)
+    private val preferences = Preferences(application)
+    private val chosen = MutableStateFlow(preferences.basemap())
     private val state = MutableStateFlow(PlaceState(selectionAt(SAMPLE, Source.SAMPLE)))
     private var listening: Job? = null
 
     val ui: StateFlow<PlaceView> = state
         .map { it.view() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, state.value.view())
+
+    /** The basemap the reader chose, remembered across launches. */
+    val basemap: StateFlow<Basemap> = chosen
+
+    fun choose(next: Basemap) {
+        chosen.value = next
+        preferences.remember(next)
+    }
 
     /** A place from the map. */
     fun place(next: Selection) = change { it.placed(next) }

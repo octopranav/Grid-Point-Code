@@ -15,6 +15,8 @@ gridpointcode = { module = "ca.pranavpatel.algo:gridpointcode", version.ref = "g
 # The basemap. The same renderer family as the website, drawing the same styles.
 maplibre = { module = "org.maplibre.gl:android-sdk", version.ref = "maplibre" }
 
+kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }

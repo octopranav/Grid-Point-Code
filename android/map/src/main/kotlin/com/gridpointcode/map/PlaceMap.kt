@@ -72,25 +72,6 @@ import kotlin.math.max
 import kotlin.math.sin
 import org.maplibre.geojson.Point as GeoPoint
 
-/**
- * The basemaps the tile provider offers, the same list the website gives.
- *
- * Positron and fiord are the desaturated pair, which is what a drawing laid on
- * top needs: the cell has to be the brightest thing on the screen. They are what
- * [AUTO] picks, following the light or dark theme.
- */
-enum class Basemap(internal val style: String?) {
-    AUTO(null),
-    POSITRON("positron"),
-    BRIGHT("bright"),
-    LIBERTY("liberty"),
-    DARK("dark"),
-    FIORD("fiord"),
-}
-
-internal fun styleFor(basemap: Basemap, dark: Boolean): String =
-    BuildConfig.STYLES + (basemap.style ?: if (dark) "fiord" else "positron")
-
 /** Close enough to see the cell as a shape, and the street it is on. */
 private const val START_ZOOM = 19.0
 
@@ -199,14 +180,10 @@ fun PlaceMap(
     }
 
     // A new style throws away every layer added to the old one, so the drawing
-    // is added again each time; the colours change with the theme anyway.
-    val url = styleFor(basemap, dark)
-    val ink = Ink(
-        brass = colours.code.toArgb(),
-        soft = colours.inkSoft.toArgb(),
-        prussian = MaterialTheme.colorScheme.primary.toArgb(),
-        surface = MaterialTheme.colorScheme.surface.toArgb(),
-    )
+    // is added again each time, in the inks that suit the new map.
+    val resolved = resolve(basemap, dark)
+    val url = resolved.url
+    val ink = inkFor(resolved.dark)
     LaunchedEffect(map, url, ink) {
         val ready = map ?: return@LaunchedEffect
         style = null
@@ -261,9 +238,6 @@ fun PlaceMap(
     }
 }
 
-/** The colours the drawing uses, resolved from the theme. */
-private data class Ink(val brass: Int, val soft: Int, val prussian: Int, val surface: Int)
-
 /**
  * Bottom to top: the device's accuracy, the neighbours, the cell, and the dot.
  * The disc is under the cell on purpose. When it is wider than the cell, which
@@ -284,7 +258,7 @@ private fun addDrawing(style: Style, ink: Ink) {
         CircleLayer("$DOT-circle", DOT).withProperties(
             circleColor(ink.prussian),
             circleRadius(6.5f),
-            circleStrokeColor(ink.surface),
+            circleStrokeColor(ink.halo),
             circleStrokeWidth(2.5f),
         ),
     )
