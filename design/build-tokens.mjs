@@ -344,8 +344,70 @@ function materialHolds() {
     }
 }
 
+/**
+ * Every role must get the text colour meant for it when Material looks one up.
+ *
+ * A component that is not told its text colour asks Material for the one that
+ * goes with its container, and Material answers by comparing the container's
+ * value with its roles in a fixed order and taking the first that matches. Two
+ * roles with the same value therefore share a text colour: the earlier one's.
+ * Between two plain inks that is harmless. When the earlier one carries a
+ * meaning it is not: with the tertiary container set to the surface, every
+ * surface in the app set its text in brass, the colour of a code, and every
+ * pairing above still measured fine.
+ */
+function lookupHolds() {
+    // Material's own order, from ColorScheme.contentColorFor.
+    const order = [
+        ['primary', 'onPrimary'],
+        ['secondary', 'onSecondary'],
+        ['tertiary', 'onTertiary'],
+        ['background', 'onBackground'],
+        ['error', 'onError'],
+        ['primaryContainer', 'onPrimaryContainer'],
+        ['secondaryContainer', 'onSecondaryContainer'],
+        ['tertiaryContainer', 'onTertiaryContainer'],
+        ['errorContainer', 'onErrorContainer'],
+        ['inverseSurface', 'inverseOnSurface'],
+        ['surface', 'onSurface'],
+        ['surfaceVariant', 'onSurfaceVariant'],
+        ['surfaceBright', 'onSurface'],
+        ['surfaceContainer', 'onSurface'],
+        ['surfaceContainerHigh', 'onSurface'],
+        ['surfaceContainerHighest', 'onSurface'],
+        ['surfaceContainerLow', 'onSurface'],
+        ['surfaceContainerLowest', 'onSurface'],
+        ['surfaceDim', 'onSurface'],
+    ];
+    const plain = new Set(['ink', 'ink-mid']);
+    const failures = [];
+
+    for (const theme of ['light', 'dark']) {
+        const roles = real(tokens.material[theme]);
+        const value = (role) => named(theme, roles[role]);
+        for (const [fill, on] of order) {
+            const [first, answered] = order.find(([other]) => value(other) === value(fill));
+            const meant = roles[on];
+            const got = roles[answered];
+            if (meant === got) continue;
+            if (plain.has(meant) && plain.has(got) && ratio(value(fill), named(theme, got)) >= 4.5) continue;
+            failures.push(
+                `  ${theme} ${fill} (${roles[fill]}) would set its text in ${got},`
+                + ` because ${first} has the same value and is looked up first; it means ${meant}`,
+            );
+        }
+    }
+
+    if (failures.length > 0) {
+        console.error('Material roles that would be given another role\'s text colour:');
+        for (const line of failures) console.error(line);
+        process.exit(1);
+    }
+}
+
 contrastHolds();
 materialHolds();
+lookupHolds();
 
 const targets = [
     ['web/src/styles/tokens.css', css()],

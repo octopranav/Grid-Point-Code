@@ -4,10 +4,10 @@ The application for phones, tablets, foldables and Android on the desktop, and
 later for Wear OS, cars and headsets. One APK for the large screens, laid out by
 the size of the window rather than the kind of device.
 
-What is built so far is the place: a map with the cell drawn on it, and the
-panel that says everything about it. The map is the only thing that uses the
-network, and nothing waits for it; every code, check and correction is
-arithmetic on the device.
+What is built so far is the place: a map with the cell drawn on it, the panel
+that says everything about it, and a button that finds where the device is. The
+map is the only thing that uses the network, and nothing waits for it; every
+code, check and correction is arithmetic on the device.
 
 ## What is here
 
@@ -20,6 +20,14 @@ arithmetic on the device.
 
 ## What it does today
 
+- Finds where the device is when the locate button is pressed, asking for the
+  permission only then, and only while the app is open. It keeps listening
+  while the reader holds still, keeps the tightest fix the device gives, and
+  stops once a fix is inside one cell, after thirty seconds, or the moment the
+  reader chooses somewhere else. The device's own estimate is drawn on the map
+  as a disc under the cell and stated beside the code, as the site states it.
+- Says what went wrong when it cannot: the permission refused, with a way to
+  the app's settings; location switched off; or no fix in thirty seconds.
 - Draws the place on a map as the cell it names, not a pin, with the eight
   cells around it. Tap the map to move there. The basemap follows the theme,
   positron by day and fiord by night, as the site's does, and north stays up.
@@ -84,13 +92,21 @@ never reads from it. A tap or a nudge leaves the camera where the reader
 is looking; anything arriving from elsewhere is flown to. The camera is padded
 for the search bar and the sheet, so the cell is centred in what can be seen.
 
+**A fix is kept, never averaged.** Fixes a second apart from one device share
+their errors, so an average would claim an accuracy it has not got. The app
+keeps the tightest fix and the device's own estimate for it. A looser fix never
+undoes a tighter one, a fix that arrives after the reader has tapped, typed or
+nudged is ignored, and a new press starts over, since the reader may have
+walked a kilometre since the last. Location comes from the platform's own
+`LocationManager`, so nothing needs Play services.
+
 **Three SDK levels, three meanings.** `compileSdk` 37 because current AndroidX
 libraries compile against it. `targetSdk` 36 for runtime behaviour. `minSdk` 26,
 which covers the streaming calls in the library, which need 24.
 
 ## Not here yet
 
-A choice of basemap, locating the device, search by place name, the landmark that anchors a short form, the bundled
-typefaces, the launcher icon, verified links (which need the signing
+A choice of basemap, search by place name, the landmark that anchors a short
+form, the bundled typefaces, the launcher icon, verified links (which need the signing
 fingerprint published in `/.well-known/assetlinks.json`), and the Wear OS, car
 and headset modules.

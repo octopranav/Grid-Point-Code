@@ -49,8 +49,13 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.PropertyFactory.circleColor
+import org.maplibre.android.style.layers.PropertyFactory.circleRadius
+import org.maplibre.android.style.layers.PropertyFactory.circleStrokeColor
+import org.maplibre.android.style.layers.PropertyFactory.circleStrokeWidth
 import org.maplibre.android.style.layers.PropertyFactory.fillColor
 import org.maplibre.android.style.layers.PropertyFactory.fillOpacity
 import org.maplibre.android.style.layers.PropertyFactory.lineBlur
@@ -61,7 +66,10 @@ import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.Polygon
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.sin
 import org.maplibre.geojson.Point as GeoPoint
 
 /**
@@ -100,6 +108,11 @@ private const val PATIENCE_MS = 6_000L
 
 private const val CELL = "gpc-cell"
 private const val AROUND = "gpc-around"
+private const val FIX = "gpc-fix"
+private const val DOT = "gpc-dot"
+
+/** The mean radius of the earth, which is plenty for drawing a disc a few metres across. */
+private const val EARTH_METRES = 6_371_008.8
 
 /**
  * The map under the place: the cell in brass, the eight around it faint, and a
@@ -188,13 +201,17 @@ fun PlaceMap(
     // A new style throws away every layer added to the old one, so the drawing
     // is added again each time; the colours change with the theme anyway.
     val url = styleFor(basemap, dark)
-    val brass = colours.code.toArgb()
-    val soft = colours.inkSoft.toArgb()
-    LaunchedEffect(map, url, brass, soft) {
+    val ink = Ink(
+        brass = colours.code.toArgb(),
+        soft = colours.inkSoft.toArgb(),
+        prussian = MaterialTheme.colorScheme.primary.toArgb(),
+        surface = MaterialTheme.colorScheme.surface.toArgb(),
+    )
+    LaunchedEffect(map, url, ink) {
         val ready = map ?: return@LaunchedEffect
         style = null
         ready.setStyle(Style.Builder().fromUri(url)) { loaded ->
-            addDrawing(loaded, brass, soft)
+            addDrawing(loaded, ink)
             style = loaded
         }
     }
@@ -210,8 +227,8 @@ fun PlaceMap(
         if (style == null) failed = true
     }
 
-    LaunchedEffect(style, selection.code) {
-        style?.let { draw(it, selection.code) }
+    LaunchedEffect(style, selection) {
+        style?.let { draw(it, selection) }
     }
 
     LaunchedEffect(map, selection) {
@@ -244,19 +261,63 @@ fun PlaceMap(
     }
 }
 
-private fun addDrawing(style: Style, brass: Int, soft: Int) {
+/** The colours the drawing uses, resolved from the theme. */
+private data class Ink(val brass: Int, val soft: Int, val prussian: Int, val surface: Int)
+
+/**
+ * Bottom to top: the device's accuracy, the neighbours, the cell, and the dot.
+ * The disc is under the cell on purpose. When it is wider than the cell, which
+ * is most of the time, the reader should see both, and see which is bigger.
+ */
+private fun addDrawing(style: Style, ink: Ink) {
+    style.addSource(GeoJsonSource(FIX))
     style.addSource(GeoJsonSource(AROUND))
     style.addSource(GeoJsonSource(CELL))
-    style.addLayer(FillLayer("$AROUND-fill", AROUND).withProperties(fillColor(soft), fillOpacity(0.05f)))
-    style.addLayer(LineLayer("$AROUND-line", AROUND).withProperties(lineColor(soft), lineWidth(0.8f), lineOpacity(0.6f)))
-    style.addLayer(LineLayer("$CELL-glow", CELL).withProperties(lineColor(brass), lineWidth(9f), lineBlur(7f), lineOpacity(0.55f)))
-    style.addLayer(LineLayer("$CELL-line", CELL).withProperties(lineColor(brass), lineWidth(2f)))
+    style.addSource(GeoJsonSource(DOT))
+    style.addLayer(FillLayer("$FIX-fill", FIX).withProperties(fillColor(ink.prussian), fillOpacity(0.08f)))
+    style.addLayer(LineLayer("$FIX-line", FIX).withProperties(lineColor(ink.prussian), lineWidth(1f), lineOpacity(0.35f)))
+    style.addLayer(FillLayer("$AROUND-fill", AROUND).withProperties(fillColor(ink.soft), fillOpacity(0.05f)))
+    style.addLayer(LineLayer("$AROUND-line", AROUND).withProperties(lineColor(ink.soft), lineWidth(0.8f), lineOpacity(0.6f)))
+    style.addLayer(LineLayer("$CELL-glow", CELL).withProperties(lineColor(ink.brass), lineWidth(9f), lineBlur(7f), lineOpacity(0.55f)))
+    style.addLayer(LineLayer("$CELL-line", CELL).withProperties(lineColor(ink.brass), lineWidth(2f)))
+    style.addLayer(
+        CircleLayer("$DOT-circle", DOT).withProperties(
+            circleColor(ink.prussian),
+            circleRadius(6.5f),
+            circleStrokeColor(ink.surface),
+            circleStrokeWidth(2.5f),
+        ),
+    )
 }
 
-private fun draw(style: Style, code: String) {
-    style.getSourceAs<GeoJsonSource>(CELL)?.setGeoJson(outline(cellBox(code)))
+private fun draw(style: Style, selection: Selection) {
+    style.getSourceAs<GeoJsonSource>(CELL)?.setGeoJson(outline(cellBox(selection.code)))
     style.getSourceAs<GeoJsonSource>(AROUND)
-        ?.setGeoJson(FeatureCollection.fromFeatures(neighbourBoxes(code).map(::outline)))
+        ?.setGeoJson(FeatureCollection.fromFeatures(neighbourBoxes(selection.code).map(::outline)))
+
+    // Only a device fix has an accuracy to draw. Anything else is exact for the
+    // point it was given, and a disc around it would claim an error it has not got.
+    val accuracy = selection.accuracyMetres
+    val fromDevice = selection.source == Source.DEVICE && accuracy != null
+    val point = selection.point
+    style.getSourceAs<GeoJsonSource>(FIX)?.setGeoJson(
+        if (fromDevice) FeatureCollection.fromFeature(disc(point, accuracy)) else FeatureCollection.fromFeatures(emptyList()),
+    )
+    style.getSourceAs<GeoJsonSource>(DOT)?.setGeoJson(
+        if (fromDevice) FeatureCollection.fromFeature(Feature.fromGeometry(GeoPoint.fromLngLat(point.longitude, point.latitude)))
+        else FeatureCollection.fromFeatures(emptyList()),
+    )
+}
+
+/** A circle of a radius in metres, as a ring of 64 points, which is round enough at any zoom. */
+private fun disc(centre: Point, metres: Double): Feature {
+    val north = Math.toDegrees(metres / EARTH_METRES)
+    val east = north / cos(Math.toRadians(centre.latitude))
+    val ring = (0..64).map { step ->
+        val angle = 2 * PI * step / 64
+        GeoPoint.fromLngLat(centre.longitude + east * sin(angle), centre.latitude + north * cos(angle))
+    }
+    return Feature.fromGeometry(Polygon.fromLngLats(listOf(ring)))
 }
 
 /** A cell as a closed ring, longitude first as GeoJSON wants it. */
@@ -278,8 +339,10 @@ private fun outline(box: CellEdges): Feature = Feature.fromGeometry(
  * Keep the place in view without taking the map away from the reader.
  *
  * A tap or a nudge happens where the reader is already looking, so the camera
- * stays put unless the place has left the screen. Anything arriving from
- * elsewhere, a link, a typed code, the device, is flown to.
+ * stays put unless the place has left the screen. So does a device fix that is
+ * already in view, which is what keeps a fix tightening from jolting the map
+ * once a second. Anything arriving from elsewhere, a link or a typed code, is
+ * flown to.
  */
 private fun follow(map: MapLibreMap, selection: Selection, inset: DoubleArray, first: Boolean) {
     val target = LatLng(selection.point.latitude, selection.point.longitude)
@@ -288,7 +351,7 @@ private fun follow(map: MapLibreMap, selection: Selection, inset: DoubleArray, f
         return
     }
     // Counted against the uncovered part only: a place under the sheet is not in view.
-    val local = selection.source == Source.MAP || selection.source == Source.NUDGE
+    val local = selection.source == Source.MAP || selection.source == Source.NUDGE || selection.source == Source.DEVICE
     if (local && map.projection.getVisibleRegion(false).latLngBounds.contains(target)) return
     val zoom = max(map.cameraPosition.zoom, FOLLOW_ZOOM)
     map.easeCamera(

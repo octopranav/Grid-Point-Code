@@ -2,10 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- The map is the only thing that needs the network: tiles, and nothing
-         else. Every code, check and correction is arithmetic on the device.
-         Location arrives with the locate button. -->
+         else. Every code, check and correction is arithmetic on the device. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Asked for only when the locate button is pressed, and only while the app
+         is open. Approximate alone is enough to work; the accuracy shown beside
+         the code says how approximate. No background location, ever. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <queries>
         <!-- Read aloud uses whichever speech engine the device has. -->
