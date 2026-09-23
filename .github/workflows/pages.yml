@@ -181,9 +181,16 @@ jobs:
             echo "::warning::The built site is at ${percent}% of the 1 GB Pages publishes. Nothing is broken yet, and nothing in this tree has to change for it to break."
           fi
 
+      # This step hides files by default: it adds `--exclude=.[^/]*` to its own
+      # tar, so anything whose name begins with a dot is built into web/dist and
+      # then left out of the artifact, with nothing red anywhere. `/.well-known/`
+      # is the name that makes it matter, and its location cannot be moved
+      # somewhere without a dot. audit/publishes.py refuses a workflow that
+      # leaves this unset.
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: web/dist
+          include-hidden-files: true
 
   deploy:
     name: Deploy
