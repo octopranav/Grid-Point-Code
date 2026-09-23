@@ -464,6 +464,13 @@ jobs:
       - name: Everything the site renders can deploy it
         run: python audit/deploys.py
 
+      # The artifact step leaves out every path beginning with a dot unless it
+      # is told otherwise, so a file can be built into the site, deployed green,
+      # and answer 404 on the domain. `/.well-known/` is the name that makes it
+      # matter, and it cannot be put anywhere else.
+      - name: Everything built into the site reaches the server
+        run: python audit/publishes.py
+
   website:
     name: The website builds
     runs-on: ubuntu-latest

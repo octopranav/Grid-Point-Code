@@ -7,11 +7,15 @@ CI, and it exists because these are the failures reading cannot catch.
 | --- | --- |
 | [`markdown.py`](markdown.py) | A cross-reference to a heading that was renamed, a relative link to a file that moved, a table whose separator row lost a column, and three dashes under a paragraph |
 | [`examples.py`](examples.py) | A documented example that no longer runs, or that claims a value the API does not return |
-| [`test_markdown.py`](test_markdown.py) | Either of the above quietly passing everything |
+| [`deploys.py`](deploys.py) | A file the site renders from outside `web/` that no longer triggers a deployment |
+| [`publishes.py`](publishes.py) | A path beginning with a dot that is built into the site and then left out of the artifact that reaches the server |
+| the tests beside them | Any of the above quietly passing everything |
 
 ```
 python audit/markdown.py
 python audit/examples.py
+python audit/deploys.py
+python audit/publishes.py
 python -m unittest discover --start-directory audit --top-level-directory audit
 ```
 
@@ -84,6 +88,23 @@ wrote them to, so a true document is not failed for being readable.
 ...` names no real `points` and is not meant to. A statement whose body is only
 `...` is an illustration and is not run, recognised by the elided body and not by
 guessing at undefined names, so a genuinely broken example still fails.
+
+## What `publishes.py` requires
+
+One setting, and it requires it whether or not a dot file is in the tree today.
+
+The step that packs the built site adds `--exclude=.[^/]*` to its own tar unless
+it is told to keep hidden files, so a path beginning with a dot is built into
+`web/dist`, packed by nothing, and answers 404 on the domain. The build is
+green, the deployment succeeds, and the only symptom is a file that is not
+there. `/.well-known/` is the name that makes this worth a check: it is where a
+domain answers questions other software asks about it, and the location is part
+of the question, so it cannot be moved somewhere without a dot.
+
+The check reads the step as text rather than parsing the workflow, so it needs
+nothing installed, and it prints the paths that would be dropped today along
+with the failure, because a list of real paths is what makes the message
+believable.
 
 ## Still to build
 
