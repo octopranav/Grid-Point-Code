@@ -312,14 +312,16 @@ const code = GPC.encode(START.latitude, START.longitude);
         type Choice,
     } from '../lib/landmarks';
     import {
-        basemapStyle,
         chosenBasemap,
+        inksFor,
+        pageIsDark,
         rememberBasemap,
-        token,
+        resolveBasemap,
         outline,
         WORLD,
         type Basemap,
         type Box,
+        type Resolved,
     } from '../lib/basemap';
     import type { Map as MapLibreMap } from 'maplibre-gl';
 
@@ -480,6 +482,9 @@ const code = GPC.encode(START.latitude, START.longitude);
         let descending = false;
         let hovered = '';
         let chosen: Basemap = chosenBasemap();
+        // The style the map is drawing, which is what the inks are chosen for:
+        // not the page's theme, and not a choice still on its way in.
+        let drawn: Resolved = resolveBasemap(chosen, pageIsDark());
         // The cell currently drawn, so it can be put back after a style change.
         let shown: LevelCell | null = null;
 
@@ -910,7 +915,7 @@ const code = GPC.encode(START.latitude, START.longitude);
 
         function addBox(cell: LevelCell) {
             if (!map) return;
-            const brass = token('--brass', '#8A6110');
+            const { brass } = inksFor(drawn.dark);
             map.addSource(ID, { type: 'geojson', data: outline(cell) });
             // Outline only, never filled. A filled box hides the very thing a
             // reader came to see, and at the coarse levels it covers a continent.
@@ -987,7 +992,7 @@ const code = GPC.encode(START.latitude, START.longitude);
 
         function hoverLayers() {
             if (!map || map.getSource(HOVER)) return;
-            const ink = token('--ink-soft', '#6E848D');
+            const ink = inksFor(drawn.dark).soft;
             map.addSource(HOVER, {
                 type: 'geojson',
                 data: { type: 'FeatureCollection', features: [] },
@@ -1518,9 +1523,10 @@ const code = GPC.encode(START.latitude, START.longitude);
             }
 
             try {
+                drawn = resolveBasemap(chosen, pageIsDark());
                 map = new maplibre.Map({
                     container: mapHolder,
-                    style: basemapStyle(chosen),
+                    style: drawn.style,
                     center: [start.longitude, start.latitude],
                     zoom: 0,
                     attributionControl: { compact: false },
@@ -1620,27 +1626,46 @@ const code = GPC.encode(START.latitude, START.longitude);
             if (map.isStyleLoaded()) ready();
             else map.on('style.load', ready);
 
-            basemapChooser.value = chosen;
-            basemapChooser.addEventListener('change', () => {
-                const wanted = basemapChooser.value as Basemap;
-                chosen = wanted;
-                rememberBasemap(wanted);
+            // Restyled when what the map should show changes: the reader's
+            // choice, or the theme when that choice is to match it. The same
+            // map needs nothing, since the inks follow the map and not the
+            // page.
+            //
+            // setStyle replaces the whole style, taking every source and layer
+            // this component added with it. They are put back once the new one
+            // is parsed, at whatever the descent had reached, so switching the
+            // basemap does not restart anything.
+            function restyle() {
                 if (!map) return;
+                const next = resolveBasemap(chosen, pageIsDark());
+                if (next.style === drawn.style) return;
+                drawn = next;
 
-                // setStyle replaces the whole style, taking every source and
-                // layer this component added with it. They are put back once
-                // the new one is parsed, at whatever the descent had reached,
-                // so switching the basemap does not restart anything.
                 const cell = shown;
                 clearHover();
-                map.setStyle(basemapStyle(wanted));
+                map.setStyle(next.style);
                 map.once('style.load', () => {
                     if (cell) {
                         addBox(cell);
                         setOpacity(1, 0.18);
                     }
                 });
+            }
+
+            basemapChooser.value = chosen;
+            basemapChooser.addEventListener('change', () => {
+                chosen = basemapChooser.value as Basemap;
+                rememberBasemap(chosen);
+                restyle();
             });
+
+            // The theme toggle stamps data-theme, or removes it to follow the
+            // system, and the system can change on its own at dusk.
+            new MutationObserver(restyle).observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['data-theme'],
+            });
+            matchMedia('(prefers-color-scheme: dark)').addEventListener('change', restyle);
 
             map.on('mousemove', (event) => {
                 showHover(event.lngLat.lat, event.lngLat.lng);

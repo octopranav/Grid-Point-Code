@@ -121,6 +121,17 @@ Every colour comes from a token defined for both. A value that exists only
 inside a media query is the bug that renders one theme's text on the other's
 paper.
 
+The playground's map is the one place a colour follows something other than the
+page. A reader can put a light basemap under the dark theme or a dark one under
+the light, and the cell drawn over it takes the inks of the map it lies on:
+positron, bright and liberty get the light theme's brass and soft ink, dark and
+fiord the dark theme's, and matching the theme follows the page. Drawn in the
+page's own brass, the cell was 1.4:1 on fiord and about 2:1 on the light maps,
+there and in the right place and nearly invisible. The values are read from
+`design/tokens.json`, since the page's custom properties only ever hold the theme
+it is in, and `scripts/test-basemap.mjs` measures every map in both themes
+against its style's background.
+
 ## Places
 
 The front page and the playground open on somewhere in the visitor's own
