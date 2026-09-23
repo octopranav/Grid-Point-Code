@@ -93,6 +93,23 @@ class PlaceTest {
     }
 
     @Test
+    fun aPlaceFoundByNameIsADifferentDoor() {
+        val there = start.opened(market, Source.LINK).locating()
+        val found = there.found(Named("Toronto", "G3RJF4318R", "Ontario, Canada"))
+        assertEquals("G3RJF4318R", found.selection.code)
+        assertEquals(Source.SEARCH, found.selection.source)
+        assertEquals("", found.note)
+        assertEquals(Locating.IDLE, found.locating)
+    }
+
+    @Test
+    fun aNameWhoseCodeWillNotReadLeavesThePlaceWhereItWas() {
+        val confused = start.found(Named("Nowhere", "QQQQQYYYYY", ""))
+        assertEquals(start.selection, confused.selection)
+        assertIs<Problem.Unread>(confused.problem)
+    }
+
+    @Test
     fun directionsAreTidiedWhenTheyAreWritten() {
         assertEquals("Blue gate, second door", start.described("  Blue gate,\n second door ").note)
     }

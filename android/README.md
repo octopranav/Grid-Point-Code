@@ -13,10 +13,10 @@ code, check and correction is arithmetic on the device.
 
 | Module | What it holds |
 | --- | --- |
-| [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, and the rules for what survives a move |
+| [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, and reading the website's name index |
 | [`designsystem`](designsystem) | The theme, the type scale, the shapes and the ten-cell mark, built from the files [`design/build-tokens.mjs`](../design/build-tokens.mjs) generates |
 | [`map`](map) | MapLibre Native on the website's tile provider, its five styles, the cell drawn in brass with its eight neighbours faint around it, and a tap to place a point |
-| [`app`](app) | The place screen, the view model that holds the place, read aloud, and the ways a place arrives from another app |
+| [`app`](app) | The place screen, the view model that holds the place, read aloud, fetching the name index, and the ways a place arrives from another app |
 
 ## What it does today
 
@@ -51,6 +51,10 @@ code, check and correction is arithmetic on the device.
   minutes, a geo URI, a gridpointcode.com link or a short form, from the search
   field, from a link, from another app's "open location", or from text selected
   anywhere on the phone.
+- Finds a place by name from the same field, listing the places a name could
+  mean as it is typed, largest first within one name, from the website's own
+  index of 7.3 million names. Go takes the first one. With no connection it
+  says names need one, and codes and coordinates carry on working.
 
 ## Building
 
@@ -110,13 +114,22 @@ nudged is ignored, and a new press starts over, since the reader may have
 walked a kilometre since the last. Location comes from the platform's own
 `LocationManager`, so nothing needs Play services.
 
+**Names come from the website's index, read the way the site reads it.** One
+sorted file of a third of a gigabyte and a table of every 512th line, both static
+files on the site's host; a search is one range read of about 24 kilobytes, and
+no service is asked anything. `core` folds a name exactly as the builder sorted
+the file (the tests hold it to the builder's own answers) and decides where to
+read. It starts at the last mark strictly before the query, not at or before it:
+about a quarter of the marks land partway through a run of one name, and
+starting at such a mark skips the largest places of that name.
+
 **Three SDK levels, three meanings.** `compileSdk` 37 because current AndroidX
 libraries compile against it. `targetSdk` 36 for runtime behaviour. `minSdk` 26,
 which covers the streaming calls in the library, which need 24.
 
 ## Not here yet
 
-Search by place name, the landmark that anchors a short
+The landmark that anchors a short
 form, the bundled typefaces, the launcher icon, verified links (which need the signing
 fingerprint published in `/.well-known/assetlinks.json`), and the Wear OS, car
 and headset modules.
