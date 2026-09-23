@@ -63,14 +63,24 @@ export function marks(): Promise<Marks | null> {
     return table;
 }
 
-/** The last mark at or before `folded`, which is where its block begins. */
+/**
+ * Where a run of names beginning with `folded` can start: the block of the last
+ * mark strictly before it.
+ *
+ * Not the last mark at or before it. A mark falls every 512th line whatever the
+ * name, so about a quarter of them land partway through a run of one name, and
+ * a search that began at such a mark never read the lines before it -- which is
+ * where the largest places are. `al marj` answered with a village in Syria and
+ * never reached the city in Libya. Starting a block earlier costs one more read,
+ * and only when a mark's name is exactly the query.
+ */
 function blockFor(found: Marks, folded: string): number {
     let low = 0;
     let high = found.marks.length - 1;
     let at = 0;
     while (low <= high) {
         const middle = (low + high) >> 1;
-        if (found.marks[middle][0] <= folded) {
+        if (found.marks[middle][0] < folded) {
             at = middle;
             low = middle + 1;
         } else {
