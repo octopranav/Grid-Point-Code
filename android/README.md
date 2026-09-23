@@ -13,10 +13,10 @@ code, check and correction is arithmetic on the device.
 
 | Module | What it holds |
 | --- | --- |
-| [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, and reading the website's name index |
+| [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, reading the website's name index, and which landmarks can anchor a short form |
 | [`designsystem`](designsystem) | The theme, the type scale, the shapes and the ten-cell mark, built from the files [`design/build-tokens.mjs`](../design/build-tokens.mjs) generates |
 | [`map`](map) | MapLibre Native on the website's tile provider, its five styles, the cell drawn in brass with its eight neighbours faint around it, and a tap to place a point |
-| [`app`](app) | The place screen, the view model that holds the place, read aloud, fetching the name index, and the ways a place arrives from another app |
+| [`app`](app) | The place screen, the view model that holds the place, read aloud, fetching the name index and the landmark archive, and the ways a place arrives from another app |
 
 ## What it does today
 
@@ -55,6 +55,13 @@ code, check and correction is arithmetic on the device.
   mean as it is typed, largest first within one name, from the website's own
   index of 7.3 million names. Go takes the first one. With no connection it
   says names need one, and codes and coordinates carry on working.
+- Anchors the short form to a landmark, from the website's archive of 6.5
+  million places each named uniquely within its region: every one near enough
+  for recovery to be guaranteed, nearest first, with its distance and bearing,
+  and the line to share, `-98NM9 near Old Toronto, Ontario, Canada`. A choice is
+  kept through a nudge while it stays in reach. Open country says there is
+  nothing near enough, and an archive that cannot be reached says so rather
+  than passing for open country.
 
 ## Building
 
@@ -123,13 +130,22 @@ read. It starts at the last mark strictly before the query, not at or before it:
 about a quarter of the marks land partway through a run of one name, and
 starting at such a mark skips the largest places of that name.
 
+**The recovery box is 1,562 finest rows, not half a level-5 cell.** Section
+12.3 prints it as 0.03598848 by 0.04798464 degrees: the whole rows and columns
+within half of a level-5 cell's 3,125. Exactly half a cell is 0.036 by 0.048,
+about a metre and a half more, and a landmark in that margin recovers another
+cell's copy of the same five characters. `core` takes the figure from the
+library's cell sizes and a test holds it to the printed one. The box is degrees,
+never a radius in metres, which the tests check at Helsinki as well as the
+equator.
+
 **Three SDK levels, three meanings.** `compileSdk` 37 because current AndroidX
 libraries compile against it. `targetSdk` 36 for runtime behaviour. `minSdk` 26,
 which covers the streaming calls in the library, which need 24.
 
 ## Not here yet
 
-The landmark that anchors a short
-form, the bundled typefaces, the launcher icon, verified links (which need the signing
+Reading an anchored short form back from a pasted line, keeping an area's
+landmarks for use offline, the bundled typefaces, the launcher icon, verified links (which need the signing
 fingerprint published in `/.well-known/assetlinks.json`), and the Wear OS, car
 and headset modules.

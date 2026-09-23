@@ -24,6 +24,17 @@
     <string name="read_aloud">Read aloud</string>
     <string name="share">Share</string>
     <string name="copy">Copy</string>
+    <string name="anchor_title">Anchor the short form</string>
+    <string name="anchor_explain">Five characters name a position inside a cell 8 by 10.7 km, so they need a reference near the point to be read back. These are the places near enough that recovery is guaranteed. A reference further off does not fail; it returns somewhere else.</string>
+    <string name="anchor_looking">Looking for landmarks near here\u2026</string>
+    <string name="anchor_none">No landmark is near enough to anchor a short form here. Share the full ten characters instead: they resolve on their own.</string>
+    <string name="anchor_unreachable">The landmarks could not be reached. The full code needs no reference.</string>
+    <string name="anchor_exact">exact</string>
+    <string name="anchor_exact_note">Exact places share this point\'s level-5 cell, so a reader who goes by that cell rather than by the place\'s coordinates recovers the code exactly.</string>
+    <string name="anchor_where">%1$s %2$s \u00b7 %3$s</string>
+    <string name="anchor_show_all">Show all %1$d</string>
+    <string name="distance_metres">%1$d m</string>
+    <string name="distance_kilometres">%1$.1f km</string>
     <string name="copied">Copied</string>
 
     <string name="nudge_title">Nudge one cell</string>
