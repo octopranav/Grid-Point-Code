@@ -555,6 +555,11 @@ jobs:
       # is where the site's own panel went wrong most often.
       - name: The app says what the site says
         run: ./gradlew --no-daemon :core:test
+      # The cell is drawn in the inks of the map beneath it, not the app's
+      # theme. Drawn in the theme's own brass, it falls to 1.4:1 on a dark map
+      # chosen in the light theme and all but disappears.
+      - name: The map draws in inks its basemap can carry
+        run: ./gradlew --no-daemon :map:testDebugUnitTest
       # The engine is the published jar from Maven Central, built for Java 21,
       # so this is also where a release that no longer dexes would surface.
       - name: The app assembles
