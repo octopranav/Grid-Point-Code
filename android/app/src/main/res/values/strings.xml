@@ -16,6 +16,7 @@
     <string name="source_nudge">One cell over</string>
     <string name="source_map">Picked on the map</string>
     <string name="source_search">Found by name</string>
+    <string name="source_anchored">Read against a landmark</string>
 
     <string name="cell_size">Cell %1$s m north to south, %2$s m east to west</string>
     <string name="fix_inside">Your device placed you to within about %1$d m, which is inside a single cell.</string>
@@ -75,5 +76,9 @@
     <string name="problem_location_refused">The app is not allowed to use your location. A code can still be typed, pasted or picked on the map.</string>
     <string name="problem_location_off">Location is switched off on this device. A code can still be typed, pasted or picked on the map.</string>
     <string name="problem_no_fix">No fix arrived. Outdoors or by a window, one usually comes within a minute.</string>
+    <string name="problem_anchor_not_found">No place called %2$s was found, so %1$s cannot be read against it. The full ten characters need no reference.</string>
+    <string name="problem_anchor_several">More than one place answers to %2$s. With its region, as in the line this app shares, %1$s can be read against the right one.</string>
+    <string name="problem_anchor_not_unique">%2$s shares its name with another place in the same region, so %1$s could be read against the wrong one. Ask for the full ten characters.</string>
+    <string name="problem_anchor_unreachable">Reading %1$s needs a connection to look up %2$s. The full ten characters need no reference.</string>
     <string name="problem_short">%1$s is shaped like a short form, but uses symbols no code contains.</string>
 </resources>

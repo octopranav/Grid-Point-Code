@@ -8,14 +8,19 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.gridpointcode.core.Anchor
 import com.gridpointcode.core.Compass
+import com.gridpointcode.core.Landmark
 import com.gridpointcode.core.Locating
 import com.gridpointcode.core.Named
 import com.gridpointcode.core.PlaceState
 import com.gridpointcode.core.PlaceView
+import com.gridpointcode.core.Problem
+import com.gridpointcode.core.Reading
+import com.gridpointcode.core.ReferenceMatch
 import com.gridpointcode.core.Point
 import com.gridpointcode.core.Selection
 import com.gridpointcode.core.Source
 import com.gridpointcode.core.anchored
+import com.gridpointcode.core.anchoredAt
 import com.gridpointcode.core.described
 import com.gridpointcode.core.found
 import com.gridpointcode.core.isName
@@ -25,7 +30,12 @@ import com.gridpointcode.core.locationOff
 import com.gridpointcode.core.locationRefused
 import com.gridpointcode.core.nudged
 import com.gridpointcode.core.opened
+import com.gridpointcode.core.matchReference
 import com.gridpointcode.core.placed
+import com.gridpointcode.core.read
+import com.gridpointcode.core.recover
+import com.gridpointcode.core.referenceName
+import com.gridpointcode.core.unanchored
 import com.gridpointcode.core.selectionAt
 import com.gridpointcode.core.stoppedLocating
 import com.gridpointcode.core.view
@@ -119,8 +129,60 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     fun nudge(direction: Compass) = change { it.nudged(direction) }
 
     fun open(text: String, source: Source = Source.CODE) {
+        val reading = read(text)
+        if (reading is Reading.Anchored) return readAnchored(text, reading)
         settle()
         change { it.opened(text, source) }
+    }
+
+    /**
+     * A short form given with a landmark: `-98NM9 near Old Toronto, Ontario,
+     * Canada`. The place is found by name in the index, then in the archive for
+     * the coordinates the sender's list was drawn from, and the five characters
+     * are recovered against those. Anything short of one certain landmark is
+     * refused with the reason, and the place stays where it was: a guess would
+     * be recovered into somewhere plausible and wrong.
+     */
+    private fun readAnchored(text: String, reading: Reading.Anchored) {
+        settle()
+        // Symbols no code contains need nothing looked up to be refused.
+        if (recover(reading.short, Point(0.0, 0.0)) == null) {
+            return change { it.copy(problem = Problem.UnreadShort(reading.short)) }
+        }
+        finding.value = Finding(query = text, status = Finding.Status.LOOKING)
+        looking = viewModelScope.launch {
+            val outcome = resolve(reading)
+            finding.value = Finding()
+            when (outcome) {
+                is Resolved.At -> {
+                    // So the anchor list offers the same landmark first, and
+                    // passing the place on uses the reference it arrived with.
+                    anchorChoice = identity(outcome.landmark)
+                    change { it.anchoredAt(reading.short, outcome.landmark) }
+                }
+                is Resolved.Refused -> change { it.unanchored(reading, outcome.why) }
+            }
+        }
+    }
+
+    private suspend fun resolve(reading: Reading.Anchored): Resolved {
+        val places = names.find(referenceName(reading.reference), REFERENCE_ROWS)
+            ?: return Resolved.Refused(Problem.Unanchored.Why.UNREACHABLE)
+        val place = when (val match = matchReference(reading.reference, places)) {
+            ReferenceMatch.None -> return Resolved.Refused(Problem.Unanchored.Why.NOT_FOUND)
+            ReferenceMatch.Several -> return Resolved.Refused(Problem.Unanchored.Why.SEVERAL)
+            is ReferenceMatch.One -> match.place
+        }
+        return when (val held = archive.landmark(place)) {
+            LandmarkArchive.Held.Unreachable -> Resolved.Refused(Problem.Unanchored.Why.UNREACHABLE)
+            LandmarkArchive.Held.Missing -> Resolved.Refused(Problem.Unanchored.Why.NOT_UNIQUE)
+            is LandmarkArchive.Held.Found -> Resolved.At(held.landmark)
+        }
+    }
+
+    private sealed interface Resolved {
+        data class At(val landmark: Landmark) : Resolved
+        data class Refused(val why: Problem.Unanchored.Why) : Resolved
     }
 
     /**
@@ -161,7 +223,9 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** Two landmarks can share a name; within one region they cannot. */
-    private fun identity(anchor: Anchor) = anchor.landmark.name + "\n" + anchor.landmark.region
+    private fun identity(anchor: Anchor) = identity(anchor.landmark)
+
+    private fun identity(landmark: Landmark) = landmark.name + "\n" + landmark.region
 
     /** A place chosen from the list. */
     fun pick(place: Named) {
@@ -249,6 +313,13 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
 
         /** The pause in typing that counts as having typed something, the same as the website's. */
         const val TYPING_MS = 180L
+
+        /**
+         * Enough index rows to hold every place of one name: a name would need
+         * more regions than the index has to run past it. Deciding that a name
+         * alone is unique needs all of them, not the first dozen.
+         */
+        const val REFERENCE_ROWS = 5_000
     }
 }
 

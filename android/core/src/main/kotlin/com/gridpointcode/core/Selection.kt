@@ -15,6 +15,9 @@ enum class Source {
     CODE,
     LINK,
     SEARCH,
+
+    /** A short form read against the landmark it was given with. */
+    ANCHORED,
     NUDGE,
     SAMPLE,
 }

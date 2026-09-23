@@ -62,6 +62,13 @@ code, check and correction is arithmetic on the device.
   kept through a nudge while it stays in reach. Open country says there is
   nothing near enough, and an archive that cannot be reached says so rather
   than passing for open country.
+- Reads such a line back, typed, pasted, or selected in another app: the place
+  is found by name in the index and then in the archive, and the five
+  characters are recovered against the archive's own coordinates for it, which
+  are the ones the sender's list was drawn from. The anchor list then offers the
+  same landmark first. A place that cannot be found, a name several places
+  answer to, one that is not unique in its own region, and no connection are
+  each refused with the reason, and the place stays where it was.
 
 ## Building
 
@@ -139,13 +146,21 @@ library's cell sizes and a test holds it to the printed one. The box is degrees,
 never a radius in metres, which the tests check at Helsinki as well as the
 equator.
 
+**An anchored line is never read against wherever the screen is.** A bare short
+form is recovered against the place already shown, because that is the reader's
+own reference. A short form given with a landmark names its own reference, and
+recovering it against anything else, before the landmark is looked up or when it
+cannot be, names somewhere plausible and wrong: `-98NM9` read against London is
+`#R0NJ0-98NM9`, a real place about three kilometres east of Westminster. So
+nothing moves until one landmark is certain, and `core` has a test that fails if
+it ever does.
+
 **Three SDK levels, three meanings.** `compileSdk` 37 because current AndroidX
 libraries compile against it. `targetSdk` 36 for runtime behaviour. `minSdk` 26,
 which covers the streaming calls in the library, which need 24.
 
 ## Not here yet
 
-Reading an anchored short form back from a pasted line, keeping an area's
-landmarks for use offline, the bundled typefaces, the launcher icon, verified links (which need the signing
+Keeping an area's landmarks for use offline, the bundled typefaces, the launcher icon, verified links (which need the signing
 fingerprint published in `/.well-known/assetlinks.json`), and the Wear OS, car
 and headset modules.

@@ -18,6 +18,13 @@ sealed interface Reading {
     /** A short form, which names nowhere until it is given a reference point. */
     data class Short(val text: String) : Reading
 
+    /**
+     * A short form given with the place it is near, as section 12.1 writes it:
+     * `-98NM9 near Old Toronto, Ontario, Canada`. The place has to be looked up
+     * before the five characters mean anything.
+     */
+    data class Anchored(val short: String, val reference: String) : Reading
+
     /** A point written some other way: decimal degrees, degrees and minutes, a geo URI. */
     data class At(val point: Point) : Reading
 
@@ -35,6 +42,9 @@ fun read(text: String): Reading {
 
     linked(given)?.let { return it }
     if (given.startsWith("geo:", ignoreCase = true)) return geo(given)
+    ANCHORED.matchEntire(given)?.let { found ->
+        return Reading.Anchored("-" + found.groupValues[1].uppercase(), found.groupValues[2].trim())
+    }
     if (SHORT.matches(given)) return Reading.Short(given)
     decimal(given)?.let { return it }
 
@@ -91,6 +101,13 @@ private fun degrees(given: String): Reading? = try {
 } catch (failure: IllegalArgumentException) {
     null
 }
+
+/**
+ * Five symbols, their dash if it was kept, then "near" and a place. The dash is
+ * the short form's own marker, but a line retyped by hand often loses it, and
+ * "near" says what the five characters are just as plainly.
+ */
+private val ANCHORED = Regex("^-?\\s*([0-9A-Za-z]{5})\\s+near\\s+(\\S.*)$", RegexOption.IGNORE_CASE)
 
 /** A hyphen, then five symbols: the printed second group on its own. */
 private val SHORT = Regex("^-\\s*[0-9A-Za-z]{5}$")
