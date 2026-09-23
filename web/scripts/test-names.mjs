@@ -24,6 +24,12 @@
 // So the fixture below is that case, shrunk: one large city, its namesakes, the
 // duplicates, and a name that merely starts the same. It is built through the
 // real builder and read back through the reader's own columns.
+//
+// Beside it, the same mistake made by the reader instead of the sort. A mark
+// falls every 512th line whatever the name, so one can land partway through a
+// run of a single name, and a reader that began at that mark never saw the
+// lines before it -- the largest places. `al marj` answered with a village in
+// Syria and never reached the city in Libya.
 
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -53,6 +59,11 @@ function row({ id, name, latitude, longitude, kind, code, country, admin, people
     columns[14] = String(people ?? 0);
     return columns.join(TAB);
 }
+
+/** More villages called Al Marj than one block of the index holds. */
+const VILLAGES = 530;
+
+const district = (i) => `D${String(i).padStart(3, '0')}`;
 
 const PLACES = [
     // The one anybody typing the word means, and it sorts late by name alone.
@@ -102,6 +113,24 @@ const PLACES = [
         id: 12, name: 'Zedcity', latitude: 11.0, longitude: 11.0,
         kind: 'S', code: 'FRM', country: 'CA', admin: '08', people: 0,
     },
+
+    // Sorts before the run, so the reader has a mark before it to choose.
+    {
+        id: 13, name: 'Aberdeen', latitude: 39.1, longitude: -84.0,
+        kind: 'P', code: 'PPL', country: 'US', admin: 'OH', people: 1500,
+    },
+
+    // One name, longer than the stride: the city first, then enough villages,
+    // each in a district of its own so none is collapsed, that a mark lands
+    // among them.
+    {
+        id: 14, name: 'Al Marj', latitude: 32.4926, longitude: 20.8291,
+        kind: 'P', code: 'PPLA', country: 'LY', admin: '99', people: 85000,
+    },
+    ...Array.from({ length: VILLAGES }, (_, i) => ({
+        id: 100 + i, name: 'Al Marj', latitude: 35 + i / 1000, longitude: 37,
+        kind: 'P', code: 'PPL', country: 'SY', admin: district(i), people: 0,
+    })),
 ];
 
 const COUNTRIES = [
@@ -109,6 +138,8 @@ const COUNTRIES = [
     ['AU', 'AUS', '036', 'AS', 'Australia'],
     ['US', 'USA', '840', 'US', 'United States'],
     ['TZ', 'TZA', '834', 'TZ', 'Tanzania'],
+    ['LY', 'LBY', '434', 'LY', 'Libya'],
+    ['SY', 'SYR', '760', 'SY', 'Syria'],
 ].map((parts) => parts.join(TAB)).join('\n');
 
 const ADMINS = [
@@ -117,6 +148,10 @@ const ADMINS = [
     ['AU.02', 'New South Wales', 'New South Wales', '3'],
     ['US.OH', 'Ohio', 'Ohio', '4'],
     ['TZ.15', 'Tanga', 'Tanga', '5'],
+    ['LY.99', 'Al Marj', 'Al Marj', '6'],
+    ...Array.from({ length: VILLAGES }, (_, i) => [
+        `SY.${district(i)}`, `District ${i}`, `District ${i}`, String(100 + i),
+    ]),
 ].map((parts) => parts.join(TAB)).join('\n');
 
 /** The file read back through the columns `lib/search.ts` reads. */
@@ -291,6 +326,21 @@ try {
     const longer = await search.search('torontov', 20);
     if ((longer ?? []).length !== 1 || longer?.[0]?.name !== 'Torontoville') {
         complain(`a longer prefix returned ${JSON.stringify(longer)}`);
+    }
+
+    // A name whose run a mark falls inside is still answered from the run's
+    // start. Checked first that the fixture still puts a mark there, because a
+    // change to the stride would otherwise pass this without testing anything.
+    const first = places.findIndex((place) => place.folded === 'al marj');
+    const inside = index.marks.some(
+        ([key], i) => key === 'al marj' && i * index.stride > first,
+    );
+    if (!inside) {
+        complain('no mark lands inside the Al Marj run, so the case is not being tested');
+    }
+    const marj = await search.search('al marj', 20);
+    if (marj?.[0]?.region !== 'Al Marj, Libya') {
+        complain(`the reader's first Al Marj is ${JSON.stringify(marj?.[0]?.region)}, not the city in Libya`);
     }
 
     // Below two characters the reader answers nothing rather than a block.
