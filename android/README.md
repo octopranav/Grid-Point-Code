@@ -13,7 +13,7 @@ code, check and correction is arithmetic on the device.
 
 | Module | What it holds |
 | --- | --- |
-| [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, reading the website's name index, which landmarks can anchor a short form, saved places, reading locations written in other systems, and the emergency card |
+| [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, reading the website's name index, which landmarks can anchor a short form, saved places, reading locations written in other systems, the emergency card, and areas |
 | [`designsystem`](designsystem) | The theme, the type scale, the shapes and the ten-cell mark, built from the files [`design/build-tokens.mjs`](../design/build-tokens.mjs) generates |
 | [`map`](map) | MapLibre Native on the website's tile provider, its five styles, the cell drawn in brass with its eight neighbours faint around it, and a tap to place a point |
 | [`app`](app) | The place screen, the view model that holds the place, read aloud, fetching the name index and the landmark archive, and the ways a place arrives from another app |
@@ -94,6 +94,11 @@ code, check and correction is arithmetic on the device.
   drawn on it as small rings, and found first as a name is typed, with no
   connection. Opening one brings its directions back, and Go on a saved name
   goes straight there.
+- Shares an area as well as a point: a place's card lists the areas around it,
+  a region down to a building, each written as its first few characters with
+  its size where it lies. Choosing one frames it on the map in brass, and it can
+  be read aloud, copied or shared with a link. A link to an area opens as that
+  area, and so does a cell typed into the field.
 
 ## Building
 
@@ -230,6 +235,17 @@ tile provider's terms rule out collecting its data in automated ways without
 permission, and fetching an area's tiles in the background would be exactly
 that. So the map library's own cache is raised from 50 MB to 200 MB, and offline
 the map is whatever the reader has already looked at.
+
+**An area is written as a cell, with no hash and no hyphen.** Section 18.1 of
+the specification: a cell is never presented as a code, and ten characters is a
+code while fewer is a region. A link to an area uses the same address and
+parameter as a link to a code, `?c=G3RJM`, and its length says which it is.
+Typed into the field, a cell is read as an area only when it mixes letters and
+digits: a run of letters alone is a word as often as not, and a run of digits
+alone is a postcode. A link is written by a machine, so any cell in one is an
+area. A code missing its last character opens as its building-sized area, which
+holds the door it meant. The levels are named from the specification's table of
+scales.
 
 **Three SDK levels, three meanings.** `compileSdk` 37 because current AndroidX
 libraries compile against it. `targetSdk` 36 for runtime behaviour. `minSdk` 26,

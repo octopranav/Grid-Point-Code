@@ -34,6 +34,8 @@ import com.gridpointcode.core.townFor
 import com.gridpointcode.core.unplaced
 import com.gridpointcode.core.forgetting
 import com.gridpointcode.core.matchSaved
+import com.gridpointcode.core.narrowed
+import com.gridpointcode.core.widened
 import com.gridpointcode.core.namedSaved
 import com.gridpointcode.core.recalled
 import com.gridpointcode.core.saving
@@ -431,6 +433,12 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun describeTheWay(text: String) = state.update { it.described(text) }
+
+    /** Show the area of a level around the place, to share instead of the door. */
+    fun widen(level: Int) = state.update { it.widened(level) }
+
+    /** Back from the area to the place inside it. */
+    fun narrow() = state.update { it.narrowed() }
 
     /** The reader said no to the permission prompt. */
     fun refused() = change { it.locationRefused() }

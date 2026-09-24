@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.core.view.WindowCompat
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import com.gridpointcode.core.AreaView
 import com.gridpointcode.core.Emergency
 import com.gridpointcode.core.emergencyOf
 import androidx.compose.foundation.lazy.LazyColumn
@@ -193,6 +194,7 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
                 padding = PaddingValues(top = top, bottom = bottom),
                 basemap = basemap,
                 saved = savedPoints,
+                area = ui.area?.box,
                 modifier = Modifier.fillMaxSize(),
             )
             Search(
@@ -311,6 +313,22 @@ private fun Panel(ui: PlaceView, model: PlaceViewModel, speak: (String) -> Unit,
             .padding(horizontal = Space.step3, vertical = Space.step2),
         verticalArrangement = Arrangement.spacedBy(Space.step3),
     ) {
+        val area = ui.area
+        // An area shared by somebody is its own subject; one widened from a
+        // place has the place underneath, to go back to and to widen again.
+        val fromPlace = ui.selection.source != Source.AREA
+        if (area != null) {
+            AreaHead(
+                area = area,
+                onBack = if (fromPlace) model::narrow else null,
+                speak = { speak(area.spoken) },
+                share = { share(context, area.cell + "\n" + area.link) },
+                copy = { copy(context, area.cell) },
+            )
+            if (fromPlace) ShareArea(ui.areas, chosen = area.level, onChoose = model::widen)
+            Spacer(Modifier.height(Space.step5))
+            return@Column
+        }
         Head(
             ui = ui,
             saved = here,
@@ -322,6 +340,7 @@ private fun Panel(ui: PlaceView, model: PlaceViewModel, speak: (String) -> Unit,
         Nudge(ui.selection.code, ui.pad, onNudge = model::nudge)
         WrittenForms(ui.forms, copy = { copy(context, it) })
         GiveAddress(ui.note, ui.link, onNote = model::describeTheWay, share = { share(context, ui.formatted + "\n" + ui.link) })
+        ShareArea(ui.areas, chosen = null, onChoose = model::widen)
         AnchorShort(
             anchoring = anchoring,
             keeping = keeping,
@@ -559,6 +578,104 @@ private fun originNote(origin: Origin): String? {
         link -> null
         coarse -> stringResource(R.string.origin_area, origin.text, distance(origin.metres))
         else -> stringResource(R.string.origin_read, origin.text)
+    }
+}
+
+/** A level's name, from the specification's table of scales. */
+@Composable
+private fun levelName(level: Int): String = stringResource(
+    when (level) {
+        3 -> R.string.level_3
+        4 -> R.string.level_4
+        5 -> R.string.level_5
+        6 -> R.string.level_6
+        7 -> R.string.level_7
+        8 -> R.string.level_8
+        else -> R.string.level_9
+    },
+)
+
+/**
+ * The areas around the place, a region down to a building, each written as its
+ * cell with its size where it lies. Choosing one shows it, to share instead of
+ * the door: a market, a block, a delivery zone, in the same alphabet.
+ */
+@Composable
+private fun ShareArea(areas: List<AreaView>, chosen: Int?, onChoose: (Int) -> Unit) {
+    Section(stringResource(R.string.area_title)) {
+        Quiet(stringResource(R.string.area_explain))
+        Column(Modifier.selectableGroup()) {
+            areas.forEach { area ->
+                val selected = area.level == chosen
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectable(selected = selected, role = Role.RadioButton) { onChoose(area.level) }
+                        .padding(vertical = Space.step1),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Space.step2),
+                ) {
+                    RadioButton(selected = selected, onClick = null)
+                    Column(Modifier.weight(1f)) {
+                        Text(area.cell, style = CodeStyle)
+                        Text(
+                            text = stringResource(
+                                R.string.area_row,
+                                levelName(area.level),
+                                distance(area.size.northSouthMetres),
+                                distance(area.size.eastWestMetres),
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * An area in place of the place: its cell, with no hash and no hyphen, because
+ * it must never be read as a code; its size; and sharing it, which sends the
+ * cell and a link the website opens as the same area.
+ */
+@Composable
+private fun AreaHead(
+    area: AreaView,
+    onBack: (() -> Unit)?,
+    speak: () -> Unit,
+    share: () -> Unit,
+    copy: () -> Unit,
+) {
+    val colours = LocalGpcColors.current
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(Radius.card),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, colours.rule, RoundedCornerShape(Radius.card)),
+    ) {
+        Column(Modifier.padding(Space.step3), verticalArrangement = Arrangement.spacedBy(Space.step2)) {
+            Text(
+                text = stringResource(R.string.area_label, area.level, levelName(area.level)).uppercase(Locale.getDefault()),
+                style = MaterialTheme.typography.labelSmall,
+                color = colours.inkSoft,
+            )
+            Text(area.cell, style = CodeStyle.copy(fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.SemiBold))
+            Text(
+                text = stringResource(R.string.area_size, distance(area.size.northSouthMetres), distance(area.size.eastWestMetres)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Quiet(stringResource(R.string.area_note, area.cell))
+            Row(horizontalArrangement = Arrangement.spacedBy(Space.step1)) {
+                Button(onClick = speak, shape = ButtonShape) { Text(stringResource(R.string.read_aloud)) }
+                FilledTonalButton(onClick = share, shape = ButtonShape) { Text(stringResource(R.string.share)) }
+                OutlinedButton(onClick = copy, shape = ButtonShape) { Text(stringResource(R.string.copy)) }
+            }
+            if (onBack != null) TextButton(onClick = onBack) { Text(stringResource(R.string.area_back)) }
+        }
     }
 }
 
@@ -966,6 +1083,7 @@ private fun sourceLabel(source: Source): String = stringResource(
         Source.ANCHORED -> R.string.source_anchored
         Source.SAVED -> R.string.source_saved
         Source.CONVERTED -> R.string.source_converted
+        Source.AREA -> R.string.source_area
     },
 )
 

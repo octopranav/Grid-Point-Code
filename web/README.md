@@ -256,6 +256,13 @@ of them: a square code grows with every character, and one too dense to scan
 from a doorway defeats the reason it is there. A link with directions and no
 code shows no directions, since there is nothing for them to be directions to.
 
+The same parameter can hold an area instead of a code: `?c=G3RJM` is the cell
+every code beginning `G3RJM` lies inside, a district about 8 km across. The
+playground names it as an area, gives its level and size, and frames it on the
+map, rather than calling it a code of the wrong length. The length tells the two
+apart, as section 18.1 of the specification has it: ten characters is a code,
+and fewer is a region.
+
 ## The landmarks
 
 A short form is five characters and a reference. It resolves only against a

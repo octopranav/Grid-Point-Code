@@ -24,6 +24,9 @@ enum class Source {
 
     /** A location written in another system, converted. */
     CONVERTED,
+
+    /** The centre of an area somebody shared. */
+    AREA,
     NUDGE,
     SAMPLE,
 }

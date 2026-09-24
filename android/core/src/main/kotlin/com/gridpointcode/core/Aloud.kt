@@ -37,6 +37,13 @@ fun aloud(
         tail.joinToString(", ") + "; " + checkWord + " " + say(check[0], callouts)
 }
 
+/**
+ * An area spoken aloud: its symbols, one word each. No check word, because the
+ * check character belongs to a whole code and a cell has none.
+ */
+fun aloudArea(cell: String, callouts: Map<Char, String> = RADIO_ALPHABET): String =
+    cell.map { say(it, callouts) }.joinToString(", ")
+
 private fun say(symbol: Char, callouts: Map<Char, String>): String =
     callouts[symbol] ?: NUMBERS[Character.digit(symbol, 10)]
 

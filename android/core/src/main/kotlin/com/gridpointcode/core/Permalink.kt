@@ -11,6 +11,13 @@ const val SITE = "https://gridpointcode.com"
 /** Where a link points. The app and the site hand out the same address. */
 const val PLACE_ADDRESS = "$SITE/play"
 
+/**
+ * A link to an area: the same address and parameter as a code, holding the cell.
+ * Its length says which it is, as section 18.1 has it: ten characters is a code,
+ * fewer is a region.
+ */
+fun areaAddress(cell: String): String = "$PLACE_ADDRESS?$CODE_PARAM=$cell"
+
 /** The query parameter holding the code. One letter, because it is typed by hand. */
 const val CODE_PARAM = "c"
 
