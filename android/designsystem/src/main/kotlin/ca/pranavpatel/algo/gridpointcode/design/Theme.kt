@@ -11,7 +11,9 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 
@@ -66,17 +68,39 @@ private val DarkGpc = GpcColors(
 val LocalGpcColors = staticCompositionLocalOf { LightGpc }
 
 /**
- * The three families, by role.
+ * The three families, by role, bundled with the app as the site serves its own.
  *
- * Bitter, IBM Plex Sans and IBM Plex Mono are all under the Open Font Licence and
- * will be bundled with the app, as the site serves its own. Until they are, each
- * role falls back to the system face of the same kind, so every screen is
- * already set by role and swapping the files in changes nothing else.
+ * Bitter, IBM Plex Sans and IBM Plex Mono are under the Open Font Licence, and
+ * the files are the designers' own, unmodified, because both licences reserve
+ * the name: `audit/fonts.py` holds each to the file it came from. Bitter and
+ * Plex Sans come as variable fonts, one file for every weight, so each weight
+ * the scale uses is asked of the weight axis by name; a variable font asked for
+ * nothing is its default master, which for Bitter is its thinnest. Plex Mono
+ * comes as three plain files. A character a face does not have, in a place name
+ * written in another script, is drawn in the system's own face for it.
  */
+private val Display = FontFamily(axis(R.font.bitter, 600))
+
+private val Body = FontFamily(
+    axis(R.font.ibm_plex_sans, 400),
+    axis(R.font.ibm_plex_sans, 500),
+    axis(R.font.ibm_plex_sans, 600),
+)
+
+private val Mono = FontFamily(
+    Font(R.font.ibm_plex_mono_regular, FontWeight.Normal),
+    Font(R.font.ibm_plex_mono_medium, FontWeight.Medium),
+    Font(R.font.ibm_plex_mono_semibold, FontWeight.SemiBold),
+)
+
+/** One weight of a variable font, set on its weight axis. */
+private fun axis(resource: Int, weight: Int): Font =
+    Font(resource, FontWeight(weight), variationSettings = FontVariation.Settings(FontVariation.weight(weight)))
+
 private fun family(of: Family): FontFamily = when (of) {
-    Family.DISPLAY -> FontFamily.Serif
-    Family.BODY -> FontFamily.SansSerif
-    Family.MONO -> FontFamily.Monospace
+    Family.DISPLAY -> Display
+    Family.BODY -> Body
+    Family.MONO -> Mono
 }
 
 private fun Face.style(): TextStyle = TextStyle(

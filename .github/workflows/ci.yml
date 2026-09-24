@@ -471,6 +471,12 @@ jobs:
       - name: Everything built into the site reaches the server
         run: python audit/publishes.py
 
+      # Both typefaces' licences reserve the font's name, so the app ships the
+      # designers' files unmodified. A font saved again by a tool, or subset to
+      # save space, renders the same and breaks the licence silently.
+      - name: The app's typefaces are the designers' own files
+        run: python audit/fonts.py
+
   website:
     name: The website builds
     runs-on: ubuntu-latest

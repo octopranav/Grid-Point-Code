@@ -14,7 +14,7 @@ code, check and correction is arithmetic on the device.
 | Module | What it holds |
 | --- | --- |
 | [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line in the words of seven languages, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, reading the website's name index, which landmarks can anchor a short form, saved places, reading locations written in other systems, the emergency card, and areas |
-| [`designsystem`](designsystem) | The theme, the type scale, the shapes and the ten-cell mark, built from the files [`design/build-tokens.mjs`](../design/build-tokens.mjs) generates |
+| [`designsystem`](designsystem) | The theme, the type scale, the bundled typefaces, the shapes and the ten-cell mark, built from the files [`design/build-tokens.mjs`](../design/build-tokens.mjs) generates |
 | [`map`](map) | MapLibre Native on the website's tile provider, its five styles, the cell drawn in brass with its eight neighbours faint around it, and a tap to place a point |
 | [`app`](app) | The place screen, the view model that holds the place, read aloud, fetching the name index and the landmark archive, and the ways a place arrives from another app |
 
@@ -273,12 +273,22 @@ area. A code missing its last character opens as its building-sized area, which
 holds the door it meant. The levels are named from the specification's table of
 scales.
 
+**The typefaces are the designers' own files, unmodified.** Bitter, IBM Plex
+Sans and IBM Plex Mono, the site's three, under the Open Font Licence. Both
+licences reserve the font's name, so a subset or a converted copy could not ship
+under it; the files are the ones published in the google/fonts repository, byte
+for byte, with each licence in the app's assets. They add about 0.6 MB to the
+download. [`audit/fonts.py`](../audit/fonts.py) pins each to the hash of its
+upstream file. Bitter and Plex Sans are variable fonts, and each weight is set on
+the weight axis explicitly: asked only for a weight, Compose draws Bitter in its
+default master, its thinnest.
+
 **Three SDK levels, three meanings.** `compileSdk` 37 because current AndroidX
 libraries compile against it. `targetSdk` 36 for runtime behaviour. `minSdk` 26,
 which covers the streaming calls in the library, which need 24.
 
 ## Not here yet
 
-The bundled typefaces, the launcher icon, verified links (which need the signing
+The launcher icon, verified links (which need the signing
 fingerprint published in `/.well-known/assetlinks.json`), and the Wear OS, car
 and headset modules.
