@@ -28,6 +28,9 @@ sealed interface Reading {
     /** A location written in another system, read by that system's own rules. */
     data class Other(val found: OtherFormat) : Reading
 
+    /** A cell: the first few characters of a code, naming the area that holds every code beginning with them. */
+    data class Area(val area: AreaCell) : Reading
+
     /** A point written some other way: decimal degrees, degrees and minutes, a geo URI. */
     data class At(val point: Point) : Reading
 
@@ -51,6 +54,7 @@ fun read(text: String): Reading {
     }
     if (SHORT.matches(given)) return Reading.Short(given)
     decimal(given)?.let { return it }
+    areaOf(given)?.takeIf { looksLikeArea(given) }?.let { return Reading.Area(it) }
 
     val verdict = GPC.Validate(given)
     return when (verdict.Kind) {
@@ -75,6 +79,9 @@ fun recover(short: String, near: Point): Selection? = runCatching {
 private fun linked(given: String): Reading? {
     if (!given.contains("://") || !given.contains('?')) return null
     val code = codeIn(given) ?: return null
+    // A link is written by a machine, so fewer than ten characters in it are an
+    // area and nothing else, whatever mix of symbols they happen to be.
+    areaOf(code)?.let { return Reading.Area(it) }
     return when (val inner = read(code)) {
         is Reading.Code -> inner.copy(note = noteIn(given))
         is Reading.Reserved, is Reading.Unread -> inner

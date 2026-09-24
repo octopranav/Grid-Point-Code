@@ -83,6 +83,7 @@ data class PlaceState(
     val problem: Problem? = null,
     val locating: Locating = Locating.IDLE,
     val origin: Origin? = null,
+    val area: AreaCell? = null,
 )
 
 /**
@@ -107,7 +108,7 @@ fun PlaceState.placed(next: Selection, note: String = ""): PlaceState =
  */
 fun PlaceState.nudged(direction: Compass): PlaceState {
     val code = around(selection.code)[direction] ?: return this
-    return copy(selection = selectionOf(code, Source.NUDGE), problem = null, locating = Locating.IDLE, origin = null)
+    return copy(selection = selectionOf(code, Source.NUDGE), problem = null, locating = Locating.IDLE, origin = null, area = null)
 }
 
 /** Whatever was typed, pasted, linked or selected, read and gone to if it is a place. */
@@ -122,6 +123,7 @@ fun PlaceState.opened(text: String, source: Source): PlaceState =
         // (see [anchoredAt]). Recovering against wherever the screen happens to
         // be would name somewhere plausible and wrong.
         is Reading.Anchored -> unanchored(reading, Problem.Unanchored.Why.UNREACHABLE)
+        is Reading.Area -> placed(selectionAt(reading.area.centre, Source.AREA)).copy(area = reading.area)
         is Reading.Other -> when (val other = reading.found) {
             is OtherFormat.At -> converted(other, text)
             // Another system's short code with no town is read against the
@@ -177,6 +179,16 @@ fun PlaceState.converted(at: OtherFormat.At, text: String): PlaceState =
 /** A short code whose town could not be used. The place stays where it was. */
 fun PlaceState.unplaced(near: OtherFormat.Near, why: Problem.Unanchored.Why): PlaceState =
     copy(problem = Problem.Unplaced(near.code, near.locality.orEmpty(), why))
+
+/**
+ * The area of a level around the place: what gets shared instead of the door.
+ * The place stays selected underneath, so going back is one step.
+ */
+fun PlaceState.widened(level: Int): PlaceState =
+    areaHolding(selection.code, level)?.let { copy(area = it, problem = null) } ?: this
+
+/** Back from an area to the place inside it. */
+fun PlaceState.narrowed(): PlaceState = copy(area = null)
 
 /** New directions for the place already selected. */
 fun PlaceState.described(text: String): PlaceState = copy(note = tidyNote(text))
@@ -238,7 +250,23 @@ data class PlaceView(
     val problem: Problem?,
     val locating: Locating,
     val origin: Origin?,
+    val area: AreaView?,
+    /** The areas around the place, a region down to a building, for choosing one to share. */
+    val areas: List<AreaView>,
 )
+
+/** An area as the screen shows it: the cell, how to say it, its size where it lies, and its link. */
+data class AreaView(
+    val cell: String,
+    val level: Int,
+    val size: CellSize,
+    val spoken: String,
+    val link: String,
+    val box: Box,
+)
+
+private fun AreaCell.view(): AreaView =
+    AreaView(cell, level, cellSize(centre.latitude, level), aloudArea(cell), areaAddress(cell), box)
 
 fun PlaceState.view(locale: Locale = Locale.getDefault()): PlaceView = PlaceView(
     selection = selection,
@@ -253,4 +281,6 @@ fun PlaceState.view(locale: Locale = Locale.getDefault()): PlaceView = PlaceView
     problem = problem,
     locating = locating,
     origin = origin,
+    area = area?.view(),
+    areas = AREA_LEVELS.reversed().mapNotNull { level -> areaHolding(selection.code, level)?.view() },
 )

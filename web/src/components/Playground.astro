@@ -295,7 +295,7 @@ const code = GPC.encode(START.latitude, START.longitude);
 <script>
     import 'maplibre-gl/dist/maplibre-gl.css';
     import { GPC, CodeClass } from '@pranavpatel.ca/algo-gridpointcode';
-    import { resolve, neighbourhood, type LevelCell } from '../lib/levels';
+    import { areaOf, resolve, neighbourhood, type LevelCell } from '../lib/levels';
     import { FORMS, COMPASS, aloud } from '../lib/forms';
     import { addressOf, codeIn, linkTo, noteIn, tidyNote } from '../lib/permalink';
     import { qrFor } from '../lib/qr';
@@ -1329,6 +1329,9 @@ const code = GPC.encode(START.latitude, START.longitude);
 
         const ALPHABET = '0123456789CDFGHJKLMNPRTWX';
 
+        /** How long typing must pause before an area typed so far is shown on the map. */
+        const AREA_PAUSE = 700;
+
         codeField.addEventListener('input', () => {
             const typed = codeField.value.trim();
 
@@ -1368,6 +1371,16 @@ const code = GPC.encode(START.latitude, START.longitude);
 
             blank('code');
 
+            // Fewer than ten characters that make a cell are an area, not a
+            // broken code (section 18.1): the region holding every code that
+            // begins with them. A link to an area arrives here, as a shared
+            // code does, and opens as that area.
+            const area = reason === 'GPC_LENGTH' ? areaOf(typed) : null;
+            if (area) {
+                showArea(area);
+                return;
+            }
+
             if (kind === CodeClass.RESERVED) {
                 say(kind, '');
                 codeNote.textContent =
@@ -1380,6 +1393,43 @@ const code = GPC.encode(START.latitude, START.longitude);
             codeNote.textContent = explain(reason, cleaned);
         });
 
+        /**
+         * An area in place of a place: its box drawn, the map framed on it,
+         * and a line saying what it is. No code is set, because an area is not
+         * one: there is nothing for Copy to copy and nothing for the forms to
+         * describe.
+         */
+        //
+        // The map moves only once typing pauses. Every code typed one character
+        // at a time passes through nine areas on its way to ten characters, and
+        // a map lurching from a continent to a street on each keystroke would
+        // be showing somebody a place they are only halfway through naming.
+        let framing = 0;
+
+        function showArea(area: LevelCell) {
+            verdict.hidden = false;
+            verdict.dataset.class = 'AREA';
+            verdict.textContent = 'Area';
+            codeNote.textContent =
+                'An area, not a place: level ' + area.level + ', ' + area.size +
+                ' at the equator. Every code that begins ' + area.prefix +
+                ' lies inside it; ten characters name a doorway.';
+            window.clearTimeout(framing);
+            const typedThen = codeField.value;
+            framing = window.setTimeout(() => {
+                if (!map || codeField.value !== typedThen) return;
+                clearBoxes();
+                addBox(area);
+                setOpacity(1, 0.18);
+                shown = area;
+                map.fitBounds([[area.west, area.south], [area.east, area.north]], {
+                    padding: 40,
+                    duration: FALL,
+                    essential: true,
+                });
+            }, AREA_PAUSE);
+        }
+
         function wording(reason: string): string {
             if (reason === 'GPC_LENGTH') return 'Wrong length';
             if (reason === 'GPC_CHAR') return 'Not in the alphabet';
@@ -1390,7 +1440,7 @@ const code = GPC.encode(START.latitude, START.longitude);
         function explain(reason: string, cleaned: string): string {
             if (reason === 'GPC_LENGTH') {
                 return 'A code is exactly ten characters, everywhere on Earth. ' +
-                    'this one has ' + cleaned.length + '.';
+                    'This one has ' + cleaned.length + '.';
             }
             if (reason === 'GPC_CHAR') {
                 // Name the offending characters rather than describing the rule
@@ -1593,7 +1643,11 @@ const code = GPC.encode(START.latitude, START.longitude);
                 // message about it still describes the thing they have.
                 let shown = shared;
                 try {
-                    shown = GPC.formatGPC(GPC.normalise(shared)[0]);
+                    // An area stays as its cell. Formatting fewer than ten
+                    // characters the way a code is formatted would dress an
+                    // area up as a broken code, hash and hyphen included.
+                    const [cleaned] = GPC.normalise(shared);
+                    if (cleaned.length === 10) shown = GPC.formatGPC(cleaned);
                 } catch {
                     /* unreadable: let the field show what the link said */
                 }
@@ -2048,6 +2102,7 @@ const code = GPC.encode(START.latitude, START.longitude);
 
     .pill[data-class='INVALID'] { background: var(--crimson); }
     .pill[data-class='RESERVED'] { background: var(--ink-soft); }
+    .pill[data-class='AREA'] { background: var(--prussian); }
 
     .muted { font-size: var(--text-label-size); color: var(--ink-soft); }
 

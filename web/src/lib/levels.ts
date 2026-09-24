@@ -127,6 +127,38 @@ export function resolve(latitude: number, longitude: number): Resolution {
     return { code, centre: GPC.decode(code), levels };
 }
 
+/**
+ * The area a cell names, or null when the text is not one.
+ *
+ * A cell is the first one to nine characters of a code, written with no hash
+ * and no hyphen (section 18.1): ten characters is a code, anything shorter is
+ * the region holding every code that begins with it. Read with the format's
+ * own normalisation, so a confusable letter is the symbol it stands for, and
+ * never a cell in the reserved range.
+ */
+export function areaOf(text: string): LevelCell | null {
+    const given = text.trim();
+    if (given === '' || given.startsWith('#') || given.includes('-')) return null;
+    let cleaned: string;
+    try {
+        [cleaned] = GPC.normalise(given);
+    } catch {
+        return null;
+    }
+    if (cleaned.length < 1 || cleaned.length > 9) return null;
+    try {
+        // Any code beginning with the cell lies inside it, so the cell's box is
+        // that code's box at the cell's level.
+        const inside = cleaned.padEnd(LEVELS, '0');
+        if (GPC.cell(inside, cleaned.length) !== cleaned) return null;
+        const [latitude, longitude] = GPC.decode(inside);
+        const area = resolve(latitude, longitude).levels[cleaned.length - 1];
+        return area.prefix === cleaned ? area : null;
+    } catch {
+        return null;
+    }
+}
+
 // How many cells the world holds along each axis at the finest level. Derived
 // from the unit sizes rather than written out, so there is one fewer number
 // here that could drift away from the format.

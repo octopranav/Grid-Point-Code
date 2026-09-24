@@ -67,9 +67,15 @@ import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.Polygon
 import kotlin.math.PI
+import kotlin.math.atan
 import kotlin.math.cos
+import kotlin.math.ln
+import kotlin.math.log2
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
+import kotlin.math.sinh
+import kotlin.math.tan
 import org.maplibre.geojson.Point as GeoPoint
 
 /** Close enough to see the cell as a shape, and the street it is on. */
@@ -92,6 +98,16 @@ private const val AROUND = "gpc-around"
 private const val FIX = "gpc-fix"
 private const val DOT = "gpc-dot"
 private const val SAVED = "gpc-saved"
+private const val AREA = "gpc-area"
+
+/** Room around an area framed on screen, so its edges are seen as edges, in density-independent pixels. */
+private const val AREA_MARGIN = 28
+
+/** The world's width at zoom 0, in density-independent pixels. */
+private const val WORLD_DP = 512.0
+
+/** How often to look again for a map not yet laid out. */
+private const val LAYOUT_POLL_MS = 50L
 
 /** The mean radius of the earth, which is plenty for drawing a disc a few metres across. */
 private const val EARTH_METRES = 6_371_008.8
@@ -120,6 +136,7 @@ fun PlaceMap(
     basemap: Basemap = Basemap.AUTO,
     dark: Boolean = isSystemInDarkTheme(),
     saved: List<Point> = emptyList(),
+    area: CellEdges? = null,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -207,8 +224,44 @@ fun PlaceMap(
         if (style == null) failed = true
     }
 
-    LaunchedEffect(style, selection) {
-        style?.let { draw(it, selection) }
+    // An area is drawn instead of the place: at the size of a district, a
+    // doorway at its centre would only say there is a door there.
+    LaunchedEffect(style, selection, area) {
+        val loaded = style ?: return@LaunchedEffect
+        if (area == null) draw(loaded, selection) else clearPlace(loaded)
+        loaded.getSourceAs<GeoJsonSource>(AREA)?.setGeoJson(
+            area?.let { FeatureCollection.fromFeature(outline(it)) } ?: FeatureCollection.fromFeatures(emptyList()),
+        )
+    }
+
+    // Framed on the area when there is one, and back on the place underneath
+    // when it goes. A place chosen instead, by a tap or a code, is left to the
+    // selection's own camera.
+    var framedOver by remember { mutableStateOf<Selection?>(null) }
+    LaunchedEffect(map, area) {
+        val ready = map ?: return@LaunchedEffect
+        if (area != null) {
+            // A link can open the app before the map has a size to fit anything to.
+            while (view.width == 0 || view.height == 0) delay(LAYOUT_POLL_MS)
+            ready.easeCamera(
+                CameraUpdateFactory.newCameraPosition(framing(area, view, inset.toDoubleArray(), density.density)),
+                700,
+            )
+            framedOver = selection
+        } else if (framedOver != null) {
+            val underneath = framedOver == selection
+            framedOver = null
+            if (underneath) ready.easeCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder()
+                        .target(LatLng(selection.point.latitude, selection.point.longitude))
+                        .zoom(START_ZOOM)
+                        .padding(inset.toDoubleArray())
+                        .build(),
+                ),
+                700,
+            )
+        }
     }
 
     LaunchedEffect(style, saved) {
@@ -217,9 +270,10 @@ fun PlaceMap(
         )
     }
 
+    // An area's centre is not flown to: the area is framed whole instead.
     LaunchedEffect(map, selection) {
         val ready = map ?: return@LaunchedEffect
-        follow(ready, selection, inset.toDoubleArray(), first = !placed)
+        if (selection.source != Source.AREA) follow(ready, selection, inset.toDoubleArray(), first = !placed)
         placed = true
     }
 
@@ -264,6 +318,9 @@ private fun addDrawing(style: Style, ink: Ink) {
             circleStrokeWidth(2f),
         ),
     )
+    style.addSource(GeoJsonSource(AREA))
+    style.addLayer(FillLayer("$AREA-fill", AREA).withProperties(fillColor(ink.brass), fillOpacity(0.06f)))
+    style.addLayer(LineLayer("$AREA-line", AREA).withProperties(lineColor(ink.brass), lineWidth(2f)))
     style.addSource(GeoJsonSource(FIX))
     style.addSource(GeoJsonSource(AROUND))
     style.addSource(GeoJsonSource(CELL))
@@ -282,6 +339,41 @@ private fun addDrawing(style: Style, ink: Ink) {
             circleStrokeWidth(2.5f),
         ),
     )
+}
+
+/**
+ * The camera that shows a whole area in the part of the map nothing covers.
+ *
+ * Worked out here rather than asked of the map's own bounds fitting, which adds
+ * its padding to the padding the camera already carries and frames nothing. The
+ * world is 512 density-independent pixels across at zoom 0 and doubles with each
+ * level, and latitude is stretched as Mercator stretches it.
+ */
+private fun framing(area: CellEdges, view: MapView, inset: DoubleArray, density: Float): CameraPosition {
+    val margin = AREA_MARGIN * 2.0
+    val wide = view.width / density - (inset[0] + inset[2]) / density - margin
+    val tall = view.height / density - (inset[1] + inset[3]) / density - margin
+    fun mercator(latitude: Double): Double {
+        val radians = Math.toRadians(latitude.coerceIn(-85.0, 85.0))
+        return (1 - ln(tan(radians) + 1 / cos(radians)) / PI) / 2
+    }
+    val across = (area.east - area.west) / 360.0 * WORLD_DP
+    val down = (mercator(area.south) - mercator(area.north)) * WORLD_DP
+    val zoom = log2(min(wide.coerceAtLeast(1.0) / across, tall.coerceAtLeast(1.0) / down))
+    val middle = (mercator(area.south) + mercator(area.north)) / 2
+    val latitude = Math.toDegrees(atan(sinh(PI * (1 - 2 * middle))))
+    return CameraPosition.Builder()
+        .target(LatLng(latitude, (area.west + area.east) / 2))
+        .zoom(zoom.coerceIn(0.0, START_ZOOM))
+        .padding(inset)
+        .build()
+}
+
+/** Nothing of the place drawn, while an area is shown instead. */
+private fun clearPlace(style: Style) {
+    for (source in listOf(CELL, AROUND, FIX, DOT)) {
+        style.getSourceAs<GeoJsonSource>(source)?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+    }
 }
 
 private fun draw(style: Style, selection: Selection) {
