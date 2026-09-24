@@ -63,6 +63,13 @@ class CoreTest {
     }
 
     @Test
+    fun thePrivacyPageIsTheSitesAndNotOneTheAppClaims() {
+        // The app opens links under /play itself; the privacy page must go to the browser.
+        assertEquals("https://gridpointcode.com/privacy", PRIVACY_ADDRESS)
+        assertTrue(!PRIVACY_ADDRESS.startsWith(PLACE_ADDRESS))
+    }
+
+    @Test
     fun aLinkCarriesTheCodeAndItsDirections() {
         assertEquals(
             "https://gridpointcode.com/play?c=G3RJM98NM9&n=Blue+gate%2C+second+door+on+the+left",
