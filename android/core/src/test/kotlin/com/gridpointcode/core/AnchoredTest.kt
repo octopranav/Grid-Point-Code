@@ -135,6 +135,20 @@ class AnchoredTest {
     }
 
     @Test
+    fun withNoConnectionAKeptLandmarkIsFoundByNameAndRegion() {
+        assertEquals(KeptMatch.One(shard[1]), keptReference("Old Toronto, Ontario, Canada", shard))
+        assertEquals(KeptMatch.One(shard[1]), keptReference("old toronto, ontario, canada", shard))
+        // Somewhere not kept says nothing about the rest of the world.
+        assertEquals(KeptMatch.None, keptReference("Salem, Ontario, Canada", shard))
+    }
+
+    @Test
+    fun withNoConnectionANameAloneIsNeverEnough() {
+        // CN Tower is the only one kept, which is no proof it is the only one anywhere.
+        assertEquals(KeptMatch.None, keptReference("CN Tower", shard))
+    }
+
+    @Test
     fun everyLineTheAppWritesReadsBackToItsCode() {
         val toronto = listOf(
             Landmark("Old Toronto", 43.64999, -79.38206, "Ontario, Canada", LandmarkKind.PLACE),

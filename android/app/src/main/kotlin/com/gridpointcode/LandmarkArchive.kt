@@ -8,6 +8,7 @@ import com.gridpointcode.core.Named
 import com.gridpointcode.core.Point
 import com.gridpointcode.core.SITE
 import com.gridpointcode.core.anchorsFor
+import com.gridpointcode.core.areaAround
 import com.gridpointcode.core.landmarkFor
 import com.gridpointcode.core.shardsFor
 import java.net.HttpURLConnection
@@ -26,19 +27,33 @@ import org.json.JSONObject
  * within its region, in shards keyed by the cell they fall in.
  *
  * A place needs the one to four shards its recovery box reaches into, usually
- * one, a few kilobytes. A shard once read is kept while the app runs: the
- * archive does not change between deployments, and a reader nudging a point
- * about asks for the same shard again and again. Which shards, and which of
- * their landmarks qualify, are decided in `:core`.
+ * one, a few kilobytes. Where a shard comes from, in order: memory, for the
+ * places already looked at since the app opened; an area the reader kept, when
+ * it comes from the archive the site is serving or there is no connection to
+ * ask; the site; and failing that, a kept copy from an older archive or one met
+ * earlier while looking around, since offline an older landmark is better than
+ * none. Which shards, and which of their landmarks qualify, are decided in
+ * `:core`.
  */
-class LandmarkArchive(private val site: String = SITE) {
+class LandmarkArchive(
+    private val kept: KeptLandmarks,
+    private val seen: SeenLandmarks,
+    private val site: String = SITE,
+) {
 
     /** What a lookup came to. */
     sealed interface Near {
-        /** Every landmark close enough, nearest first. Empty in open country, which is an answer. */
-        data class Found(val anchors: List<Anchor>) : Near
+        /**
+         * Every landmark close enough, nearest first. Empty in open country,
+         * which is an answer.
+         *
+         * @property partial part of the recovery box could not be read, the edge
+         *   of an area kept offline, so places there are missing and the reader
+         *   is told so
+         */
+        data class Found(val anchors: List<Anchor>, val partial: Boolean = false) : Near
 
-        /** Part of the archive could not be read, so a list would be missing places without saying so. */
+        /** None of the archive around the point could be read. */
         data object Unreachable : Near
     }
 
@@ -52,8 +67,24 @@ class LandmarkArchive(private val site: String = SITE) {
         data object Unreachable : Held
     }
 
+    /** What keeping an area came to. */
+    sealed interface Keeping {
+        data class Kept(val area: KeptLandmarks.Area) : Keeping
+
+        /** Part of the area could not be fetched, so none of it was recorded as kept. */
+        data object Failed : Keeping
+    }
+
+    /**
+     * The place's standing: the shard it is in, whether every shard its box
+     * needs is kept, and the kept area its own shard belongs to.
+     */
+    data class Here(val level: Int, val shard: String, val covered: Boolean, val area: KeptLandmarks.Area?)
+
     private val lock = Mutex()
-    private var level: Int? = null
+
+    /** The archive the site is serving, once it has been asked. Null offline. */
+    private var serving: KeptLandmarks.Source? = null
     private val shards = HashMap<String, List<Landmark>>()
 
     suspend fun near(point: Point): Near = withContext(Dispatchers.IO) {
@@ -61,8 +92,8 @@ class LandmarkArchive(private val site: String = SITE) {
         val held = coroutineScope {
             shardsFor(point, level).map { name -> async { shard(name) } }.awaitAll()
         }
-        if (held.any { it == null }) return@withContext Near.Unreachable
-        Near.Found(anchorsFor(point, held.flatMap { it.orEmpty() }))
+        if (held.all { it == null }) return@withContext Near.Unreachable
+        Near.Found(anchorsFor(point, held.flatMap { it.orEmpty() }), partial = held.any { it == null })
     }
 
     /**
@@ -78,29 +109,98 @@ class LandmarkArchive(private val site: String = SITE) {
         landmarkFor(place, held)?.let { Held.Found(it) } ?: Held.Missing
     }
 
+    /** Where the place stands for keeping, or null while the archive is not known. */
+    suspend fun here(point: Point): Here? = withContext(Dispatchers.IO) {
+        val level = level() ?: return@withContext null
+        val own = runCatching { GPC.Cell(GPC.Encode(point.latitude, point.longitude, false), level) }
+            .getOrNull() ?: return@withContext null
+        Here(
+            level = level,
+            shard = own,
+            covered = shardsFor(point, level).all { kept.has(it) },
+            area = kept.areas().firstOrNull { own in it.shards },
+        )
+    }
+
+    suspend fun keptAreas(): List<KeptLandmarks.Area> = withContext(Dispatchers.IO) { kept.areas() }
+
+    /**
+     * Fetch every shard of the area around a point and keep them on the device.
+     * All of it or none: an area recorded as kept with a shard missing would
+     * fail offline exactly where it was promised not to.
+     */
+    suspend fun keep(point: Point): Keeping = withContext(Dispatchers.IO) {
+        val source = lock.withLock { serving } ?: fetchSource()?.also { remember(it) }
+            ?: return@withContext Keeping.Failed
+        val names = areaAround(point, source.level)
+        val centre = runCatching { GPC.Cell(GPC.Encode(point.latitude, point.longitude, false), source.level) }
+            .getOrNull() ?: return@withContext Keeping.Failed
+        val fetched = coroutineScope {
+            names.map { name -> async { name to download(name) } }.awaitAll()
+        }
+        if (fetched.any { (_, body) -> body == null }) return@withContext Keeping.Failed
+        Keeping.Kept(kept.keep(source, centre, fetched.associate { (name, body) -> name to body!!.text }))
+    }
+
+    /** Give back everything kept, and the shards cached along the way. What is in memory stays. */
+    suspend fun forget() = withContext(Dispatchers.IO) {
+        kept.forget()
+        seen.forget()
+    }
+
+    /** Every landmark on the device, kept or seen, for looking a place up with no connection. */
+    suspend fun localLandmarks(): List<Landmark> = withContext(Dispatchers.IO) {
+        (kept.everyShard() + seen.everyShard())
+            .flatMap { parse(it).orEmpty() }
+            .distinctBy { it.name + "\n" + it.region }
+    }
+
     /**
      * The level the shards were cut at, which is a property of the archive, not
      * of this app. Assuming it would turn a rebuilt archive into a world of
      * misses, and a miss reads as open country rather than a broken lookup.
+     * Offline, the level of the archive last seen.
      */
-    private suspend fun level(): Int? = lock.withLock {
-        level ?: fetch("$site/landmarks/manifest.json")?.let { body ->
-            runCatching { JSONObject(body).getInt("level") }.getOrNull()
-        }?.also { level = it }
+    private suspend fun level(): Int? {
+        lock.withLock { serving }?.let { return it.level }
+        fetchSource()?.let { found ->
+            remember(found)
+            return found.level
+        }
+        return (kept.source() ?: seen.source())?.level
     }
 
-    /**
-     * One shard, or null when it could not be read. A shard that does not exist
-     * is ocean, most of the planet, and is remembered as empty; a failed read is
-     * not remembered, so the next lookup tries again.
-     */
+    private suspend fun remember(source: KeptLandmarks.Source) {
+        lock.withLock { serving = source }
+        seen.remember(source)
+    }
+
     private suspend fun shard(name: String): List<Landmark>? {
         lock.withLock { shards[name] }?.let { return it }
+        val current = lock.withLock { serving }
+        val local = kept.shard(name)
+        val read = if (local != null && (current == null || current.built == kept.source()?.built)) {
+            parse(local)
+        } else {
+            when (val body = download(name)) {
+                null -> (local ?: seen.shard(name))?.let { parse(it) }
+                else -> {
+                    seen.put(name, body.text)
+                    body.text?.let { parse(it) } ?: emptyList()
+                }
+            }
+        }
+        if (read != null) lock.withLock { shards[name] = read }
+        return read
+    }
+
+    /** A shard's file from the site, with a null text for ocean, or null when the read failed. */
+    private fun download(name: String): Body? {
         val connection = open("$site/landmarks/$name.json")
-        val read = try {
+        return try {
             when (connection.responseCode) {
-                HttpURLConnection.HTTP_OK -> parse(connection.inputStream.bufferedReader().use { it.readText() })
-                HttpURLConnection.HTTP_NOT_FOUND -> emptyList()
+                HttpURLConnection.HTTP_OK -> Body(connection.inputStream.bufferedReader().use { it.readText() })
+                HttpURLConnection.HTTP_NOT_FOUND -> Body(null)
                 else -> null
             }
         } catch (failure: java.io.IOException) {
@@ -108,9 +208,9 @@ class LandmarkArchive(private val site: String = SITE) {
         } finally {
             connection.disconnect()
         }
-        if (read != null) lock.withLock { shards[name] = read }
-        return read
     }
+
+    private class Body(val text: String?)
 
     /** `{ regions: [...], landmarks: [[name, latitude, longitude, region, kind], ...] }` */
     private fun parse(body: String): List<Landmark>? = runCatching {
@@ -129,13 +229,14 @@ class LandmarkArchive(private val site: String = SITE) {
         }
     }.getOrNull()
 
-    private fun fetch(address: String): String? = runCatching {
-        val connection = open(address)
+    private fun fetchSource(): KeptLandmarks.Source? = runCatching {
+        val connection = open("$site/landmarks/manifest.json")
         try {
-            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                connection.inputStream.bufferedReader().use { it.readText() }
-            } else {
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) {
                 null
+            } else {
+                val json = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                KeptLandmarks.Source(json.getInt("level"), json.getString("built"))
             }
         } finally {
             connection.disconnect()

@@ -7,6 +7,7 @@
     <string name="search_go">Go</string>
     <string name="names_looking">Looking up place names</string>
     <string name="names_missing">No place in the index is called \"%1$s\".</string>
+    <string name="names_local">No connection, so these are the places kept or seen on this device. A name two places share within one region is not among them.</string>
     <string name="names_offline">Place names need a connection. A code, coordinates or a link still work.</string>
 
     <string name="source_sample">An example: the specification\'s own</string>
@@ -33,6 +34,22 @@
     <string name="anchor_exact">exact</string>
     <string name="anchor_exact_note">Exact places share this point\'s level-5 cell, so a reader who goes by that cell rather than by the place\'s coordinates recovers the code exactly.</string>
     <string name="anchor_where">%1$s %2$s \u00b7 %3$s</string>
+    <string name="anchor_partial">Part of the area around this point could not be read, the edge of an area kept offline or a shard that did not arrive, so places there are missing from this list.</string>
+    <string name="keep_area">Keep this area offline</string>
+    <string name="keep_busy">Keeping\u2026</string>
+    <string name="keep_explain">The area around here, about %1$d by %2$d km, is a few hundred kilobytes at most. Kept, its landmarks work without a connection.</string>
+    <string name="keep_map">The map itself is not downloaded: it draws offline wherever it has already been looked at.</string>
+    <string name="keep_empty">This area is kept offline, and holds no landmarks.</string>
+    <string name="keep_failed">That area could not be kept. With a connection, try again.</string>
+    <string name="keep_forgotten">Everything kept has been given back.</string>
+    <plurals name="keep_kept">
+        <item quantity="one">This area is kept offline: %1$d shard, %2$s, kept on %3$s. Its landmarks work without a connection.</item>
+        <item quantity="other">This area is kept offline: %1$d shards, %2$s, kept on %3$s. Its landmarks work without a connection.</item>
+    </plurals>
+    <plurals name="keep_forget">
+        <item quantity="one">Forget the %1$d area kept (%2$s)</item>
+        <item quantity="other">Forget the %1$d areas kept (%2$s)</item>
+    </plurals>
     <string name="anchor_show_all">Show all %1$d</string>
     <string name="distance_metres">%1$d m</string>
     <string name="distance_kilometres">%1$.1f km</string>

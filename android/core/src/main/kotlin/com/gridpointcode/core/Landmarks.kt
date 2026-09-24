@@ -176,3 +176,43 @@ private fun bearing(point: Point, latitude: Double, longitude: Double): String {
     val degrees = atan2(y, x) * 180 / PI
     return OCTANTS[(((degrees + 360) % 360) / 45).roundToInt() % 8]
 }
+
+/** How many shards the kept area reaches out from the place's own, every way. */
+private const val AREA_REACH = 2
+
+/**
+ * The shards of the area kept around a point: its own shard and two more every
+ * way, a block of twenty-five, 200 km north to south.
+ *
+ * Centred on the place rather than a cell of the grid. A cell one level up is
+ * the same size, and is what the website keeps, but it is fixed to the grid:
+ * downtown Toronto sits in the corner of its cell, which reaches 190 km west and
+ * stops 15 km east. Large enough to be worth keeping before a journey, small
+ * enough to be a few hundred kilobytes rather than the eighty-odd megabytes the
+ * whole archive weighs.
+ *
+ * Found by stepping whole shards from the point, which lands in each neighbour
+ * at the point's own place within it. Fewer than twenty-five near a pole, where
+ * the rows run out.
+ */
+fun areaAround(point: Point, level: Int): List<String> {
+    val cell = GPC.CellDimensions(level)
+    val shards = linkedSetOf<String>()
+    for (row in -AREA_REACH..AREA_REACH) {
+        for (column in -AREA_REACH..AREA_REACH) {
+            val latitude = point.latitude + row * cell.LatitudeSpan
+            if (latitude < -90 || latitude > 90) continue
+            val longitude = wrap(point.longitude + column * cell.LongitudeSpan)
+            runCatching { GPC.Cell(GPC.Encode(latitude, longitude, false), level) }
+                .onSuccess { shards += it }
+        }
+    }
+    return shards.toList()
+}
+
+/** The kept area's size on the ground at a latitude, in metres: north to south, then east to west. */
+fun areaMetres(latitude: Double, level: Int): Pair<Double, Double> {
+    val cell = GPC.CellDimensions(level)
+    val across = 2 * AREA_REACH + 1
+    return across * cell.NorthSouth to across * cell.EastWest * cos(radians(latitude))
+}

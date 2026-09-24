@@ -69,6 +69,14 @@ code, check and correction is arithmetic on the device.
   same landmark first. A place that cannot be found, a name several places
   answer to, one that is not unique in its own region, and no connection are
   each refused with the reason, and the place stays where it was.
+- Keeps an area offline on request: 25 shards of the archive centred on the
+  place, 200 km north to south, a few hundred kilobytes. There the anchor list,
+  reading an anchored line and finding a place by name all work with no
+  connection. An area is kept whole or not at all, only what was asked for is
+  ever counted as kept, and Forget gives it all back.
+- Works offline wherever it has already been used: the map draws from the tiles
+  it has already drawn, up to 200 MB, and the landmarks of places already looked
+  at are cached apart from the kept areas.
 
 ## Building
 
@@ -155,12 +163,34 @@ cannot be, names somewhere plausible and wrong: `-98NM9` read against London is
 nothing moves until one landmark is certain, and `core` has a test that fails if
 it ever does.
 
+**Kept means asked for.** Only an area the reader chose to keep is reported as
+kept, because an area merely glanced at is not ready for a journey. Shards met
+while looking around are cached too, in the app's cache where the system may
+clear them, trimmed to 20 MB, and never counted. A kept shard is used when it
+comes from the archive the site is serving, or when there is no connection to
+ask; offline, an older landmark is better than none. With no connection, an
+anchored line is read against the landmarks on the device only when it gives
+its region, since nothing on the device can show that a name alone is unique.
+
+**The kept area is centred on the place, not a cell of the grid.** The website
+keeps the cell one level above the shards, which is the same size but fixed to
+the grid: downtown Toronto sits in the corner of its cell, which reaches 190 km
+west and stops 15 km east. The app keeps the five by five block of shards around
+the place's own instead, so it reaches 100 km every way.
+
+**The map is not downloaded, only kept as it is drawn.** An area's map at full
+detail is about 17,000 tiles, 50 to 150 MB, which a phone could hold. But the
+tile provider's terms rule out collecting its data in automated ways without
+permission, and fetching an area's tiles in the background would be exactly
+that. So the map library's own cache is raised from 50 MB to 200 MB, and offline
+the map is whatever the reader has already looked at.
+
 **Three SDK levels, three meanings.** `compileSdk` 37 because current AndroidX
 libraries compile against it. `targetSdk` 36 for runtime behaviour. `minSdk` 26,
 which covers the streaming calls in the library, which need 24.
 
 ## Not here yet
 
-Keeping an area's landmarks for use offline, the bundled typefaces, the launcher icon, verified links (which need the signing
+The bundled typefaces, the launcher icon, verified links (which need the signing
 fingerprint published in `/.well-known/assetlinks.json`), and the Wear OS, car
 and headset modules.

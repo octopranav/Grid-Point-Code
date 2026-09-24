@@ -1,5 +1,6 @@
 package com.gridpointcode.core
 
+import ca.pranavpatel.algo.gridpointcode.GPC
 import java.text.Normalizer
 
 /*
@@ -157,4 +158,30 @@ private fun parse(line: String, regions: List<String>): Named? {
         code = parts[3],
         region = parts[4].toIntOrNull()?.let { regions.getOrNull(it) } ?: "",
     )
+}
+
+/**
+ * Places on the device whose name begins with [query], for searching with no
+ * connection: the landmarks of the areas kept and of places already looked at.
+ *
+ * Ordered as the index orders a name, alphabetically by what it folds to, with
+ * populated places ahead of buildings and hills within one name, since the
+ * archive carries no population to rank by. Only names unique within their
+ * region are in the archive, so a town with a namesake in the same province
+ * cannot be found this way.
+ */
+fun findLocal(query: String, landmarks: List<Landmark>, most: Int = 12): List<Named> {
+    val folded = fold(query)
+    if (folded.length < NAME_SHORTEST) return emptyList()
+    return landmarks.asSequence()
+        .map { fold(it.name) to it }
+        .filter { (key, _) -> key.startsWith(folded) }
+        .sortedWith(compareBy({ it.first }, { if (it.second.kind == LandmarkKind.PLACE) 0 else 1 }, { it.second.name }))
+        .distinctBy { (_, landmark) -> landmark.name + "\n" + landmark.region }
+        .mapNotNull { (_, landmark) ->
+            runCatching { GPC.Encode(landmark.latitude, landmark.longitude, false) }.getOrNull()
+                ?.let { Named(landmark.name, it, landmark.region) }
+        }
+        .take(most)
+        .toList()
 }

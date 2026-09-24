@@ -30,6 +30,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import com.gridpointcode.core.Named
+import android.text.format.Formatter
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import androidx.compose.ui.res.pluralStringResource
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -212,6 +216,7 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
 private fun Panel(ui: PlaceView, model: PlaceViewModel, speak: (String) -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val anchoring by model.anchors.collectAsState()
+    val keeping by model.offline.collectAsState()
     Column(
         modifier
             .fillMaxWidth()
@@ -230,7 +235,10 @@ private fun Panel(ui: PlaceView, model: PlaceViewModel, speak: (String) -> Unit,
         GiveAddress(ui.note, ui.link, onNote = model::describeTheWay, share = { share(context, ui.formatted + "\n" + ui.link) })
         AnchorShort(
             anchoring = anchoring,
+            keeping = keeping,
             onChoose = model::anchorTo,
+            onKeep = model::keepArea,
+            onForget = model::forgetKept,
             copy = { copy(context, it) },
             share = { share(context, it) },
         )
@@ -316,6 +324,7 @@ private fun Found(finding: Finding, onPick: (Named) -> Unit) {
     val note = when (finding.status) {
         Finding.Status.MISSING -> stringResource(R.string.names_missing, finding.query)
         Finding.Status.OFFLINE -> stringResource(R.string.names_offline)
+        Finding.Status.LOCAL -> stringResource(R.string.names_local)
         else -> null
     }
     if (note != null) {
@@ -522,7 +531,10 @@ private const val ANCHORS_SHOWN = 5
 @Composable
 private fun AnchorShort(
     anchoring: Anchoring,
+    keeping: Keeping,
     onChoose: (Anchor) -> Unit,
+    onKeep: () -> Unit,
+    onForget: () -> Unit,
     copy: (String) -> Unit,
     share: (String) -> Unit,
 ) {
@@ -570,6 +582,7 @@ private fun AnchorShort(
                 Text(stringResource(R.string.anchor_show_all, anchoring.anchors.size))
             }
         }
+        if (anchoring.partial) Quiet(stringResource(R.string.anchor_partial))
         if (shown.any { it.exact }) Quiet(stringResource(R.string.anchor_exact_note))
         anchoring.line?.let { line ->
             Surface(
@@ -585,6 +598,55 @@ private fun AnchorShort(
                 FilledTonalButton(onClick = { share(line) }, shape = ButtonShape) { Text(stringResource(R.string.share)) }
                 OutlinedButton(onClick = { copy(line) }, shape = ButtonShape) { Text(stringResource(R.string.copy)) }
             }
+        }
+        Offline(keeping, onKeep, onForget)
+    }
+}
+
+/**
+ * Keeping the area around the place, so its landmarks work with no connection.
+ * Offered only once the archive is known to be there: a button that can only
+ * fail is no better than one that silently does nothing.
+ */
+@Composable
+private fun Offline(keeping: Keeping, onKeep: () -> Unit, onForget: () -> Unit) {
+    if (!keeping.known) return
+    val context = LocalContext.current
+    val here = keeping.area
+    if (!keeping.covered || here == null) {
+        OutlinedButton(onClick = onKeep, enabled = !keeping.busy, shape = ButtonShape) {
+            Text(stringResource(if (keeping.busy) R.string.keep_busy else R.string.keep_area))
+        }
+        Quiet(stringResource(R.string.keep_explain, keeping.northSouthKm, keeping.eastWestKm))
+    } else if (here.held == 0) {
+        Quiet(stringResource(R.string.keep_empty))
+    } else {
+        Quiet(
+            pluralStringResource(
+                R.plurals.keep_kept,
+                here.held,
+                here.held,
+                Formatter.formatShortFileSize(context, here.bytes),
+                DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(here.keptOn),
+            ),
+        )
+    }
+    Quiet(stringResource(R.string.keep_map))
+    when (keeping.note) {
+        Keeping.Note.FAILED -> Quiet(stringResource(R.string.keep_failed))
+        Keeping.Note.FORGOTTEN -> Quiet(stringResource(R.string.keep_forgotten))
+        null -> Unit
+    }
+    if (keeping.areas > 0) {
+        TextButton(onClick = onForget) {
+            Text(
+                pluralStringResource(
+                    R.plurals.keep_forget,
+                    keeping.areas,
+                    keeping.areas,
+                    Formatter.formatShortFileSize(context, keeping.bytes),
+                ),
+            )
         }
     }
 }

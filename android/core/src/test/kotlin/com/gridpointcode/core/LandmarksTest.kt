@@ -164,6 +164,51 @@ class LandmarksTest {
     }
 
     @Test
+    fun theAreaKeptIsCentredOnThePlace() {
+        val area = areaAround(example, 4)
+        assertEquals(25, area.size)
+        assertTrue(area.containsAll(shardsFor(example, 4)), "every shard the example's box needs")
+        // Two shards out every way. The grid cell one level up, which the website
+        // keeps, stops 15 km east of downtown and would leave all of these out.
+        val span = GPC.CellDimensions(4)
+        for ((dLat, dLng) in listOf(2 to 0, -2 to 0, 0 to 2, 0 to -2)) {
+            val there = GPC.Cell(GPC.Encode(example.latitude + dLat * span.LatitudeSpan, example.longitude + dLng * span.LongitudeSpan, false), 4)
+            assertTrue(there in area, "$there, $dLat shards north and $dLng east")
+        }
+        assertTrue(GPC.Cell(GPC.Encode(43.7, -79.1, false), 4) in area, "the east of Toronto")
+    }
+
+    @Test
+    fun everyAreaHoldsTwentyFiveDistinctShardsAroundItsPlace() {
+        val random = Random(78)
+        repeat(1000) {
+            val point = Point(random.nextDouble(-80.0, 80.0), random.nextDouble(-180.0, 180.0))
+            val own = runCatching { GPC.Cell(code(point), 4) }.getOrNull() ?: return@repeat
+            val area = areaAround(point, 4)
+            assertEquals(25, area.toSet().size, "$point")
+            assertTrue(own in area)
+            assertTrue(area.containsAll(shardsFor(point, 4)), "$point")
+        }
+    }
+
+    @Test
+    fun anAreaWrapsTheDateLineAndStopsAtThePole() {
+        val east = areaAround(Point(10.0, 179.9), 4)
+        assertEquals(25, east.size)
+        assertTrue(GPC.Cell(GPC.Encode(10.0, -179.9, false), 4) in east, "across the date line")
+        assertTrue(areaAround(Point(89.5, 0.0), 4).size < 25, "no rows past the pole")
+    }
+
+    @Test
+    fun anAreaIsTwoHundredKilometresTallAndNarrowsTowardThePoles() {
+        val (equatorTall, equatorWide) = areaMetres(0.0, 4)
+        assertEquals(200_037.6, equatorTall, 0.1)
+        assertEquals(267_166.8, equatorWide, 0.1)
+        val (_, torontoWide) = areaMetres(example.latitude, 4)
+        assertEquals(193_308.0, torontoWide, 100.0)
+    }
+
+    @Test
     fun theLineIsTheShortFormThenThePlace() {
         val line = anchored(code(example), toronto[0])
         assertEquals("-98NM9 near Old Toronto, Ontario, Canada", line)
