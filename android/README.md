@@ -234,6 +234,19 @@ the device's backup includes, so a new phone has them. No account to sync them
 to and no export, by the decision the website made when it took its export down.
 One place per code: saving a code again changes it rather than listing it twice.
 
+**The backup leaves the map's tile cache out.** The map library keeps its cache
+in the app's own files, where Android's backup looks by default, and lets it
+grow to 200 MB. A cloud backup over 25 MB is refused whole, so the cache would
+have taken the saved places down with it. The backup rules in `res/xml` exclude
+it; what a backup takes is the saved places and the two settings, a few
+kilobytes.
+
+**What the app sends is on the site's privacy page.** Two hosts, the tile
+provider and this site's own files, and nothing else; the app links to
+[`/privacy`](https://gridpointcode.com/privacy) from the end of the panel, as
+the store requires of an app that reads the device's location. A change that
+sends something new somewhere new changes that page in the same pull request.
+
 **The map is not downloaded, only kept as it is drawn.** An area's map at full
 detail is about 17,000 tiles, 50 to 150 MB, which a phone could hold. But the
 tile provider's terms rule out collecting its data in automated ways without

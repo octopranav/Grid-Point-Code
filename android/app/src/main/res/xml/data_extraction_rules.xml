@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What Android's backup takes, from Android 12 on: everything but the map's
+     tile cache. The map library keeps that in the app's own files, where backup
+     looks by default, and lets it grow to 200 MB. A cloud backup over 25 MB is
+     refused whole, so left in, the cache would take the saved places down with
+     it. It is fetched again as the map is looked at; the places are not. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="mbgl-offline.db" />
+        <exclude domain="file" path="mbgl-offline.db-journal" />
+        <exclude domain="file" path="mbgl-offline.db-wal" />
+        <exclude domain="file" path="mbgl-offline.db-shm" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="mbgl-offline.db" />
+        <exclude domain="file" path="mbgl-offline.db-journal" />
+        <exclude domain="file" path="mbgl-offline.db-wal" />
+        <exclude domain="file" path="mbgl-offline.db-shm" />
+    </device-transfer>
+</data-extraction-rules>

@@ -133,6 +133,7 @@
     <string name="address_count">%1$d / %2$d</string>
 
     <string name="aloud_title">Read aloud</string>
+    <string name="privacy">Privacy: what this app sends, and to whom</string>
     <string name="aloud_listener">The listener\'s language</string>
     <string name="aloud_explain">The code is the same in every language; only the words that spell it change. Choose the words the person listening already knows.</string>
     <string name="aloud_no_voice">This device has no %1$s voice. Read the words out yourself, or add the voice to the device\'s speech engine.</string>

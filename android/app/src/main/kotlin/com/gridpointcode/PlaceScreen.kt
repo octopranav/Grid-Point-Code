@@ -32,6 +32,7 @@ import androidx.core.view.WindowCompat
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import com.gridpointcode.core.AreaView
+import com.gridpointcode.core.PRIVACY_ADDRESS
 import com.gridpointcode.core.SPELLINGS
 import com.gridpointcode.core.Spelling
 import android.speech.tts.TextToSpeech
@@ -371,8 +372,14 @@ private fun Panel(
             share = { share(context, it) },
         )
         Aloud(ui.spoken, ui.listener, voiced, onChoose = model::readTo, speak = { speak(ui.spoken) })
+        TextButton(onClick = { open(context, PRIVACY_ADDRESS) }) { Text(stringResource(R.string.privacy)) }
         Spacer(Modifier.height(Space.step5))
     }
+}
+
+/** A page of the site, in the reader's browser. */
+private fun open(context: Context, address: String) {
+    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(address))) }
 }
 
 /**

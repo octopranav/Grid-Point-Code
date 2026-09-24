@@ -8,6 +8,9 @@ import java.nio.charset.StandardCharsets
 /** The website, which also serves the name index the app searches. */
 const val SITE = "https://gridpointcode.com"
 
+/** What the app and the site send, and to whom: the page the store requires the app to link to. */
+const val PRIVACY_ADDRESS = "$SITE/privacy"
+
 /** Where a link points. The app and the site hand out the same address. */
 const val PLACE_ADDRESS = "$SITE/play"
 

@@ -1,0 +1,158 @@
+---
+import Base from '../layouts/Base.astro';
+import '../styles/prose.css';
+
+// What leaves a reader's device, from this site and from the Android app, and
+// nothing else. Every line here is a claim about code in this repository, so a
+// change that sends something new somewhere new changes this page in the same
+// pull request. The Android app links here, as the store requires of an app
+// that reads the device's location.
+
+const description =
+    'What the Grid Point Code website and Android app send, to whom, and what they keep on '
+    + 'your device. No accounts, no cookies, no analytics.';
+
+const REPO = 'https://github.com/octopranav/Grid-Point-Code';
+---
+
+<Base title="Privacy" description={description}>
+    <div class="page">
+        <article class="document">
+            <h1>Privacy</h1>
+            <p class="lede">
+                No accounts, no cookies, no analytics, no advertising. A code is arithmetic
+                your device does on its own. What does leave your device is listed below,
+                with who receives it, and nothing else does.
+            </p>
+            <p class="note">In effect from 24 September 2026.</p>
+
+            <h2 id="website">The website</h2>
+
+            <h3>Serving the pages</h3>
+            <p>
+                The site is hosted on GitHub Pages. GitHub receives each request for a page or
+                a file, with your IP address, as any web host does, under{' '}
+                <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" rel="noreferrer">GitHub's privacy statement</a>.
+                The typefaces are served from this site, not from a font service.
+            </p>
+
+            <h3>Finding your country</h3>
+            <p>
+                The front page opens on a place in your country. To know which, it asks{' '}
+                <code>api.country.is</code>, or <code>get.geojs.io</code> if the first does not
+                answer in time, and each receives your IP address. It asks at most once a week,
+                and the answer, a two-letter country code, is kept in your browser. If both are
+                blocked, the page guesses from your device's time zone and language, which never
+                leave the browser.
+            </p>
+
+            <h3>The map</h3>
+            <p>
+                Where a page shows a map, its tiles come from OpenFreeMap
+                (<code>tiles.openfreemap.org</code>), which receives your IP address and the
+                tiles asked for, and so the area on your screen.
+            </p>
+
+            <h3>Codes, names and landmarks</h3>
+            <p>
+                Encoding, decoding and correcting a code happen in your browser and send nothing.
+                Searching by a place's name reads parts of an index from this site, so the host
+                sees which part, and from that roughly what was typed. Anchoring a short form to a
+                landmark reads the file of landmarks for the area around the place, about 200 km
+                across, from this site.
+            </p>
+
+            <h3>Kept in your browser</h3>
+            <p>
+                Three settings: the theme, the basemap and the country above. For working
+                offline, the pages, the landmark files already read or kept, and the map tiles
+                already seen. Nothing is kept anywhere else, and clearing this site's data in your
+                browser removes all of it.
+            </p>
+
+            <h2 id="app">The Android app</h2>
+
+            <p>
+                No account, no analytics, no crash reports, no advertising identifier, and no
+                other company's code that reports anything.
+            </p>
+
+            <h3>Your location</h3>
+            <p>
+                Read only when you press the button to find where you are, or open the emergency
+                card, and only while the app is open, never in the background. It comes from your
+                device's own location service, and the app sends it nowhere: the code is worked out
+                on the device.
+            </p>
+
+            <h3>What the app sends, and to whom</h3>
+            <ul>
+                <li>
+                    <strong>OpenFreeMap</strong> (<code>tiles.openfreemap.org</code>) receives
+                    your IP address and the map tiles asked for, and so the area on your screen.
+                </li>
+                <li>
+                    <strong>This site</strong> (<code>gridpointcode.com</code>, on GitHub Pages)
+                    receives your IP address and, when you search by a place's name, which part of
+                    the name index was read; when you look up landmarks, which area's file, about
+                    200 km across.
+                </li>
+            </ul>
+            <p>
+                Nothing else is sent. A code, a pair of coordinates or a location written in
+                another system is read on the device, however it arrived.
+            </p>
+
+            <h3>Kept on your device</h3>
+            <p>
+                Your saved places, with their names and directions, and two settings, your basemap
+                and the listener's language for reading aloud, are kept in the app's own storage.
+                Android's device backup includes them if you have backup turned on, so a new phone
+                has them. The landmark areas you keep for use offline, and the map tiles and
+                landmarks already seen, stay on the device and are left out of backups.
+                Uninstalling the app removes all of it.
+            </p>
+
+            <h3>Sharing and reading aloud</h3>
+            <p>
+                A code leaves the app only when you press Share or Copy, and only to the app you
+                choose. Reading aloud uses your device's speech engine. Some engines send the text
+                to their provider to make the voice; that is up to the engine you use and its own
+                policy.
+            </p>
+
+            <h2 id="changes">Changes and questions</h2>
+            <p>
+                This page is kept in the same repository as the code it describes, so every
+                change to it is in{' '}
+                <a href={`${REPO}/commits/main/web/src/pages/privacy.astro`} rel="noreferrer">its history</a>.
+                Questions about it can be asked by{' '}
+                <a href={`${REPO}/issues`} rel="noreferrer">opening an issue</a>.
+            </p>
+        </article>
+    </div>
+</Base>
+
+<style>
+    /* The shared frame, as every other page has it. */
+    .page {
+        max-width: var(--shell);
+        margin: 0 auto;
+        padding: var(--space-5) var(--space-4);
+    }
+
+    .lede {
+        font-size: var(--text-lede-size, 1.15rem);
+    }
+
+    .note {
+        color: var(--ink-mid);
+        font-size: var(--text-small-size);
+    }
+
+    @media (max-width: 600px) {
+        .page {
+            padding-inline: var(--space-3);
+        }
+    }
+</style>

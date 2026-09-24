@@ -50,6 +50,9 @@ src/
 scripts/          build-landmarks.mjs, which makes the landmark shards, and
                   build-places.mjs, which makes src/data/places.json
 public/sw.js      keeps visited pages, shards and map tiles available offline
+src/pages/privacy.astro
+                  what the site and the Android app send, and to whom; a change
+                  that sends something new changes it in the same pull request
 landmarks/        generated, never committed: see below
 ```
 

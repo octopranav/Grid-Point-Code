@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The same rule for Android 11 and earlier: back up everything but the map's
+     tile cache, which data_extraction_rules.xml explains. -->
+<full-backup-content>
+    <exclude domain="file" path="mbgl-offline.db" />
+    <exclude domain="file" path="mbgl-offline.db-journal" />
+    <exclude domain="file" path="mbgl-offline.db-wal" />
+    <exclude domain="file" path="mbgl-offline.db-shm" />
+</full-backup-content>
