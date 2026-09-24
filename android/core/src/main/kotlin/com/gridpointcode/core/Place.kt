@@ -15,6 +15,15 @@ sealed interface Problem {
     /** Something shaped like a short form whose symbols the library refused. */
     data class UnreadShort(val short: String) : Problem
 
+    /** A location in a system whose owner alone can turn it into a place. */
+    data class Closed(val format: Format) : Problem
+
+    /** A short link, which says where it goes only when it is opened. */
+    data class Unfollowed(val format: Format) : Problem
+
+    /** A short code of another system whose town could not be found, or looked up. */
+    data class Unplaced(val code: String, val locality: String, val why: Unanchored.Why) : Problem
+
     /** A short form given with a place that could not be used as its reference. */
     data class Unanchored(val short: String, val reference: String, val why: Why) : Problem {
         enum class Why {
@@ -73,7 +82,15 @@ data class PlaceState(
     val note: String = "",
     val problem: Problem? = null,
     val locating: Locating = Locating.IDLE,
+    val origin: Origin? = null,
 )
+
+/**
+ * Where a converted place came from: the system, the text as it was given, and
+ * how precise that source was. A code names 2.5 m wherever it came from, and
+ * the reader is owed the difference when the source said less.
+ */
+data class Origin(val format: Format, val text: String, val metres: Double, val viewCentre: Boolean)
 
 /**
  * A different place. Directions and any complaint belong to the place they were
@@ -90,7 +107,7 @@ fun PlaceState.placed(next: Selection, note: String = ""): PlaceState =
  */
 fun PlaceState.nudged(direction: Compass): PlaceState {
     val code = around(selection.code)[direction] ?: return this
-    return copy(selection = selectionOf(code, Source.NUDGE), problem = null, locating = Locating.IDLE)
+    return copy(selection = selectionOf(code, Source.NUDGE), problem = null, locating = Locating.IDLE, origin = null)
 }
 
 /** Whatever was typed, pasted, linked or selected, read and gone to if it is a place. */
@@ -105,6 +122,19 @@ fun PlaceState.opened(text: String, source: Source): PlaceState =
         // (see [anchoredAt]). Recovering against wherever the screen happens to
         // be would name somewhere plausible and wrong.
         is Reading.Anchored -> unanchored(reading, Problem.Unanchored.Why.UNREACHABLE)
+        is Reading.Other -> when (val other = reading.found) {
+            is OtherFormat.At -> converted(other, text)
+            // Another system's short code with no town is read against the
+            // reader's own place, as a bare short form of this system is. With
+            // a town, the town has to be looked up first, which is the caller's to do.
+            is OtherFormat.Near -> when (val town = other.locality) {
+                null -> recoverNear(other.code, selection.point)?.let { converted(it, text) }
+                    ?: copy(problem = Problem.Unread(null))
+                else -> copy(problem = Problem.Unplaced(other.code, town, Problem.Unanchored.Why.UNREACHABLE))
+            }
+            is OtherFormat.Closed -> copy(problem = Problem.Closed(other.format))
+            is OtherFormat.Unfollowed -> copy(problem = Problem.Unfollowed(other.format))
+        }
         is Reading.Reserved -> copy(problem = Problem.Reserved(reading.code))
         is Reading.Unread -> copy(problem = Problem.Unread(reading.reason))
     }
@@ -139,6 +169,14 @@ fun PlaceState.recalled(saved: SavedPlace): PlaceState =
     runCatching { selectionOf(saved.code, Source.SAVED) }
         .map { placed(it, saved.note) }
         .getOrDefault(copy(problem = Problem.Unread(null)))
+
+/** A location from another system, converted: a new place, which remembers where it came from. */
+fun PlaceState.converted(at: OtherFormat.At, text: String): PlaceState =
+    placed(selectionAt(at.point, Source.CONVERTED)).copy(origin = Origin(at.format, text.trim(), at.metres, at.viewCentre))
+
+/** A short code whose town could not be used. The place stays where it was. */
+fun PlaceState.unplaced(near: OtherFormat.Near, why: Problem.Unanchored.Why): PlaceState =
+    copy(problem = Problem.Unplaced(near.code, near.locality.orEmpty(), why))
 
 /** New directions for the place already selected. */
 fun PlaceState.described(text: String): PlaceState = copy(note = tidyNote(text))
@@ -199,6 +237,7 @@ data class PlaceView(
     val link: String,
     val problem: Problem?,
     val locating: Locating,
+    val origin: Origin?,
 )
 
 fun PlaceState.view(locale: Locale = Locale.getDefault()): PlaceView = PlaceView(
@@ -213,4 +252,5 @@ fun PlaceState.view(locale: Locale = Locale.getDefault()): PlaceView = PlaceView
     link = addressOf(selection.code, note),
     problem = problem,
     locating = locating,
+    origin = origin,
 )

@@ -13,7 +13,7 @@ code, check and correction is arithmetic on the device.
 
 | Module | What it holds |
 | --- | --- |
-| [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, reading the website's name index, which landmarks can anchor a short form, and saved places |
+| [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, reading the website's name index, which landmarks can anchor a short form, saved places, and reading locations written in other systems |
 | [`designsystem`](designsystem) | The theme, the type scale, the shapes and the ten-cell mark, built from the files [`design/build-tokens.mjs`](../design/build-tokens.mjs) generates |
 | [`map`](map) | MapLibre Native on the website's tile provider, its five styles, the cell drawn in brass with its eight neighbours faint around it, and a tap to place a point |
 | [`app`](app) | The place screen, the view model that holds the place, read aloud, fetching the name index and the landmark archive, and the ways a place arrives from another app |
@@ -77,6 +77,12 @@ code, check and correction is arithmetic on the device.
 - Works offline wherever it has already been used: the map draws from the tiles
   it has already drawn, up to 200 MB, and the landmarks of places already looked
   at are cached apart from the kept areas.
+- Reads a location written in several other systems, and the links the common
+  map services share, from the same field, from a link or from text selected in
+  another app, and says on the card which it was. A short code of another
+  system written with its town is read against the town. What only its owner's
+  service can read, and a short link that says where it goes only when opened,
+  are named and refused rather than guessed.
 - Saves places: the bookmark on a place's card keeps it with a name and the
   directions to its door. Saved places are listed from a button on the map,
   drawn on it as small rings, and found first as a name is typed, with no
@@ -182,6 +188,24 @@ keeps the cell one level above the shards, which is the same size but fixed to
 the grid: downtown Toronto sits in the corner of its cell, which reaches 190 km
 west and stops 15 km east. The app keeps the five by five block of shards around
 the place's own instead, so it reaches 100 km every way.
+
+**The app names other systems, and nothing else in the repository does.** Turning
+somebody's existing location into a code is the strongest reason to use one, and
+a reader is owed the name of what they gave. The names live in one parser file,
+its tests and the app's own strings. Each system is read by its owner's
+published rules and tested against its published answers.
+
+**A converted code says how much its source said.** A code names 2.5 m wherever
+it came from. When the source named more, a square 14 m across or a link whose
+coordinates stop at two decimals, the card says so and calls the code the centre
+of that area, not a door. A link that carries only the middle of a map view,
+rather than a pinned place, says that instead.
+
+**Ten characters that could be either system's are read as this one's.** One
+system writes ten symbols with no separators, all from within this alphabet, so
+the same text is a code here and a place there. It opens as a code here, and
+the list under the field offers the other reading, one tap away. Written with
+that system's old separators, it can only be the other, and opens as that.
 
 **Saved places stay on the device.** One small file in the app's own files, which
 the device's backup includes, so a new phone has them. No account to sync them
