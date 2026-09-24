@@ -20,6 +20,15 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.runtime.remember
 import com.gridpointcode.map.Basemap
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import com.gridpointcode.core.SavedPlace
+import com.gridpointcode.core.formatted
+import com.gridpointcode.core.savedAt
+import com.gridpointcode.core.selectionOf
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import com.gridpointcode.core.Anchor
@@ -98,6 +107,7 @@ import ca.pranavpatel.algo.gridpointcode.design.Space
 import com.gridpointcode.core.Compass
 import com.gridpointcode.core.Form
 import com.gridpointcode.core.FormKey
+import com.gridpointcode.core.LABEL_LIMIT
 import com.gridpointcode.core.NOTE_LIMIT
 import com.gridpointcode.core.PAD
 import com.gridpointcode.core.PlaceView
@@ -117,6 +127,9 @@ private const val PEEK_DP = 260
 /** The search bar's height over the map, with its margin. */
 private const val SEARCH_DP = 96
 
+/** The tallest the saved list gets before it scrolls. */
+private const val SAVED_DP = 440
+
 /** The tallest the list of places gets before it scrolls: four and a half rows, so it plainly does. */
 private const val FOUND_DP = 270
 
@@ -133,6 +146,11 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
     val ui by model.ui.collectAsState()
     val basemap by model.basemap.collectAsState()
     val finding by model.found.collectAsState()
+    val saved by model.saved.collectAsState()
+    var browsing by remember { mutableStateOf(false) }
+    val savedPoints = remember(saved) {
+        saved.mapNotNull { place -> runCatching { selectionOf(place.code, Source.SAVED).point }.getOrNull() }
+    }
     val wide = LocalConfiguration.current.screenWidthDp >= WIDE_DP
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + SEARCH_DP.dp
     val bottom = if (wide) WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else PEEK_DP.dp
@@ -155,6 +173,7 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
                 onPick = { model.place(selectionAt(it, Source.MAP)) },
                 padding = PaddingValues(top = top, bottom = bottom),
                 basemap = basemap,
+                saved = savedPoints,
                 modifier = Modifier.fillMaxSize(),
             )
             Search(
@@ -163,6 +182,7 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
                 onGo = model::go,
                 finding = finding,
                 onPick = model::pick,
+                onRecall = model::recall,
                 problem = ui.problem,
                 onSettings = { openSettings(context) },
                 modifier = Modifier
@@ -177,10 +197,22 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(Space.step2),
             ) {
+                SavedButton(onClick = { browsing = true })
                 Basemaps(chosen = basemap, onChoose = model::choose)
                 Locate(locating = ui.locating, onClick = locate)
             }
         }
+    }
+
+    if (browsing) {
+        SavedList(
+            saved = saved,
+            onOpen = { place ->
+                browsing = false
+                model.recall(place)
+            },
+            onDismiss = { browsing = false },
+        )
     }
 
     if (wide) {
@@ -217,6 +249,24 @@ private fun Panel(ui: PlaceView, model: PlaceViewModel, speak: (String) -> Unit,
     val context = LocalContext.current
     val anchoring by model.anchors.collectAsState()
     val keeping by model.offline.collectAsState()
+    val saved by model.saved.collectAsState()
+    val here = saved.savedAt(ui.selection.code)
+    var editing by remember { mutableStateOf(false) }
+    if (editing) {
+        SaveDialog(
+            existing = here,
+            note = ui.note,
+            onSave = { label, note ->
+                model.save(label, note)
+                editing = false
+            },
+            onRemove = {
+                model.unsave(ui.selection.code)
+                editing = false
+            },
+            onDismiss = { editing = false },
+        )
+    }
     Column(
         modifier
             .fillMaxWidth()
@@ -226,6 +276,8 @@ private fun Panel(ui: PlaceView, model: PlaceViewModel, speak: (String) -> Unit,
     ) {
         Head(
             ui = ui,
+            saved = here,
+            onBookmark = { editing = true },
             speak = { speak(ui.spoken) },
             share = { share(context, ui.formatted + "\n" + ui.link) },
             copy = { copy(context, ui.formatted) },
@@ -258,6 +310,7 @@ private fun Search(
     onGo: (String) -> Unit,
     finding: Finding,
     onPick: (Named) -> Unit,
+    onRecall: (SavedPlace) -> Unit,
     problem: Problem?,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -293,6 +346,11 @@ private fun Search(
                     focus.clearFocus()
                     onPick(place)
                 },
+                onRecall = { place ->
+                    keyboard?.hide()
+                    focus.clearFocus()
+                    onRecall(place)
+                },
             )
             if (problem != null) {
                 Text(
@@ -311,7 +369,7 @@ private fun Search(
 
 /** The places a name could mean, and why there are none when there are none. */
 @Composable
-private fun Found(finding: Finding, onPick: (Named) -> Unit) {
+private fun Found(finding: Finding, onPick: (Named) -> Unit, onRecall: (SavedPlace) -> Unit) {
     val looking = stringResource(R.string.names_looking)
     if (finding.status == Finding.Status.LOOKING) {
         LinearProgressIndicator(
@@ -335,13 +393,26 @@ private fun Found(finding: Finding, onPick: (Named) -> Unit) {
             modifier = Modifier.padding(horizontal = Space.step1, vertical = Space.step0),
         )
     }
-    if (finding.places.isEmpty()) return
+    if (finding.places.isEmpty() && finding.saved.isEmpty()) return
     Column(
         Modifier
             .fillMaxWidth()
             .heightIn(max = FOUND_DP.dp)
             .verticalScroll(rememberScrollState()),
     ) {
+        finding.saved.forEach { place ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button) { onRecall(place) }
+                    .padding(horizontal = Space.step2, vertical = Space.step1),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Space.step2),
+            ) {
+                Icon(Bookmarked, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                SavedLines(place)
+            }
+        }
         finding.places.forEach { place ->
             Column(
                 Modifier
@@ -384,6 +455,121 @@ private fun describe(problem: Problem): String = when (problem) {
     Problem.LocationRefused -> stringResource(R.string.problem_location_refused)
     Problem.LocationOff -> stringResource(R.string.problem_location_off)
     Problem.NoFix -> stringResource(R.string.problem_no_fix)
+}
+
+/** The button that opens the saved places. */
+@Composable
+private fun SavedButton(onClick: () -> Unit) {
+    val label = stringResource(R.string.saved_title)
+    SmallFloatingActionButton(
+        onClick = onClick,
+        shape = ButtonShape,
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.semantics { contentDescription = label },
+    ) {
+        Icon(Bookmark, contentDescription = null)
+    }
+}
+
+/** A saved place's name, or its code when it has none, with the code and the directions under it. */
+@Composable
+private fun SavedLines(place: SavedPlace) {
+    Column {
+        Text(place.label.ifEmpty { formatted(place.code) }, style = MaterialTheme.typography.bodyLarge)
+        val under = listOfNotNull(formatted(place.code).takeIf { place.label.isNotEmpty() }, place.note.ifEmpty { null })
+        if (under.isNotEmpty()) {
+            Text(
+                text = under.joinToString(" \u00b7 "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+            )
+        }
+    }
+}
+
+/** Every saved place, most recent first. Opening one goes there with its directions. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SavedList(saved: List<SavedPlace>, onOpen: (SavedPlace) -> Unit, onDismiss: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.background) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = Space.step3)
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(Space.step2),
+        ) {
+            Text(stringResource(R.string.saved_title), style = MaterialTheme.typography.titleMedium)
+            if (saved.isEmpty()) Quiet(stringResource(R.string.saved_empty))
+            LazyColumn(Modifier.heightIn(max = SAVED_DP.dp)) {
+                items(saved, key = { it.code }) { place ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(role = Role.Button) { onOpen(place) }
+                            .padding(vertical = Space.step2),
+                    ) {
+                        SavedLines(place)
+                    }
+                    HorizontalDivider(color = LocalGpcColors.current.rule)
+                }
+            }
+            Spacer(Modifier.height(Space.step3))
+        }
+    }
+}
+
+/**
+ * Saving the place on screen, or changing one already saved: a name and the
+ * directions to the door, both optional. Removing is here too, where it is a
+ * deliberate choice rather than a slip of the thumb.
+ */
+@Composable
+private fun SaveDialog(
+    existing: SavedPlace?,
+    note: String,
+    onSave: (String, String) -> Unit,
+    onRemove: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var label by remember { mutableStateOf(existing?.label.orEmpty()) }
+    var directions by remember { mutableStateOf(existing?.note ?: note) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(if (existing == null) R.string.save_place else R.string.saved_edit)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Space.step2)) {
+                OutlinedTextField(
+                    value = label,
+                    onValueChange = { label = it.take(LABEL_LIMIT) },
+                    label = { Text(stringResource(R.string.save_label)) },
+                    placeholder = { Text(stringResource(R.string.save_label_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = directions,
+                    onValueChange = { directions = it.take(NOTE_LIMIT) },
+                    label = { Text(stringResource(R.string.save_note)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(label, directions) }) { Text(stringResource(R.string.save_confirm)) }
+        },
+        dismissButton = {
+            Row {
+                if (existing != null) {
+                    TextButton(onClick = onRemove) {
+                        Text(stringResource(R.string.save_remove), color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.save_cancel)) }
+            }
+        },
+    )
 }
 
 /** The six basemaps the website offers, the chosen one marked. */
@@ -449,7 +635,14 @@ private fun Locate(locating: Locating, onClick: () -> Unit, modifier: Modifier =
 }
 
 @Composable
-private fun Head(ui: PlaceView, speak: () -> Unit, share: () -> Unit, copy: () -> Unit) {
+private fun Head(
+    ui: PlaceView,
+    saved: SavedPlace?,
+    onBookmark: () -> Unit,
+    speak: () -> Unit,
+    share: () -> Unit,
+    copy: () -> Unit,
+) {
     val colours = LocalGpcColors.current
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -459,11 +652,28 @@ private fun Head(ui: PlaceView, speak: () -> Unit, share: () -> Unit, copy: () -
             .border(1.dp, colours.rule, RoundedCornerShape(Radius.card)),
     ) {
         Column(Modifier.padding(Space.step3), verticalArrangement = Arrangement.spacedBy(Space.step2)) {
-            Text(
-                text = sourceLabel(ui.selection.source).uppercase(Locale.getDefault()),
-                style = MaterialTheme.typography.labelSmall,
-                color = colours.inkSoft,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = sourceLabel(ui.selection.source).uppercase(Locale.getDefault()),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colours.inkSoft,
+                    )
+                    // A saved place is shown by its name wherever it is reached from,
+                    // a tap on the map as much as the list.
+                    if (saved != null && saved.label.isNotEmpty()) {
+                        Text(saved.label, style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+                val describe = stringResource(if (saved == null) R.string.save_place else R.string.saved_edit)
+                IconButton(onClick = onBookmark, modifier = Modifier.semantics { contentDescription = describe }) {
+                    Icon(
+                        if (saved == null) Bookmark else Bookmarked,
+                        contentDescription = null,
+                        tint = if (saved == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
             CodeMark(code = ui.selection.code, spoken = ui.spoken)
             Text(
                 text = stringResource(R.string.cell_size, metres(ui.cell.northSouthMetres), metres(ui.cell.eastWestMetres)),
@@ -515,6 +725,7 @@ private fun sourceLabel(source: Source): String = stringResource(
         Source.MAP -> R.string.source_map
         Source.SEARCH -> R.string.source_search
         Source.ANCHORED -> R.string.source_anchored
+        Source.SAVED -> R.string.source_saved
     },
 )
 

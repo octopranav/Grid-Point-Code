@@ -18,6 +18,17 @@
     <string name="source_map">Picked on the map</string>
     <string name="source_search">Found by name</string>
     <string name="source_anchored">Read against a landmark</string>
+    <string name="source_saved">A saved place</string>
+    <string name="save_place">Save this place</string>
+    <string name="saved_edit">Saved place</string>
+    <string name="saved_title">Saved places</string>
+    <string name="saved_empty">Nothing saved yet. The bookmark on a place\'s card keeps it here, with its directions.</string>
+    <string name="save_label">Name</string>
+    <string name="save_label_hint">Home, the clinic\'s side door</string>
+    <string name="save_note">Directions</string>
+    <string name="save_confirm">Save</string>
+    <string name="save_cancel">Cancel</string>
+    <string name="save_remove">Remove</string>
 
     <string name="cell_size">Cell %1$s m north to south, %2$s m east to west</string>
     <string name="fix_inside">Your device placed you to within about %1$d m, which is inside a single cell.</string>

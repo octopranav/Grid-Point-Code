@@ -17,6 +17,7 @@ import com.gridpointcode.core.PlaceView
 import com.gridpointcode.core.Problem
 import com.gridpointcode.core.Reading
 import com.gridpointcode.core.ReferenceMatch
+import com.gridpointcode.core.SavedPlace
 import com.gridpointcode.core.Point
 import com.gridpointcode.core.Selection
 import com.gridpointcode.core.Source
@@ -24,6 +25,11 @@ import com.gridpointcode.core.anchored
 import com.gridpointcode.core.anchoredAt
 import com.gridpointcode.core.areaMetres
 import com.gridpointcode.core.findLocal
+import com.gridpointcode.core.forgetting
+import com.gridpointcode.core.matchSaved
+import com.gridpointcode.core.namedSaved
+import com.gridpointcode.core.recalled
+import com.gridpointcode.core.saving
 import com.gridpointcode.core.keptReference
 import com.gridpointcode.core.described
 import com.gridpointcode.core.found
@@ -46,6 +52,7 @@ import com.gridpointcode.core.view
 import com.gridpointcode.map.Basemap
 import java.io.File
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -84,6 +91,14 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     )
     private val anchoring = MutableStateFlow(Anchoring())
     private val keeping = MutableStateFlow(Keeping())
+    private val savedStore = SavedPlaces(File(application.filesDir, "saved-places.json"))
+    // Read once as the app opens: one small file, needed before the first
+    // frame so the bookmark on the card is right from the start.
+    private val savedList = MutableStateFlow(savedStore.load())
+
+    /** Writes happen one at a time, in order, so a quick save and remove cannot land backwards. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val writing = Dispatchers.IO.limitedParallelism(1)
 
     /** Which landmark the reader chose, by name and region, so it survives a nudge that keeps it in reach. */
     private var anchorChoice: String? = null
@@ -115,6 +130,38 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Whether the area around the current place is kept on the device. */
     val offline: StateFlow<Keeping> = keeping
+
+    /** The reader's saved places, most recent first. */
+    val saved: StateFlow<List<SavedPlace>> = savedList
+
+    /**
+     * Save the place on screen, or change it if it is saved already. The
+     * directions typed while saving become the place's directions on screen
+     * too, since they were written for this door.
+     */
+    fun save(label: String, note: String) {
+        val code = state.value.selection.code
+        savedList.update { it.saving(SavedPlace(code, label, note, System.currentTimeMillis())) }
+        state.update { it.described(note) }
+        persist()
+    }
+
+    fun unsave(code: String) {
+        savedList.update { it.forgetting(code) }
+        persist()
+    }
+
+    /** A saved place, opened again with its own directions. */
+    fun recall(place: SavedPlace) {
+        settle()
+        query = ""
+        change { it.recalled(place) }
+    }
+
+    private fun persist() {
+        val snapshot = savedList.value
+        viewModelScope.launch(writing) { savedStore.store(snapshot) }
+    }
 
     init {
         // Looked up again whenever the code changes, and only then: a finer fix
@@ -260,14 +307,18 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     fun type(text: String) {
         query = text
         looking?.cancel()
+        // Saved places answer at once, and with no connection: they are the
+        // reader's own, and the likeliest thing they meant.
+        val mine = matchSaved(text, savedList.value)
         if (!isName(text)) {
-            finding.value = Finding()
+            finding.value = Finding(query = text, saved = mine)
             return
         }
+        finding.update { it.copy(saved = mine) }
         looking = viewModelScope.launch {
             delay(TYPING_MS)
             finding.update { it.copy(query = text, status = Finding.Status.LOOKING) }
-            finding.value = lookUp(text)
+            finding.value = lookUp(text).copy(saved = matchSaved(text, savedList.value))
         }
     }
 
@@ -306,6 +357,7 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
      * called that.
      */
     fun go(text: String) {
+        namedSaved(text, savedList.value)?.let { return recall(it) }
         if (!isName(text)) return open(text)
         looking?.cancel()
         looking = viewModelScope.launch {
@@ -446,6 +498,8 @@ data class Finding(
     val query: String = "",
     val places: List<Named> = emptyList(),
     val status: Status = Status.IDLE,
+    /** The reader's saved places that match, listed before anything else. */
+    val saved: List<SavedPlace> = emptyList(),
 ) {
     enum class Status {
         IDLE,

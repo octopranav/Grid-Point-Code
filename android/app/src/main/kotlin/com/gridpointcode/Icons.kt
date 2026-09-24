@@ -43,6 +43,53 @@ val Crosshair: ImageVector = ImageVector.Builder(
 }.build()
 
 /** Two stacked sheets, for choosing what the map is drawn from. */
+/** A bookmark, for keeping a place. */
+val Bookmark: ImageVector = ImageVector.Builder(
+    name = "Bookmark",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+).apply {
+    path(
+        stroke = SolidColor(Color.Black),
+        strokeLineWidth = 1.8f,
+        strokeLineCap = StrokeCap.Round,
+        strokeLineJoin = StrokeJoin.Round,
+    ) {
+        moveTo(6.5f, 3.5f)
+        lineTo(17.5f, 3.5f)
+        lineTo(17.5f, 20.5f)
+        lineTo(12f, 16.5f)
+        lineTo(6.5f, 20.5f)
+        close()
+    }
+}.build()
+
+/** The same bookmark, filled in: this place is kept. */
+val Bookmarked: ImageVector = ImageVector.Builder(
+    name = "Bookmarked",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+).apply {
+    path(
+        fill = SolidColor(Color.Black),
+        stroke = SolidColor(Color.Black),
+        strokeLineWidth = 1.8f,
+        strokeLineCap = StrokeCap.Round,
+        strokeLineJoin = StrokeJoin.Round,
+    ) {
+        moveTo(6.5f, 3.5f)
+        lineTo(17.5f, 3.5f)
+        lineTo(17.5f, 20.5f)
+        lineTo(12f, 16.5f)
+        lineTo(6.5f, 20.5f)
+        close()
+    }
+}.build()
+
 val Layers: ImageVector = ImageVector.Builder(
     name = "Layers",
     defaultWidth = 24.dp,

@@ -18,6 +18,9 @@ enum class Source {
 
     /** A short form read against the landmark it was given with. */
     ANCHORED,
+
+    /** One of the reader's saved places. */
+    SAVED,
     NUDGE,
     SAMPLE,
 }

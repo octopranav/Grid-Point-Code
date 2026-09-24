@@ -131,6 +131,15 @@ fun PlaceState.anchoredAt(short: String, landmark: Landmark): PlaceState =
 fun PlaceState.unanchored(reading: Reading.Anchored, why: Problem.Unanchored.Why): PlaceState =
     copy(problem = Problem.Unanchored(reading.short, reading.reference, why))
 
+/**
+ * A saved place, opened again. A new place like any other, except that its own
+ * directions come back with it: they were written for exactly this door.
+ */
+fun PlaceState.recalled(saved: SavedPlace): PlaceState =
+    runCatching { selectionOf(saved.code, Source.SAVED) }
+        .map { placed(it, saved.note) }
+        .getOrDefault(copy(problem = Problem.Unread(null)))
+
 /** New directions for the place already selected. */
 fun PlaceState.described(text: String): PlaceState = copy(note = tidyNote(text))
 
