@@ -21,6 +21,9 @@ enum class Source {
 
     /** One of the reader's saved places. */
     SAVED,
+
+    /** A location written in another system, converted. */
+    CONVERTED,
     NUDGE,
     SAMPLE,
 }

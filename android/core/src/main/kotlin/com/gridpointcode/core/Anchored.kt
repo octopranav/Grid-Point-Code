@@ -82,6 +82,25 @@ fun keptReference(reference: String, landmarks: List<Landmark>): KeptMatch {
     }
 }
 
+/**
+ * The town another system's short code is written with, among the index's places of that
+ * name: the one whose region the rest of the text names, as "Toronto, ON"
+ * names Ontario, and otherwise the largest of the name, which the index lists
+ * first. A short code reads true anywhere within about 50 km of its town, so
+ * any place of the right name nearby will do; the wrong one of two far apart
+ * would not, which is why the region is looked for first.
+ */
+fun townFor(locality: String, places: List<Named>): Named? {
+    val name = fold(referenceName(locality))
+    val named = places.filter { fold(it.name) == name }
+    if (named.isEmpty()) return null
+    val words = fold(locality.substringAfter(',', "")).split(' ').filter { it.length > 1 }
+    if (words.isNotEmpty()) {
+        named.firstOrNull { place -> words.all { fold(place.region).contains(it) } }?.let { return it }
+    }
+    return named.first()
+}
+
 /** What a reference came to among the landmarks kept offline. */
 sealed interface KeptMatch {
     data class One(val landmark: Landmark) : KeptMatch

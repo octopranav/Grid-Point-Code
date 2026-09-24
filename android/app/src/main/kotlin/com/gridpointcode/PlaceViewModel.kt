@@ -16,6 +16,7 @@ import com.gridpointcode.core.PlaceState
 import com.gridpointcode.core.PlaceView
 import com.gridpointcode.core.Problem
 import com.gridpointcode.core.Reading
+import com.gridpointcode.core.OtherFormat
 import com.gridpointcode.core.ReferenceMatch
 import com.gridpointcode.core.SavedPlace
 import com.gridpointcode.core.Point
@@ -24,7 +25,13 @@ import com.gridpointcode.core.Source
 import com.gridpointcode.core.anchored
 import com.gridpointcode.core.anchoredAt
 import com.gridpointcode.core.areaMetres
+import com.gridpointcode.core.converted
 import com.gridpointcode.core.findLocal
+import com.gridpointcode.core.otherReading
+import com.gridpointcode.core.recoverNear
+import com.gridpointcode.core.selectionOf
+import com.gridpointcode.core.townFor
+import com.gridpointcode.core.unplaced
 import com.gridpointcode.core.forgetting
 import com.gridpointcode.core.matchSaved
 import com.gridpointcode.core.namedSaved
@@ -231,6 +238,8 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     fun open(text: String, source: Source = Source.CODE) {
         val reading = read(text)
         if (reading is Reading.Anchored) return readAnchored(text, reading)
+        val other = (reading as? Reading.Other)?.found
+        if (other is OtherFormat.Near && other.locality != null) return readNear(text, other)
         settle()
         change { it.opened(text, source) }
     }
@@ -263,6 +272,38 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
                 is Resolved.Refused -> change { it.unanchored(reading, outcome.why) }
             }
         }
+    }
+
+    /**
+     * Another system's short code written with its town: `CJ+2VX Newbury, UK`. The town is
+     * found by name, in the index or among the places on the device, and the
+     * code is read against it.
+     */
+    private fun readNear(text: String, near: OtherFormat.Near) {
+        settle()
+        val town = near.locality ?: return
+        finding.value = Finding(query = text, status = Finding.Status.LOOKING)
+        looking = viewModelScope.launch {
+            val found = names.find(referenceName(town), TOWN_ROWS)
+            val places = found ?: findLocal(referenceName(town), archive.localLandmarks(), TOWN_ROWS)
+            finding.value = Finding()
+            val place = townFor(town, places)
+            val at = place?.let { runCatching { selectionOf(it.code, Source.CONVERTED).point }.getOrNull() }
+                ?.let { recoverNear(near.code, it) }
+            when {
+                at != null -> change { it.converted(at, text) }
+                found == null && places.isEmpty() -> change { it.unplaced(near, Problem.Unanchored.Why.UNREACHABLE) }
+                else -> change { it.unplaced(near, Problem.Unanchored.Why.NOT_FOUND) }
+            }
+        }
+    }
+
+    /** The other reading of what was typed, taken instead of this system's. */
+    fun openInstead(at: OtherFormat.At) {
+        val text = query
+        settle()
+        query = ""
+        change { it.converted(at, text) }
     }
 
     private suspend fun resolve(reading: Reading.Anchored): Resolved {
@@ -311,7 +352,10 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
         // reader's own, and the likeliest thing they meant.
         val mine = matchSaved(text, savedList.value)
         if (!isName(text)) {
-            finding.value = Finding(query = text, saved = mine)
+            // Ten characters that are a code here and another system's code
+            // too are read as a code, with the other reading offered beside it.
+            val instead = if (read(text) is Reading.Code) otherReading(text) else null
+            finding.value = Finding(query = text, saved = mine, alternative = instead)
             return
         }
         finding.update { it.copy(saved = mine) }
@@ -447,6 +491,9 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
          * alone is unique needs all of them, not the first dozen.
          */
         const val REFERENCE_ROWS = 5_000
+
+        /** Enough places of one name to find the one in the region a town is written with. */
+        const val TOWN_ROWS = 200
     }
 }
 
@@ -500,6 +547,8 @@ data class Finding(
     val status: Status = Status.IDLE,
     /** The reader's saved places that match, listed before anything else. */
     val saved: List<SavedPlace> = emptyList(),
+    /** Another system's reading of the same characters, offered beside this one's. */
+    val alternative: OtherFormat.At? = null,
 ) {
     enum class Status {
         IDLE,

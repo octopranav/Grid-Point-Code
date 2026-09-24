@@ -25,6 +25,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
+import com.gridpointcode.core.Format
+import com.gridpointcode.core.Origin
+import com.gridpointcode.core.OtherFormat
+import com.gridpointcode.core.SINGLE_CELL_METRES
 import com.gridpointcode.core.SavedPlace
 import com.gridpointcode.core.formatted
 import com.gridpointcode.core.savedAt
@@ -183,6 +187,7 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
                 finding = finding,
                 onPick = model::pick,
                 onRecall = model::recall,
+                onInstead = model::openInstead,
                 problem = ui.problem,
                 onSettings = { openSettings(context) },
                 modifier = Modifier
@@ -311,6 +316,7 @@ private fun Search(
     finding: Finding,
     onPick: (Named) -> Unit,
     onRecall: (SavedPlace) -> Unit,
+    onInstead: (OtherFormat.At) -> Unit,
     problem: Problem?,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -351,6 +357,11 @@ private fun Search(
                     focus.clearFocus()
                     onRecall(place)
                 },
+                onInstead = { at ->
+                    keyboard?.hide()
+                    focus.clearFocus()
+                    onInstead(at)
+                },
             )
             if (problem != null) {
                 Text(
@@ -369,7 +380,12 @@ private fun Search(
 
 /** The places a name could mean, and why there are none when there are none. */
 @Composable
-private fun Found(finding: Finding, onPick: (Named) -> Unit, onRecall: (SavedPlace) -> Unit) {
+private fun Found(
+    finding: Finding,
+    onPick: (Named) -> Unit,
+    onRecall: (SavedPlace) -> Unit,
+    onInstead: (OtherFormat.At) -> Unit,
+) {
     val looking = stringResource(R.string.names_looking)
     if (finding.status == Finding.Status.LOOKING) {
         LinearProgressIndicator(
@@ -393,13 +409,28 @@ private fun Found(finding: Finding, onPick: (Named) -> Unit, onRecall: (SavedPla
             modifier = Modifier.padding(horizontal = Space.step1, vertical = Space.step0),
         )
     }
-    if (finding.places.isEmpty() && finding.saved.isEmpty()) return
+    if (finding.places.isEmpty() && finding.saved.isEmpty() && finding.alternative == null) return
     Column(
         Modifier
             .fillMaxWidth()
             .heightIn(max = FOUND_DP.dp)
             .verticalScroll(rememberScrollState()),
     ) {
+        finding.alternative?.let { at ->
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button) { onInstead(at) }
+                    .padding(horizontal = Space.step2, vertical = Space.step1),
+            ) {
+                Text(stringResource(R.string.instead_digipin), style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = String.format(Locale.getDefault(), "%.5f, %.5f", at.point.latitude, at.point.longitude),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         finding.saved.forEach { place ->
             Row(
                 modifier = Modifier
@@ -442,6 +473,14 @@ private fun describe(problem: Problem): String = when (problem) {
     }
     is Problem.Reserved -> stringResource(R.string.problem_reserved, problem.code)
     is Problem.UnreadShort -> stringResource(R.string.problem_short, problem.short)
+    is Problem.Closed -> stringResource(R.string.problem_closed_what3words)
+    is Problem.Unfollowed -> stringResource(R.string.problem_unfollowed_google)
+    is Problem.Unplaced -> stringResource(
+        if (problem.why == Problem.Unanchored.Why.UNREACHABLE) R.string.problem_unplaced_unreachable
+        else R.string.problem_unplaced_not_found,
+        problem.code,
+        problem.locality,
+    )
     is Problem.Unanchored -> stringResource(
         when (problem.why) {
             Problem.Unanchored.Why.NOT_FOUND -> R.string.problem_anchor_not_found
@@ -455,6 +494,40 @@ private fun describe(problem: Problem): String = when (problem) {
     Problem.LocationRefused -> stringResource(R.string.problem_location_refused)
     Problem.LocationOff -> stringResource(R.string.problem_location_off)
     Problem.NoFix -> stringResource(R.string.problem_no_fix)
+}
+
+/** Where a converted place came from, by the name its owner gives it. */
+@Composable
+private fun fromLabel(format: Format): String = stringResource(
+    when (format) {
+        Format.PLUS_CODE -> R.string.from_plus_code
+        Format.DIGIPIN -> R.string.from_digipin
+        Format.GEOHASH -> R.string.from_geohash
+        Format.GOOGLE_MAPS -> R.string.from_google_maps
+        Format.APPLE_MAPS -> R.string.from_apple_maps
+        Format.OPENSTREETMAP -> R.string.from_openstreetmap
+        Format.BING_MAPS -> R.string.from_bing_maps
+        Format.WAZE -> R.string.from_waze
+        Format.WHAT3WORDS -> R.string.source_converted
+    },
+)
+
+/**
+ * How much the source said. A code names 2.5 m wherever it came from, and when
+ * the source named more than a cell, or only the middle of a map view, the
+ * reader is told rather than left to take the code for a door.
+ */
+@Composable
+private fun originNote(origin: Origin): String? {
+    val link = origin.format in setOf(Format.GOOGLE_MAPS, Format.APPLE_MAPS, Format.OPENSTREETMAP, Format.BING_MAPS, Format.WAZE)
+    val coarse = origin.metres > SINGLE_CELL_METRES
+    return when {
+        origin.viewCentre -> stringResource(R.string.origin_view)
+        link && coarse -> stringResource(R.string.origin_decimals, distance(origin.metres))
+        link -> null
+        coarse -> stringResource(R.string.origin_area, origin.text, distance(origin.metres))
+        else -> stringResource(R.string.origin_read, origin.text)
+    }
 }
 
 /** The button that opens the saved places. */
@@ -655,7 +728,8 @@ private fun Head(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = sourceLabel(ui.selection.source).uppercase(Locale.getDefault()),
+                        text = (ui.origin?.let { fromLabel(it.format) } ?: sourceLabel(ui.selection.source))
+                            .uppercase(Locale.getDefault()),
                         style = MaterialTheme.typography.labelSmall,
                         color = colours.inkSoft,
                     )
@@ -680,6 +754,11 @@ private fun Head(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            ui.origin?.let { origin ->
+                originNote(origin)?.let { note ->
+                    Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             when (ui.locating) {
                 Locating.SEEKING -> Text(
                     stringResource(R.string.locating_seeking),
@@ -726,6 +805,7 @@ private fun sourceLabel(source: Source): String = stringResource(
         Source.SEARCH -> R.string.source_search
         Source.ANCHORED -> R.string.source_anchored
         Source.SAVED -> R.string.source_saved
+        Source.CONVERTED -> R.string.source_converted
     },
 )
 

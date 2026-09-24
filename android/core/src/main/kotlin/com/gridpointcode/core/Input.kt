@@ -25,6 +25,9 @@ sealed interface Reading {
      */
     data class Anchored(val short: String, val reference: String) : Reading
 
+    /** A location written in another system, read by that system's own rules. */
+    data class Other(val found: OtherFormat) : Reading
+
     /** A point written some other way: decimal degrees, degrees and minutes, a geo URI. */
     data class At(val point: Point) : Reading
 
@@ -41,6 +44,7 @@ fun read(text: String): Reading {
     if (given.isEmpty()) return Reading.Unread(null)
 
     linked(given)?.let { return it }
+    readOther(given)?.let { return Reading.Other(it) }
     if (given.startsWith("geo:", ignoreCase = true)) return geo(given)
     ANCHORED.matchEntire(given)?.let { found ->
         return Reading.Anchored("-" + found.groupValues[1].uppercase(), found.groupValues[2].trim())
