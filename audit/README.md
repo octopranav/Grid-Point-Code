@@ -9,6 +9,7 @@ CI, and it exists because these are the failures reading cannot catch.
 | [`examples.py`](examples.py) | A documented example that no longer runs, or that claims a value the API does not return |
 | [`deploys.py`](deploys.py) | A file the site renders from outside `web/` that no longer triggers a deployment |
 | [`publishes.py`](publishes.py) | A path beginning with a dot that is built into the site and then left out of the artifact that reaches the server |
+| [`fonts.py`](fonts.py) | A typeface in the Android app that is not byte for byte the designers' file it came from, which under its reserved font name it has to be, or one shipped without its licence |
 | the tests beside them | Any of the above quietly passing everything |
 
 ```
@@ -16,6 +17,7 @@ python audit/markdown.py
 python audit/examples.py
 python audit/deploys.py
 python audit/publishes.py
+python audit/fonts.py
 python -m unittest discover --start-directory audit --top-level-directory audit
 ```
 
