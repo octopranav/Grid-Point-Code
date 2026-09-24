@@ -109,6 +109,11 @@ web/src/styles/tokens.css text eol=lf
 ###############################################################################
 web/public/favicon.svg      text eol=lf
 web/public/site.webmanifest text eol=lf
+android/app/src/main/res/mipmap-anydpi/ic_launcher.xml               text eol=lf
+android/app/src/main/res/drawable/launcher_bars.xml                  text eol=lf
+android/app/src/main/res/drawable/launcher_bars_monochrome.xml       text eol=lf
+android/app/src/main/res/values/launcher.xml                         text eol=lf
+android/app/src/main/res/values-night/launcher.xml                   text eol=lf
 
 # The wrapper script is run by a POSIX shell, which reads a carriage return as
 # part of the command. The jar is a binary that CI checks against its known hash.

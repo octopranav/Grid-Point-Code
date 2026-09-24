@@ -283,12 +283,25 @@ upstream file. Bitter and Plex Sans are variable fonts, and each weight is set o
 the weight axis explicitly: asked only for a weight, Compose draws Bitter in its
 default master, its thinnest.
 
+**The icon is the site's, drawn by the same script.** Four bars at levels 1,
+4, 7 and 10, the ten-cell mark reduced to its ramp, as the site's favicon and
+installable icon are. [`design/build-icons.mjs`](../design/build-icons.mjs)
+writes it as an adaptive icon from the same tokens and the same geometry, so an
+installed site and the installed app look alike, and CI's check of the site's
+icons covers the app's. Vector layers rather than pictures, because every
+Android the app runs on takes an adaptive icon. With themed icons on, one colour
+cannot carry the ramp, so the monochrome layer carries it in opacity, each bar
+as opaque as its tint is dark. The window behind the app while it starts is the
+page's own ground in either theme, so the icon on it is not a flash of another
+colour. For the store listing, the site's `icon-512.png` is already the 512
+pixel square the store asks for.
+
 **Three SDK levels, three meanings.** `compileSdk` 37 because current AndroidX
 libraries compile against it. `targetSdk` 36 for runtime behaviour. `minSdk` 26,
 which covers the streaming calls in the library, which need 24.
 
 ## Not here yet
 
-The launcher icon, verified links (which need the signing
+Verified links (which need the signing
 fingerprint published in `/.well-known/assetlinks.json`), and the Wear OS, car
 and headset modules.

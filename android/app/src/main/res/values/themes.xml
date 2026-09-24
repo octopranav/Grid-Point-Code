@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The platform's plain theme, which Compose draws over entirely, with the
+         window painted the page's own ground: it is what shows, with the icon on
+         it, while the app starts. The colour follows the theme, from
+         design/build-icons.mjs. -->
+    <style name="Theme.Gpc" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_ground</item>
+    </style>
+</resources>
