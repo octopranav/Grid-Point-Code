@@ -27,6 +27,8 @@ sealed interface Emergency {
     data class Here(
         val formatted: String,
         val spoken: String,
+        /** Everything read out when the button is pressed, in the listener's language. */
+        val said: String,
         val decimal: String,
         val degrees: String,
         val metres: Int,
@@ -53,10 +55,12 @@ fun emergencyOf(view: PlaceView): Emergency {
     if (view.locating == Locating.SEEKING) return Emergency.Finding
     val fix = view.fix ?: return Emergency.Finding
     val point = view.selection.point
+    val decimal = String.format(Locale.ROOT, "%.6f, %.6f", point.latitude, point.longitude)
     return Emergency.Here(
         formatted = view.formatted,
         spoken = view.spoken,
-        decimal = String.format(Locale.ROOT, "%.6f, %.6f", point.latitude, point.longitude),
+        said = String.format(Locale.ROOT, view.listener.emergency, aloudCoordinates(decimal, view.listener), view.spoken),
+        decimal = decimal,
         degrees = view.forms.first { it.key == FormKey.DMS }.value,
         metres = fix.metres,
         insideOneCell = fix.insideOneCell,

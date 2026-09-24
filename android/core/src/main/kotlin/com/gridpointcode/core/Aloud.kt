@@ -21,57 +21,42 @@ import ca.pranavpatel.algo.gridpointcode.GPC
  * language and only the words around it change. That is the one place where
  * this format is easier to hand to a stranger than an address made of words.
  */
-fun aloud(
-    code: String,
-    callouts: Map<Char, String> = RADIO_ALPHABET,
-    checkWord: String = "check",
-): String {
+fun aloud(code: String, spelling: Spelling = INTERNATIONAL): String {
     val parts = GPC.Normalise(GPC.WithCheck(code))
     val payload = parts[0]
     val check = parts[1]
         ?: error("the check form has no check character")
 
-    val head = payload.take(5).map { say(it, callouts) }
-    val tail = payload.drop(5).map { say(it, callouts) }
+    val head = payload.take(5).map { say(it, spelling) }
+    val tail = payload.drop(5).map { say(it, spelling) }
     return head.joinToString(", ") + "; " +
-        tail.joinToString(", ") + "; " + checkWord + " " + say(check[0], callouts)
+        tail.joinToString(", ") + "; " + spelling.check + " " + say(check[0], spelling)
 }
 
 /**
  * An area spoken aloud: its symbols, one word each. No check word, because the
  * check character belongs to a whole code and a cell has none.
  */
-fun aloudArea(cell: String, callouts: Map<Char, String> = RADIO_ALPHABET): String =
-    cell.map { say(it, callouts) }.joinToString(", ")
-
-private fun say(symbol: Char, callouts: Map<Char, String>): String =
-    callouts[symbol] ?: NUMBERS[Character.digit(symbol, 10)]
+fun aloudArea(cell: String, spelling: Spelling = INTERNATIONAL): String =
+    cell.map { say(it, spelling) }.joinToString(", ")
 
 /**
- * The international radiotelephony words, which the specification prints as a
- * reference rather than a rule. An application serving one region should hand in
- * the words its own listeners use.
+ * Coordinates as written, `43.650006, -79.380004`, said in the listener's words:
+ * the whole degrees as a number, then every decimal digit on its own.
+ *
+ * Read from the written text rather than from the numbers, so what is heard is
+ * what is on the screen, sign and all. The digits are said one by one because a
+ * speech engine for a language that writes a decimal comma may take the full
+ * stop in "43.650006" for a thousands separator.
  */
-val RADIO_ALPHABET: Map<Char, String> = mapOf(
-    'C' to "Charlie",
-    'D' to "Delta",
-    'F' to "Foxtrot",
-    'G' to "Golf",
-    'H' to "Hotel",
-    'J' to "Juliett",
-    'K' to "Kilo",
-    'L' to "Lima",
-    'M' to "Mike",
-    'N' to "November",
-    'P' to "Papa",
-    'R' to "Romeo",
-    'T' to "Tango",
-    'W' to "Whiskey",
-    'X' to "X-ray",
-)
+fun aloudCoordinates(written: String, spelling: Spelling = INTERNATIONAL): String =
+    written.split(',').joinToString(", ") { part ->
+        val value = part.trim()
+        val sign = if (value.startsWith('-')) spelling.minus + " " else ""
+        val (whole, fraction) = value.removePrefix("-").split('.').let { it[0] to it.getOrElse(1) { "" } }
+        val digits = fraction.map { spelling.digits[Character.digit(it, 10)] }
+        sign + whole + if (digits.isEmpty()) "" else " " + spelling.point + " " + digits.joinToString(" ")
+    }
 
-/** Digits are said as the number, because no callout word begins with a seven. */
-private val NUMBERS = listOf(
-    "zero", "one", "two", "three", "four",
-    "five", "six", "seven", "eight", "nine",
-)
+private fun say(symbol: Char, spelling: Spelling): String =
+    spelling.letters[symbol] ?: spelling.digits[Character.digit(symbol, 10)]

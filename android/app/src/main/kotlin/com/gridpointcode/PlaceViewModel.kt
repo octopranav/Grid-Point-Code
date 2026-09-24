@@ -22,6 +22,7 @@ import com.gridpointcode.core.SavedPlace
 import com.gridpointcode.core.Point
 import com.gridpointcode.core.Selection
 import com.gridpointcode.core.Source
+import com.gridpointcode.core.Spelling
 import com.gridpointcode.core.anchored
 import com.gridpointcode.core.anchoredAt
 import com.gridpointcode.core.areaMetres
@@ -68,6 +69,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -89,6 +91,7 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     private val device = DeviceLocation(application)
     private val preferences = Preferences(application)
     private val chosen = MutableStateFlow(preferences.basemap())
+    private val listener = MutableStateFlow(preferences.listener())
     private val state = MutableStateFlow(PlaceState(selectionAt(SAMPLE, Source.SAMPLE)))
     private var listening: Job? = null
     private val names = NameIndex()
@@ -112,15 +115,20 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     /** Which landmark the reader chose, by name and region, so it survives a nudge that keeps it in reach. */
     private var anchorChoice: String? = null
 
-    val ui: StateFlow<PlaceView> = state
-        .map { it.view() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, state.value.view())
+    val ui: StateFlow<PlaceView> = combine(state, listener) { place, words -> place.view(listener = words) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, state.value.view(listener = listener.value))
 
     /** The basemap the reader chose, remembered across launches. */
     val basemap: StateFlow<Basemap> = chosen
 
     fun choose(next: Basemap) {
         chosen.value = next
+        preferences.remember(next)
+    }
+
+    /** Read codes out in another language's words from now on, remembered across launches. */
+    fun readTo(next: Spelling) {
+        listener.value = next
         preferences.remember(next)
     }
 

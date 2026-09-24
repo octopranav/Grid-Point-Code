@@ -57,9 +57,9 @@ class CoreTest {
 
     @Test
     fun readAloudTakesAnotherLanguagesWords() {
-        val words = RADIO_ALPHABET.mapValues { (symbol, _) -> "<$symbol>" }
-        assertTrue(aloud(toronto.code, words, "control").startsWith("<G>, three, <R>"))
-        assertTrue(aloud(toronto.code, words, "control").endsWith("; control <T>"))
+        val words = INTERNATIONAL.copy(letters = RADIO_ALPHABET.mapValues { (symbol, _) -> "<$symbol>" }, check = "control")
+        assertTrue(aloud(toronto.code, words).startsWith("<G>, three, <R>"))
+        assertTrue(aloud(toronto.code, words).endsWith("; control <T>"))
     }
 
     @Test
