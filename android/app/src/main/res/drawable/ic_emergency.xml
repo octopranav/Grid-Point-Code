@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A card with a cross on it, drawn in the design's crimson on its own ground. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#E9EEEF"
+        android:pathData="M0,0h24v24h-24z" />
+    <path
+        android:pathData="M5,5.5h14a1,1 0,0 1,1 1v11a1,1 0,0 1,-1 1h-14a1,1 0,0 1,-1 -1v-11a1,1 0,0 1,1 -1z"
+        android:strokeWidth="1.8"
+        android:strokeColor="#8C2B2B" />
+    <path
+        android:pathData="M12,9v6M9,12h6"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.8"
+        android:strokeColor="#8C2B2B" />
+</vector>

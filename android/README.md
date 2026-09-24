@@ -13,7 +13,7 @@ code, check and correction is arithmetic on the device.
 
 | Module | What it holds |
 | --- | --- |
-| [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, reading the website's name index, which landmarks can anchor a short form, saved places, and reading locations written in other systems |
+| [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, reading the website's name index, which landmarks can anchor a short form, saved places, reading locations written in other systems, and the emergency card |
 | [`designsystem`](designsystem) | The theme, the type scale, the shapes and the ten-cell mark, built from the files [`design/build-tokens.mjs`](../design/build-tokens.mjs) generates |
 | [`map`](map) | MapLibre Native on the website's tile provider, its five styles, the cell drawn in brass with its eight neighbours faint around it, and a tap to place a point |
 | [`app`](app) | The place screen, the view model that holds the place, read aloud, fetching the name index and the landmark archive, and the ways a place arrives from another app |
@@ -83,6 +83,12 @@ code, check and correction is arithmetic on the device.
   system written with its town is read against the town. What only its owner's
   service can read, and a short link that says where it goes only when opened,
   are named and refused rather than guessed.
+- Shows an emergency card, from a button on the map or by holding the app's
+  icon: where the device is, in large type, with the plain latitude and
+  longitude first, then the code, how to say it, the landmark it is near and
+  how far to trust the fix, and a button to read it all aloud. It asks the
+  device afresh when it opens, keeps the screen awake, needs no connection,
+  and never shows a place the reader picked or typed as where they are.
 - Saves places: the bookmark on a place's card keeps it with a name and the
   directions to its door. Saved places are listed from a button on the map,
   drawn on it as small rings, and found first as a name is typed, with no
@@ -206,6 +212,12 @@ system writes ten symbols with no separators, all from within this alphabet, so
 the same text is a code here and a place there. It opens as a code here, and
 the list under the field offers the other reading, one tap away. Written with
 that system's old separators, it can only be the other, and opens as that.
+
+**The emergency card puts the coordinates first.** It is for reading to
+somebody who has never heard of this format, and any operator can take a
+latitude and longitude. The code comes second, with how to say it. The
+coordinates are written with a full stop in every language, because a decimal
+comma between two numbers already separated by one is a trap.
 
 **Saved places stay on the device.** One small file in the app's own files, which
 the device's backup includes, so a new phone has them. No account to sync them

@@ -9,6 +9,9 @@ import androidx.activity.viewModels
 import ca.pranavpatel.algo.gridpointcode.design.GpcTheme
 import com.gridpointcode.core.Source
 
+/** The launcher shortcut's action: straight to the emergency card. */
+const val ACTION_EMERGENCY = "com.gridpointcode.action.EMERGENCY"
+
 class MainActivity : ComponentActivity() {
 
     private val model: PlaceViewModel by viewModels()
@@ -44,6 +47,7 @@ class MainActivity : ComponentActivity() {
      */
     private fun arrive(intent: Intent?) {
         when (intent?.action) {
+            ACTION_EMERGENCY -> model.openEmergency()
             Intent.ACTION_VIEW -> intent.dataString?.let { model.open(it, Source.LINK) }
             Intent.ACTION_PROCESS_TEXT ->
                 intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.let { model.open(it.toString(), Source.CODE) }

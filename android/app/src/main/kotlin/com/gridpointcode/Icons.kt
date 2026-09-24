@@ -43,6 +43,32 @@ val Crosshair: ImageVector = ImageVector.Builder(
 }.build()
 
 /** Two stacked sheets, for choosing what the map is drawn from. */
+/** A card with a cross on it, for the emergency card. */
+val EmergencyCard: ImageVector = ImageVector.Builder(
+    name = "EmergencyCard",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+).apply {
+    path(
+        stroke = SolidColor(Color.Black),
+        strokeLineWidth = 1.8f,
+        strokeLineCap = StrokeCap.Round,
+        strokeLineJoin = StrokeJoin.Round,
+    ) {
+        moveTo(5f, 5.5f)
+        lineTo(19f, 5.5f)
+        lineTo(19f, 18.5f)
+        lineTo(5f, 18.5f)
+        close()
+        moveTo(12f, 9f)
+        lineTo(12f, 15f)
+        moveTo(9f, 12f)
+        lineTo(15f, 12f)
+    }
+}.build()
+
 /** A bookmark, for keeping a place. */
 val Bookmark: ImageVector = ImageVector.Builder(
     name = "Bookmark",
