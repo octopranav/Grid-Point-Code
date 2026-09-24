@@ -324,6 +324,7 @@ private fun Found(finding: Finding, onPick: (Named) -> Unit) {
     val note = when (finding.status) {
         Finding.Status.MISSING -> stringResource(R.string.names_missing, finding.query)
         Finding.Status.OFFLINE -> stringResource(R.string.names_offline)
+        Finding.Status.LOCAL -> stringResource(R.string.names_local)
         else -> null
     }
     if (note != null) {
@@ -609,27 +610,28 @@ private fun AnchorShort(
  */
 @Composable
 private fun Offline(keeping: Keeping, onKeep: () -> Unit, onForget: () -> Unit) {
-    if (keeping.area == null) return
+    if (!keeping.known) return
     val context = LocalContext.current
-    val here = keeping.here
-    if (here == null) {
+    val here = keeping.area
+    if (!keeping.covered || here == null) {
         OutlinedButton(onClick = onKeep, enabled = !keeping.busy, shape = ButtonShape) {
             Text(stringResource(if (keeping.busy) R.string.keep_busy else R.string.keep_area))
         }
         Quiet(stringResource(R.string.keep_explain, keeping.northSouthKm, keeping.eastWestKm))
-    } else if (here.shards == 0) {
+    } else if (here.held == 0) {
         Quiet(stringResource(R.string.keep_empty))
     } else {
         Quiet(
             pluralStringResource(
                 R.plurals.keep_kept,
-                here.shards,
-                here.shards,
+                here.held,
+                here.held,
                 Formatter.formatShortFileSize(context, here.bytes),
                 DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(here.keptOn),
             ),
         )
     }
+    Quiet(stringResource(R.string.keep_map))
     when (keeping.note) {
         Keeping.Note.FAILED -> Quiet(stringResource(R.string.keep_failed))
         Keeping.Note.FORGOTTEN -> Quiet(stringResource(R.string.keep_forgotten))

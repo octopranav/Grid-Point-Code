@@ -23,6 +23,7 @@ import com.gridpointcode.core.Source
 import com.gridpointcode.core.anchored
 import com.gridpointcode.core.anchoredAt
 import com.gridpointcode.core.areaMetres
+import com.gridpointcode.core.findLocal
 import com.gridpointcode.core.keptReference
 import com.gridpointcode.core.described
 import com.gridpointcode.core.found
@@ -77,7 +78,10 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     private val names = NameIndex()
     private val finding = MutableStateFlow(Finding())
     private var looking: Job? = null
-    private val archive = LandmarkArchive(KeptLandmarks(File(application.noBackupFilesDir, "kept-landmarks")))
+    private val archive = LandmarkArchive(
+        kept = KeptLandmarks(File(application.noBackupFilesDir, "kept-landmarks")),
+        seen = SeenLandmarks(File(application.cacheDir, "seen-landmarks")),
+    )
     private val anchoring = MutableStateFlow(Anchoring())
     private val keeping = MutableStateFlow(Keeping())
 
@@ -155,12 +159,13 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun keepingAt(point: Point): Keeping {
-        val here = archive.area(point) ?: return Keeping()
+        val here = archive.here(point) ?: return Keeping()
         val all = archive.keptAreas()
-        val (northSouth, eastWest) = areaMetres(point.latitude, here.first.length + 1)
+        val (northSouth, eastWest) = areaMetres(point.latitude, here.level)
         return Keeping(
-            area = here.first,
-            here = here.second,
+            known = true,
+            covered = here.covered,
+            area = here.area,
             northSouthKm = (northSouth / 1000).roundToInt(),
             eastWestKm = (eastWest / 1000).roundToInt(),
             areas = all.size,
@@ -235,7 +240,7 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
      * the rest of the world, so the reader is told a connection is needed.
      */
     private suspend fun resolveKept(reading: Reading.Anchored): Resolved =
-        when (val match = keptReference(reading.reference, archive.keptLandmarks())) {
+        when (val match = keptReference(reading.reference, archive.localLandmarks())) {
             is KeptMatch.One -> Resolved.At(match.landmark)
             KeptMatch.Several -> Resolved.Refused(Problem.Unanchored.Why.SEVERAL)
             KeptMatch.None -> Resolved.Refused(Problem.Unanchored.Why.UNREACHABLE)
@@ -262,7 +267,7 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
         looking = viewModelScope.launch {
             delay(TYPING_MS)
             finding.update { it.copy(query = text, status = Finding.Status.LOOKING) }
-            finding.value = answer(text, names.find(text))
+            finding.value = lookUp(text)
         }
     }
 
@@ -304,10 +309,10 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
         if (!isName(text)) return open(text)
         looking?.cancel()
         looking = viewModelScope.launch {
-            val places = names.find(text)
-            val first = places?.firstOrNull()
+            val answer = lookUp(text)
+            val first = answer.places.firstOrNull()
             if (first == null) {
-                finding.value = answer(text, places)
+                finding.value = answer
             } else {
                 finding.value = Finding()
                 query = ""
@@ -350,10 +355,19 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
         finding.value = Finding()
     }
 
-    private fun answer(query: String, places: List<Named>?): Finding = when {
-        places == null -> Finding(query, status = Finding.Status.OFFLINE)
-        places.isEmpty() -> Finding(query, status = Finding.Status.MISSING)
-        else -> Finding(query, places, Finding.Status.FOUND)
+    /**
+     * The name index's answer, or with no connection to it, the places on the
+     * device: the landmarks of the areas kept and of places already looked at.
+     */
+    private suspend fun lookUp(query: String): Finding {
+        val places = names.find(query)
+        if (places != null) {
+            return if (places.isEmpty()) Finding(query, status = Finding.Status.MISSING)
+            else Finding(query, places, Finding.Status.FOUND)
+        }
+        val local = findLocal(query, archive.localLandmarks())
+        return if (local.isEmpty()) Finding(query, status = Finding.Status.OFFLINE)
+        else Finding(query, local, Finding.Status.LOCAL)
     }
 
     /** Every change that can end listening also stops the device, so nothing runs for nobody. */
@@ -410,10 +424,12 @@ data class Anchoring(
 
 /** The area around the current place, and what is kept of it and of everywhere. */
 data class Keeping(
-    /** The area's cell, or null while the archive is not known and there is nothing to offer. */
-    val area: String? = null,
-    /** The area as kept, when it is. */
-    val here: KeptLandmarks.Area? = null,
+    /** Whether the archive is known at all. Until it is, there is nothing to offer. */
+    val known: Boolean = false,
+    /** Every shard the place's recovery box needs is kept. */
+    val covered: Boolean = false,
+    /** The kept area the place's own shard belongs to, when there is one. */
+    val area: KeptLandmarks.Area? = null,
     val northSouthKm: Int = 0,
     val eastWestKm: Int = 0,
     val busy: Boolean = false,
@@ -441,5 +457,8 @@ data class Finding(
 
         /** The index could not be reached, which is not the same as nothing found. */
         OFFLINE,
+
+        /** The index could not be reached, and these are the places on the device instead. */
+        LOCAL,
     }
 }

@@ -16,6 +16,8 @@ import kotlin.test.assertTrue
  */
 class NamesTest {
 
+    private val torontoCode = ca.pranavpatel.algo.gridpointcode.GPC.Encode(43.65, -79.38, false)
+
     private val regions = listOf(
         "Ontario, Canada",
         "New South Wales, Australia",
@@ -174,6 +176,25 @@ class NamesTest {
         // Two blocks arrived, then the connection went: what was found stands.
         val partial = Index(stride = 2, failFrom = 3).find("toronto")!!
         assertEquals(listOf("Ontario, Canada", "New South Wales, Australia"), partial.map { it.region })
+    }
+
+    @Test
+    fun withNoConnectionTheLandmarksOnTheDeviceAnswerByName() {
+        fun at(name: String, kind: LandmarkKind) = Landmark(name, 43.65, -79.38, "Ontario, Canada", kind)
+        val onDevice = listOf(
+            at("Toronto Zoo", LandmarkKind.STRUCTURE),
+            at("Old Toronto", LandmarkKind.PLACE),
+            at("Toronto Old City Hall", LandmarkKind.STRUCTURE),
+            at("Toronto", LandmarkKind.PLACE),
+            at("Tor", LandmarkKind.PLACE),
+            // The same shard kept and seen: one place, listed once.
+            at("Toronto", LandmarkKind.PLACE),
+        )
+        val found = findLocal("toronto", onDevice)
+        assertEquals(listOf("Toronto", "Toronto Old City Hall", "Toronto Zoo"), found.map { it.name })
+        assertEquals("Ontario, Canada", found.first().region)
+        assertEquals(torontoCode, found.first().code)
+        assertEquals(emptyList(), findLocal("t", onDevice))
     }
 
     @Test

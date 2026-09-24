@@ -7,6 +7,7 @@
     <string name="search_go">Go</string>
     <string name="names_looking">Looking up place names</string>
     <string name="names_missing">No place in the index is called \"%1$s\".</string>
+    <string name="names_local">No connection, so these are the places kept or seen on this device. A name two places share within one region is not among them.</string>
     <string name="names_offline">Place names need a connection. A code, coordinates or a link still work.</string>
 
     <string name="source_sample">An example: the specification\'s own</string>
@@ -37,6 +38,7 @@
     <string name="keep_area">Keep this area offline</string>
     <string name="keep_busy">Keeping\u2026</string>
     <string name="keep_explain">The area around here, about %1$d by %2$d km, is a few hundred kilobytes at most. Kept, its landmarks work without a connection.</string>
+    <string name="keep_map">The map itself is not downloaded: it draws offline wherever it has already been looked at.</string>
     <string name="keep_empty">This area is kept offline, and holds no landmarks.</string>
     <string name="keep_failed">That area could not be kept. With a connection, try again.</string>
     <string name="keep_forgotten">Everything kept has been given back.</string>

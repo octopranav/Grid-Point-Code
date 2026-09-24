@@ -164,14 +164,39 @@ class LandmarksTest {
     }
 
     @Test
-    fun anAreaIsTheCellAboveTheShardsAndHoldsTwentyFiveOfThem() {
-        assertEquals("G3R", areaFor(example, 4))
-        val shards = shardsIn("G3R")
-        assertEquals(25, shards.size)
-        assertEquals("0123456789CDFGHJKLMNPRTWX", shards.joinToString("") { it.last().toString() })
-        assertTrue("G3RJ" in shards, "the example's own shard is in its area")
-        // Every shard the example's box reaches into is in the area kept for it.
-        assertTrue(shards.containsAll(shardsFor(example, 4)))
+    fun theAreaKeptIsCentredOnThePlace() {
+        val area = areaAround(example, 4)
+        assertEquals(25, area.size)
+        assertTrue(area.containsAll(shardsFor(example, 4)), "every shard the example's box needs")
+        // Two shards out every way. The grid cell one level up, which the website
+        // keeps, stops 15 km east of downtown and would leave all of these out.
+        val span = GPC.CellDimensions(4)
+        for ((dLat, dLng) in listOf(2 to 0, -2 to 0, 0 to 2, 0 to -2)) {
+            val there = GPC.Cell(GPC.Encode(example.latitude + dLat * span.LatitudeSpan, example.longitude + dLng * span.LongitudeSpan, false), 4)
+            assertTrue(there in area, "$there, $dLat shards north and $dLng east")
+        }
+        assertTrue(GPC.Cell(GPC.Encode(43.7, -79.1, false), 4) in area, "the east of Toronto")
+    }
+
+    @Test
+    fun everyAreaHoldsTwentyFiveDistinctShardsAroundItsPlace() {
+        val random = Random(78)
+        repeat(1000) {
+            val point = Point(random.nextDouble(-80.0, 80.0), random.nextDouble(-180.0, 180.0))
+            val own = runCatching { GPC.Cell(code(point), 4) }.getOrNull() ?: return@repeat
+            val area = areaAround(point, 4)
+            assertEquals(25, area.toSet().size, "$point")
+            assertTrue(own in area)
+            assertTrue(area.containsAll(shardsFor(point, 4)), "$point")
+        }
+    }
+
+    @Test
+    fun anAreaWrapsTheDateLineAndStopsAtThePole() {
+        val east = areaAround(Point(10.0, 179.9), 4)
+        assertEquals(25, east.size)
+        assertTrue(GPC.Cell(GPC.Encode(10.0, -179.9, false), 4) in east, "across the date line")
+        assertTrue(areaAround(Point(89.5, 0.0), 4).size < 25, "no rows past the pole")
     }
 
     @Test

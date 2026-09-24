@@ -141,6 +141,7 @@ fun PlaceMap(
 
     val view = remember {
         MapLibre.getInstance(context)
+        MapCache.prepare(context)
         // Until a style arrives the map is painted in the page's own ground,
         // so a map still loading reads as quiet rather than broken.
         val options = MapLibreMapOptions.createFromAttributes(context).foregroundLoadColor(ground)
