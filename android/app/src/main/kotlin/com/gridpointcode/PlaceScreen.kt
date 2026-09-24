@@ -20,6 +20,19 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.runtime.remember
 import com.gridpointcode.map.Basemap
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.luminance
+import androidx.core.view.WindowCompat
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import com.gridpointcode.core.Emergency
+import com.gridpointcode.core.emergencyOf
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -151,6 +164,8 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
     val basemap by model.basemap.collectAsState()
     val finding by model.found.collectAsState()
     val saved by model.saved.collectAsState()
+    val carding by model.emergency.collectAsState()
+    val anchoring by model.anchors.collectAsState()
     var browsing by remember { mutableStateOf(false) }
     val savedPoints = remember(saved) {
         saved.mapNotNull { place -> runCatching { selectionOf(place.code, Source.SAVED).point }.getOrNull() }
@@ -202,11 +217,28 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(Space.step2),
             ) {
+                EmergencyButton(onClick = model::openEmergency)
                 SavedButton(onClick = { browsing = true })
                 Basemaps(chosen = basemap, onChoose = model::choose)
                 Locate(locating = ui.locating, onClick = locate)
             }
         }
+    }
+
+    // Opening the card asks the device where it is, afresh: the card is for now.
+    LaunchedEffect(carding) {
+        if (carding) locate()
+    }
+    if (carding) {
+        EmergencyCardScreen(
+            emergency = emergencyOf(ui),
+            near = anchoring.chosen?.takeIf { anchoring.code == ui.selection.code }?.landmark
+                ?.let { if (it.region.isEmpty()) it.name else it.name + ", " + it.region },
+            onAllow = locate,
+            onSettings = { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) },
+            speak = speak,
+            onClose = model::closeEmergency,
+        )
     }
 
     if (browsing) {
@@ -527,6 +559,134 @@ private fun originNote(origin: Origin): String? {
         link -> null
         coarse -> stringResource(R.string.origin_area, origin.text, distance(origin.metres))
         else -> stringResource(R.string.origin_read, origin.text)
+    }
+}
+
+/** The button that opens the emergency card, in the design's crimson. */
+@Composable
+private fun EmergencyButton(onClick: () -> Unit) {
+    val label = stringResource(R.string.emergency_open)
+    SmallFloatingActionButton(
+        onClick = onClick,
+        shape = ButtonShape,
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.error,
+        modifier = Modifier.semantics { contentDescription = label },
+    ) {
+        Icon(EmergencyCard, contentDescription = null)
+    }
+}
+
+/**
+ * Where the reader is, in large type, for reading to somebody who has never
+ * heard of this format: the plain coordinates first, since any operator can use
+ * them, then the code and how to say it, and how far to trust the fix. It keeps
+ * the screen awake while it is up, and needs no connection.
+ */
+@Composable
+private fun EmergencyCardScreen(
+    emergency: Emergency,
+    near: String?,
+    onAllow: () -> Unit,
+    onSettings: () -> Unit,
+    speak: (String) -> Unit,
+    onClose: () -> Unit,
+) {
+    val view = LocalView.current
+    DisposableEffect(view) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
+    // Edge to edge, so nothing of the screen behind shows around it; the card
+    // keeps itself clear of the system bars.
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    ) {
+        // The card's own window, drawn under the system bars, sets their icons
+        // dark on a light card and light on a dark one, so the clock stays legible.
+        val card = LocalView.current
+        val light = MaterialTheme.colorScheme.background.luminance() > 0.5f
+        SideEffect {
+            (card.parent as? DialogWindowProvider)?.window?.let { window ->
+                WindowCompat.getInsetsController(window, card).apply {
+                    isAppearanceLightStatusBars = light
+                    isAppearanceLightNavigationBars = light
+                }
+            }
+        }
+        Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = Space.step4, vertical = Space.step3),
+                verticalArrangement = Arrangement.spacedBy(Space.step3),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.emergency_title),
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onClose) { Text(stringResource(R.string.emergency_close)) }
+                }
+                Text(stringResource(R.string.emergency_note), style = MaterialTheme.typography.bodyLarge)
+                when (emergency) {
+                    Emergency.Finding -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Space.step2),
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        Text(stringResource(R.string.locating_seeking), style = MaterialTheme.typography.titleMedium)
+                    }
+                    is Emergency.Here -> EmergencyHere(emergency, near, speak)
+                    Emergency.Refused -> {
+                        Text(stringResource(R.string.emergency_refused), style = MaterialTheme.typography.titleMedium)
+                        Button(onClick = onAllow, shape = ButtonShape) { Text(stringResource(R.string.emergency_allow)) }
+                    }
+                    Emergency.Off -> {
+                        Text(stringResource(R.string.emergency_off), style = MaterialTheme.typography.titleMedium)
+                        Button(onClick = onSettings, shape = ButtonShape) { Text(stringResource(R.string.settings)) }
+                    }
+                    Emergency.NoFix -> {
+                        Text(stringResource(R.string.problem_no_fix), style = MaterialTheme.typography.titleMedium)
+                        Button(onClick = onAllow, shape = ButtonShape) { Text(stringResource(R.string.emergency_again)) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmergencyHere(here: Emergency.Here, near: String?, speak: (String) -> Unit) {
+    val large = CodeStyle.copy(fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.SemiBold)
+    val said = stringResource(R.string.emergency_said, here.decimal, here.spoken)
+    Column(verticalArrangement = Arrangement.spacedBy(Space.step1)) {
+        Text(stringResource(R.string.emergency_coordinates), style = MaterialTheme.typography.labelLarge)
+        Text(here.decimal, style = large)
+        Text(here.degrees, style = CodeStyle.copy(fontSize = 20.sp, lineHeight = 26.sp))
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(Space.step1)) {
+        Text(stringResource(R.string.emergency_code), style = MaterialTheme.typography.labelLarge)
+        Text(here.formatted, style = large)
+        Text(here.spoken, style = MaterialTheme.typography.titleMedium)
+        if (near != null) {
+            Text(stringResource(R.string.emergency_near, near), style = MaterialTheme.typography.titleMedium)
+        }
+    }
+    Text(
+        text = stringResource(
+            if (here.insideOneCell) R.string.emergency_inside else R.string.emergency_accuracy,
+            here.metres,
+        ) + if (here.refining) " " + stringResource(R.string.locating_refining) else "",
+        style = MaterialTheme.typography.titleMedium,
+    )
+    Button(onClick = { speak(said) }, shape = ButtonShape, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+        Text(stringResource(R.string.read_aloud), style = MaterialTheme.typography.titleMedium)
     }
 }
 

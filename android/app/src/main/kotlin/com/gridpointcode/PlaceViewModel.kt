@@ -141,6 +141,19 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     /** The reader's saved places, most recent first. */
     val saved: StateFlow<List<SavedPlace>> = savedList
 
+    private val carding = MutableStateFlow(false)
+
+    /** Whether the emergency card is up. */
+    val emergency: StateFlow<Boolean> = carding
+
+    fun openEmergency() {
+        carding.value = true
+    }
+
+    fun closeEmergency() {
+        carding.value = false
+    }
+
     /**
      * Save the place on screen, or change it if it is saved already. The
      * directions typed while saving become the place's directions on screen

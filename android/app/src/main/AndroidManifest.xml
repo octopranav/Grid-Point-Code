@@ -35,6 +35,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Holding the app's icon offers the emergency card, a step
+                 shorter than opening the app and finding the button. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+
             <!-- A place on the site opens here. Verification waits for the
                  signing fingerprint in /.well-known/assetlinks.json, which the
                  site's deploy can now carry. -->
