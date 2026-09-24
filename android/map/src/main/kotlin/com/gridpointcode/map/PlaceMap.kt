@@ -91,6 +91,7 @@ private const val CELL = "gpc-cell"
 private const val AROUND = "gpc-around"
 private const val FIX = "gpc-fix"
 private const val DOT = "gpc-dot"
+private const val SAVED = "gpc-saved"
 
 /** The mean radius of the earth, which is plenty for drawing a disc a few metres across. */
 private const val EARTH_METRES = 6_371_008.8
@@ -118,6 +119,7 @@ fun PlaceMap(
     padding: PaddingValues = PaddingValues(0.dp),
     basemap: Basemap = Basemap.AUTO,
     dark: Boolean = isSystemInDarkTheme(),
+    saved: List<Point> = emptyList(),
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -209,6 +211,12 @@ fun PlaceMap(
         style?.let { draw(it, selection) }
     }
 
+    LaunchedEffect(style, saved) {
+        style?.getSourceAs<GeoJsonSource>(SAVED)?.setGeoJson(
+            FeatureCollection.fromFeatures(saved.map { Feature.fromGeometry(GeoPoint.fromLngLat(it.longitude, it.latitude)) }),
+        )
+    }
+
     LaunchedEffect(map, selection) {
         val ready = map ?: return@LaunchedEffect
         follow(ready, selection, inset.toDoubleArray(), first = !placed)
@@ -245,6 +253,17 @@ fun PlaceMap(
  * is most of the time, the reader should see both, and see which is bigger.
  */
 private fun addDrawing(style: Style, ink: Ink) {
+    // The reader's saved places lie under everything: context for the place on
+    // screen, never mistaken for it.
+    style.addSource(GeoJsonSource(SAVED))
+    style.addLayer(
+        CircleLayer("$SAVED-circle", SAVED).withProperties(
+            circleColor(ink.halo),
+            circleRadius(4.5f),
+            circleStrokeColor(ink.prussian),
+            circleStrokeWidth(2f),
+        ),
+    )
     style.addSource(GeoJsonSource(FIX))
     style.addSource(GeoJsonSource(AROUND))
     style.addSource(GeoJsonSource(CELL))

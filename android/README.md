@@ -13,7 +13,7 @@ code, check and correction is arithmetic on the device.
 
 | Module | What it holds |
 | --- | --- |
-| [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, reading the website's name index, and which landmarks can anchor a short form |
+| [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, reading the website's name index, which landmarks can anchor a short form, and saved places |
 | [`designsystem`](designsystem) | The theme, the type scale, the shapes and the ten-cell mark, built from the files [`design/build-tokens.mjs`](../design/build-tokens.mjs) generates |
 | [`map`](map) | MapLibre Native on the website's tile provider, its five styles, the cell drawn in brass with its eight neighbours faint around it, and a tap to place a point |
 | [`app`](app) | The place screen, the view model that holds the place, read aloud, fetching the name index and the landmark archive, and the ways a place arrives from another app |
@@ -77,6 +77,11 @@ code, check and correction is arithmetic on the device.
 - Works offline wherever it has already been used: the map draws from the tiles
   it has already drawn, up to 200 MB, and the landmarks of places already looked
   at are cached apart from the kept areas.
+- Saves places: the bookmark on a place's card keeps it with a name and the
+  directions to its door. Saved places are listed from a button on the map,
+  drawn on it as small rings, and found first as a name is typed, with no
+  connection. Opening one brings its directions back, and Go on a saved name
+  goes straight there.
 
 ## Building
 
@@ -177,6 +182,11 @@ keeps the cell one level above the shards, which is the same size but fixed to
 the grid: downtown Toronto sits in the corner of its cell, which reaches 190 km
 west and stops 15 km east. The app keeps the five by five block of shards around
 the place's own instead, so it reaches 100 km every way.
+
+**Saved places stay on the device.** One small file in the app's own files, which
+the device's backup includes, so a new phone has them. No account to sync them
+to and no export, by the decision the website made when it took its export down.
+One place per code: saving a code again changes it rather than listing it twice.
 
 **The map is not downloaded, only kept as it is drawn.** An area's map at full
 detail is about 17,000 tiles, 50 to 150 MB, which a phone could hold. But the
