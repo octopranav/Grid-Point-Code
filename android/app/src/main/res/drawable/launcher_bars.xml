@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from design/tokens.json by design/build-icons.mjs. Do not edit by hand. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#1D4E68"
+        android:pathData="M34.92,35.28h6.03a1.08,1.08 0 0,1 1.08,1.08v35.28a1.08,1.08 0 0,1 -1.08,1.08h-6.03a1.08,1.08 0 0,1 -1.08,-1.08v-35.28a1.08,1.08 0 0,1 1.08,-1.08z" />
+    <path
+        android:fillColor="#486D80"
+        android:pathData="M45.63,35.28h6.03a1.08,1.08 0 0,1 1.08,1.08v35.28a1.08,1.08 0 0,1 -1.08,1.08h-6.03a1.08,1.08 0 0,1 -1.08,-1.08v-35.28a1.08,1.08 0 0,1 1.08,-1.08z" />
+    <path
+        android:fillColor="#7F9BA9"
+        android:pathData="M56.34,35.28h6.03a1.08,1.08 0 0,1 1.08,1.08v35.28a1.08,1.08 0 0,1 -1.08,1.08h-6.03a1.08,1.08 0 0,1 -1.08,-1.08v-35.28a1.08,1.08 0 0,1 1.08,-1.08z" />
+    <path
+        android:fillColor="#B0C1C9"
+        android:pathData="M67.05,35.28h6.03a1.08,1.08 0 0,1 1.08,1.08v35.28a1.08,1.08 0 0,1 -1.08,1.08h-6.03a1.08,1.08 0 0,1 -1.08,-1.08v-35.28a1.08,1.08 0 0,1 1.08,-1.08z" />
+</vector>
