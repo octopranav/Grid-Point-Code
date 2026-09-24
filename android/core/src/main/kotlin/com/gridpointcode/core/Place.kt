@@ -253,6 +253,8 @@ data class PlaceView(
     val area: AreaView?,
     /** The areas around the place, a region down to a building, for choosing one to share. */
     val areas: List<AreaView>,
+    /** Whose words the spoken lines are in. */
+    val listener: Spelling,
 )
 
 /** An area as the screen shows it: the cell, how to say it, its size where it lies, and its link. */
@@ -265,13 +267,18 @@ data class AreaView(
     val box: Box,
 )
 
-private fun AreaCell.view(): AreaView =
-    AreaView(cell, level, cellSize(centre.latitude, level), aloudArea(cell), areaAddress(cell), box)
+private fun AreaCell.view(listener: Spelling): AreaView =
+    AreaView(cell, level, cellSize(centre.latitude, level), aloudArea(cell, listener), areaAddress(cell), box)
 
-fun PlaceState.view(locale: Locale = Locale.getDefault()): PlaceView = PlaceView(
+/**
+ * The screen for this state. [locale] is the reader's, for the written forms;
+ * [listener] is the language of whoever the code is read out to, which need not
+ * be the same.
+ */
+fun PlaceState.view(locale: Locale = Locale.getDefault(), listener: Spelling = INTERNATIONAL): PlaceView = PlaceView(
     selection = selection,
     formatted = formatted(selection.code),
-    spoken = aloud(selection.code),
+    spoken = aloud(selection.code, listener),
     forms = forms(selection, locale),
     pad = around(selection.code),
     cell = cellSize(selection.point.latitude),
@@ -281,6 +288,7 @@ fun PlaceState.view(locale: Locale = Locale.getDefault()): PlaceView = PlaceView
     problem = problem,
     locating = locating,
     origin = origin,
-    area = area?.view(),
-    areas = AREA_LEVELS.reversed().mapNotNull { level -> areaHolding(selection.code, level)?.view() },
+    area = area?.view(listener),
+    areas = AREA_LEVELS.reversed().mapNotNull { level -> areaHolding(selection.code, level)?.view(listener) },
+    listener = listener,
 )

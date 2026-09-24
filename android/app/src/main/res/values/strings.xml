@@ -44,7 +44,6 @@
     <string name="emergency_near">near %1$s</string>
     <string name="emergency_inside">Accurate to within about %1$d m, inside a single cell.</string>
     <string name="emergency_accuracy">Accurate to within about %1$d m.</string>
-    <string name="emergency_said">Latitude and longitude: %1$s. Grid Point Code: %2$s.</string>
     <string name="emergency_refused">The app is not allowed to use your location, so it cannot say where you are.</string>
     <string name="emergency_allow">Allow location</string>
     <string name="emergency_off">Location is switched off on this device. Switch it on and the card will show where you are.</string>
@@ -134,6 +133,11 @@
     <string name="address_count">%1$d / %2$d</string>
 
     <string name="aloud_title">Read aloud</string>
+    <string name="aloud_listener">The listener\'s language</string>
+    <string name="aloud_explain">The code is the same in every language; only the words that spell it change. Choose the words the person listening already knows.</string>
+    <string name="aloud_no_voice">This device has no %1$s voice. Read the words out yourself, or add the voice to the device\'s speech engine.</string>
+    <string name="aloud_no_voice_short">No %1$s voice on this device</string>
+    <string name="aloud_add_voice">Add a voice</string>
 
     <string name="problem_unread">That is not a code, a pair of coordinates or a link this app can read.</string>
     <string name="problem_unread_reason">That is not a code this app can read (%1$s).</string>

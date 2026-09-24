@@ -32,6 +32,10 @@ import androidx.core.view.WindowCompat
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import com.gridpointcode.core.AreaView
+import com.gridpointcode.core.SPELLINGS
+import com.gridpointcode.core.Spelling
+import android.speech.tts.TextToSpeech
+import android.widget.Toast
 import com.gridpointcode.core.Emergency
 import com.gridpointcode.core.emergencyOf
 import androidx.compose.foundation.lazy.LazyColumn
@@ -160,7 +164,7 @@ private const val FOUND_DP = 270
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
+fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
     val ui by model.ui.collectAsState()
     val basemap by model.basemap.collectAsState()
     val finding by model.found.collectAsState()
@@ -176,6 +180,15 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
     val bottom = if (wide) WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else PEEK_DP.dp
 
     val context = LocalContext.current
+    // Every line is read in the listener's words and voice; with no voice for
+    // their language the words are left on the screen to be read out instead.
+    val ready by speaker.ready.collectAsState()
+    val listener = ui.listener
+    val voiced = remember(ready, listener) { speaker.voiced(listener.locale) }
+    val noVoice = stringResource(R.string.aloud_no_voice_short, listener.name)
+    val speak: (String) -> Unit = { line ->
+        if (!speaker.say(line, listener.locale)) Toast.makeText(context, noVoice, Toast.LENGTH_SHORT).show()
+    }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
         if (granted.values.any { it }) model.locate() else model.refused()
     }
@@ -261,6 +274,7 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
                 ui = ui,
                 model = model,
                 speak = speak,
+                voiced = voiced,
                 modifier = Modifier
                     .width(PANE_DP.dp)
                     .fillMaxHeight()
@@ -271,7 +285,7 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
     } else {
         BottomSheetScaffold(
             sheetContent = {
-                Panel(ui = ui, model = model, speak = speak, modifier = Modifier.navigationBarsPadding())
+                Panel(ui = ui, model = model, speak = speak, voiced = voiced, modifier = Modifier.navigationBarsPadding())
             },
             sheetPeekHeight = PEEK_DP.dp,
             sheetContainerColor = MaterialTheme.colorScheme.background,
@@ -284,7 +298,13 @@ fun PlaceScreen(model: PlaceViewModel, speak: (String) -> Unit) {
 
 /** The same groups the website's playground has, in the same order. */
 @Composable
-private fun Panel(ui: PlaceView, model: PlaceViewModel, speak: (String) -> Unit, modifier: Modifier = Modifier) {
+private fun Panel(
+    ui: PlaceView,
+    model: PlaceViewModel,
+    speak: (String) -> Unit,
+    voiced: Boolean?,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     val anchoring by model.anchors.collectAsState()
     val keeping by model.offline.collectAsState()
@@ -350,7 +370,7 @@ private fun Panel(ui: PlaceView, model: PlaceViewModel, speak: (String) -> Unit,
             copy = { copy(context, it) },
             share = { share(context, it) },
         )
-        Aloud(ui.spoken, speak = { speak(ui.spoken) })
+        Aloud(ui.spoken, ui.listener, voiced, onChoose = model::readTo, speak = { speak(ui.spoken) })
         Spacer(Modifier.height(Space.step5))
     }
 }
@@ -781,7 +801,7 @@ private fun EmergencyCardScreen(
 @Composable
 private fun EmergencyHere(here: Emergency.Here, near: String?, speak: (String) -> Unit) {
     val large = CodeStyle.copy(fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.SemiBold)
-    val said = stringResource(R.string.emergency_said, here.decimal, here.spoken)
+    val said = here.said
     Column(verticalArrangement = Arrangement.spacedBy(Space.step1)) {
         Text(stringResource(R.string.emergency_coordinates), style = MaterialTheme.typography.labelLarge)
         Text(here.decimal, style = large)
@@ -1343,12 +1363,77 @@ private fun GiveAddress(note: String, link: String, onNote: (String) -> Unit, sh
     }
 }
 
+/**
+ * The line to read out, in the words of the listener's language. The code is the
+ * same ten characters in every language; only the words that carry them change,
+ * and the listener writes it down from words they already know. The choice is
+ * kept, because a courier reads to the same city all day.
+ */
 @Composable
-private fun Aloud(spoken: String, speak: () -> Unit) {
+private fun Aloud(
+    spoken: String,
+    listener: Spelling,
+    voiced: Boolean?,
+    onChoose: (Spelling) -> Unit,
+    speak: () -> Unit,
+) {
+    val context = LocalContext.current
     Section(stringResource(R.string.aloud_title)) {
         Text(spoken, style = MaterialTheme.typography.bodyLarge)
-        Button(onClick = speak, shape = ButtonShape) { Text(stringResource(R.string.read_aloud)) }
+        Listener(listener, onChoose)
+        if (voiced == false) {
+            Quiet(stringResource(R.string.aloud_no_voice, listener.name))
+            TextButton(onClick = { addVoice(context) }) { Text(stringResource(R.string.aloud_add_voice)) }
+        }
+        Button(onClick = speak, enabled = voiced != false, shape = ButtonShape) { Text(stringResource(R.string.read_aloud)) }
     }
+}
+
+/** The listener's language, each offered under its own name with its first few words. */
+@Composable
+private fun Listener(chosen: Spelling, onChoose: (Spelling) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val label = stringResource(R.string.aloud_listener)
+    Column(verticalArrangement = Arrangement.spacedBy(Space.step1)) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+        Quiet(stringResource(R.string.aloud_explain))
+        Box {
+            OutlinedButton(
+                onClick = { open = true },
+                shape = ButtonShape,
+                modifier = Modifier.semantics { contentDescription = label + ", " + chosen.name },
+            ) {
+                Text(chosen.name + " \u00b7 " + chosen.sample)
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                SPELLINGS.forEach { option ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(option.name)
+                                Text(
+                                    option.sample,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        },
+                        leadingIcon = { RadioButton(selected = option == chosen, onClick = null) },
+                        onClick = {
+                            onChoose(option)
+                            open = false
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** The speech engine's own page for adding voices, where it has one. */
+private fun addVoice(context: Context) {
+    val install = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(install) }
 }
 
 private fun metres(value: Double): String = String.format(Locale.getDefault(), "%.2f", value)

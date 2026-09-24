@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             GpcTheme {
-                PlaceScreen(model = model, speak = speaker::say)
+                PlaceScreen(model = model, speaker = speaker)
             }
         }
     }

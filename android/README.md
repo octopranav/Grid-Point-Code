@@ -13,7 +13,7 @@ code, check and correction is arithmetic on the device.
 
 | Module | What it holds |
 | --- | --- |
-| [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, reading the website's name index, which landmarks can anchor a short form, saved places, reading locations written in other systems, the emergency card, and areas |
+| [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line in the words of seven languages, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, reading the website's name index, which landmarks can anchor a short form, saved places, reading locations written in other systems, the emergency card, and areas |
 | [`designsystem`](designsystem) | The theme, the type scale, the shapes and the ten-cell mark, built from the files [`design/build-tokens.mjs`](../design/build-tokens.mjs) generates |
 | [`map`](map) | MapLibre Native on the website's tile provider, its five styles, the cell drawn in brass with its eight neighbours faint around it, and a tap to place a point |
 | [`app`](app) | The place screen, the view model that holds the place, read aloud, fetching the name index and the landmark archive, and the ways a place arrives from another app |
@@ -46,7 +46,12 @@ code, check and correction is arithmetic on the device.
 - Carries directions in the link it shares, one line of at most eighty
   characters, exactly as the site does.
 - Reads the code aloud with its check word, through the device's own speech
-  engine, offline.
+  engine, offline, in the words of the listener's language: German, English,
+  Spanish, French, Italian, Dutch or Swedish, each its own speakers' spelling
+  table, in that language's voice. The choice is kept, and it carries to an
+  area and to the emergency card, which then reads the coordinates too in that
+  language. With no voice for it on the device, the words stay on the screen to
+  be read out, and the device's speech engine is one tap away.
 - Takes a code however it is written, a pair of coordinates, degrees and
   minutes, a geo URI, a gridpointcode.com link or a short form, from the search
   field, from a link, from another app's "open location", or from text selected
@@ -235,6 +240,27 @@ tile provider's terms rule out collecting its data in automated ways without
 permission, and fetching an area's tiles in the background would be exactly
 that. So the map library's own cache is raised from 50 MB to 200 MB, and offline
 the map is whatever the reader has already looked at.
+
+**Every callout word begins with its letter.** Appendix D.2 of the specification:
+the listener keeps the first character and discards the rest. So where a
+country's table says a letter's name instead of a word, as the Italian one does
+for H, J, K, W and X, the table's own alternative word is used, because the
+Italian name of K begins with C. German uses DIN 5009 as revised in 2022, the
+towns, and says two as "zwo". Spanish has no national table; the words follow
+the one the telephone service in Spain used, with Granada for G, since the G of
+Gerona is said as a J. A test holds every set to the rule.
+
+**Nothing is read in the wrong voice.** German words in an English voice are a
+string of wrong sounds, worse than silence, so with no voice for the listener's
+language the button is off and the screen says why. The listener's language
+defaults to the reader's own, and to the international words when the reader's
+language has no table here.
+
+**Coordinates are read digit by digit after the point.** A speech engine for a
+language that writes a decimal comma may take the full stop in `43.650006` for
+a thousands separator. So the emergency card says the whole degrees as a number
+and each decimal digit on its own, with that language's word for the point,
+from the written text, so what is heard is what is on the screen.
 
 **An area is written as a cell, with no hash and no hyphen.** Section 18.1 of
 the specification: a cell is never presented as a code, and ten characters is a

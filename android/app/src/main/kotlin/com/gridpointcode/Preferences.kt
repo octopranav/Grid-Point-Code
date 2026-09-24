@@ -1,7 +1,11 @@
 package com.gridpointcode
 
 import android.content.Context
+import com.gridpointcode.core.Spelling
+import com.gridpointcode.core.spellingFor
+import com.gridpointcode.core.spellingTagged
 import com.gridpointcode.map.Basemap
+import java.util.Locale
 
 /**
  * What the app remembers between launches: how the reader likes to look at
@@ -25,7 +29,19 @@ class Preferences(context: Context) {
         store.edit().putString(BASEMAP, basemap.name).apply()
     }
 
+    /**
+     * The language codes are read out in, or the reader's own if they never
+     * chose, which is right until they are reading to somebody who is not them.
+     */
+    fun listener(): Spelling =
+        store.getString(LISTENER, null)?.let(::spellingTagged) ?: spellingFor(Locale.getDefault())
+
+    fun remember(listener: Spelling) {
+        store.edit().putString(LISTENER, listener.tag).apply()
+    }
+
     private companion object {
         const val BASEMAP = "basemap"
+        const val LISTENER = "listener"
     }
 }
