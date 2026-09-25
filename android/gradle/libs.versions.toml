@@ -7,6 +7,7 @@ activityCompose = "1.13.0"
 lifecycle = "2.11.0"
 coreKtx = "1.19.0"
 maplibre = "13.6.1"
+zxing = "3.5.4"
 
 [libraries]
 # The format itself, installed from Maven Central like anybody else installs it.
@@ -14,6 +15,9 @@ gridpointcode = { module = "ca.pranavpatel.algo:gridpointcode", version.ref = "g
 
 # The basemap. The same renderer family as the website, drawing the same styles.
 maplibre = { module = "org.maplibre.gl:android-sdk", version.ref = "maplibre" }
+
+# The QR code for a place's link: the standard encoder, of which the release keeps only the encoding.
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 

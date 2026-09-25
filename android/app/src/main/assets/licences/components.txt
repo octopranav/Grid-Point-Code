@@ -104,6 +104,7 @@ androidx.window:window-core-android  Apache-2.0
 ca.pranavpatel.algo:gridpointcode  Apache-2.0
 com.google.code.gson:gson  Apache-2.0
 com.google.guava:listenablefuture  Apache-2.0
+com.google.zxing:core  Apache-2.0
 com.jakewharton.timber:timber  Apache-2.0
 com.squareup.okhttp3:okhttp  Apache-2.0  okhttp-public-suffix-list.txt
 com.squareup.okio:okio  Apache-2.0

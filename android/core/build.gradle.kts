@@ -23,6 +23,9 @@ dependencies {
     // Nothing in this module reimplements any part of the format.
     api(libs.gridpointcode)
 
+    // A QR symbol for a place's link. Only the encoder is used; it is plain Java.
+    implementation(libs.zxing.core)
+
     testImplementation(kotlin("test"))
 }
 
