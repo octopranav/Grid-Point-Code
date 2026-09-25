@@ -587,6 +587,12 @@ jobs:
       # in the repository or in CI.
       - name: The release bundle shrinks and builds
         run: ./gradlew --no-daemon :app:bundleRelease
+      # Several licences the app is built under require their notice to travel
+      # with it. The list of what the release ships is held to what it really
+      # resolves, and a notice copied from one release of a library is held to
+      # that release, so neither can drift out of date unnoticed.
+      - name: Every library the release ships is in its notices
+        run: ./gradlew --no-daemon :app:checkNotices :app:testDebugUnitTest
 
   conformance:
     name: All four ports agree

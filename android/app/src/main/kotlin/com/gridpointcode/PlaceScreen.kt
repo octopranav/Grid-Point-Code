@@ -314,6 +314,7 @@ private fun Panel(
     val saved by model.saved.collectAsState()
     val here = saved.savedAt(ui.selection.code)
     var editing by remember { mutableStateOf(false) }
+    var noticing by remember { mutableStateOf(false) }
     if (editing) {
         SaveDialog(
             existing = here,
@@ -375,6 +376,8 @@ private fun Panel(
         )
         Aloud(ui.spoken, ui.listener, voiced, onChoose = model::readTo, speak = { speak(ui.spoken) })
         TextButton(onClick = { open(context, PRIVACY_ADDRESS) }) { Text(stringResource(R.string.privacy)) }
+        TextButton(onClick = { noticing = true }) { Text(stringResource(R.string.notices_title)) }
+        if (noticing) NoticesPage(onClose = { noticing = false })
         Spacer(Modifier.height(Space.step5))
     }
 }

@@ -1,0 +1,125 @@
+# Every library the release build ships, with its licence, one per line.
+#
+# The build's checkNotices task compares this list with what the release
+# actually resolves, and CI runs it: a library added, dropped or renamed fails
+# until this list says so. A file named after a licence holds a notice the
+# library requires to travel with it; a version after @ is the release that
+# notice was copied from, and the task fails when the build resolves another.
+# The Apache License 2.0 itself is apache-2.0.txt.
+
+androidx.activity:activity  Apache-2.0
+androidx.activity:activity-compose  Apache-2.0
+androidx.activity:activity-ktx  Apache-2.0
+androidx.annotation:annotation  Apache-2.0
+androidx.annotation:annotation-experimental  Apache-2.0
+androidx.annotation:annotation-jvm  Apache-2.0
+androidx.arch.core:core-common  Apache-2.0
+androidx.arch.core:core-runtime  Apache-2.0
+androidx.autofill:autofill  Apache-2.0
+androidx.collection:collection  Apache-2.0
+androidx.collection:collection-jvm  Apache-2.0
+androidx.collection:collection-ktx  Apache-2.0
+androidx.compose.animation:animation  Apache-2.0
+androidx.compose.animation:animation-android  Apache-2.0
+androidx.compose.animation:animation-core  Apache-2.0
+androidx.compose.animation:animation-core-android  Apache-2.0
+androidx.compose.foundation:foundation  Apache-2.0
+androidx.compose.foundation:foundation-android  Apache-2.0
+androidx.compose.foundation:foundation-layout  Apache-2.0
+androidx.compose.foundation:foundation-layout-android  Apache-2.0
+androidx.compose.material3:material3  Apache-2.0
+androidx.compose.material3:material3-android  Apache-2.0
+androidx.compose.material:material-ripple  Apache-2.0
+androidx.compose.material:material-ripple-android  Apache-2.0
+androidx.compose.runtime:runtime  Apache-2.0
+androidx.compose.runtime:runtime-android  Apache-2.0
+androidx.compose.runtime:runtime-annotation  Apache-2.0
+androidx.compose.runtime:runtime-annotation-android  Apache-2.0
+androidx.compose.runtime:runtime-retain  Apache-2.0
+androidx.compose.runtime:runtime-retain-android  Apache-2.0
+androidx.compose.runtime:runtime-saveable  Apache-2.0
+androidx.compose.runtime:runtime-saveable-android  Apache-2.0
+androidx.compose.ui:ui  Apache-2.0
+androidx.compose.ui:ui-android  Apache-2.0
+androidx.compose.ui:ui-geometry  Apache-2.0
+androidx.compose.ui:ui-geometry-android  Apache-2.0
+androidx.compose.ui:ui-graphics  Apache-2.0
+androidx.compose.ui:ui-graphics-android  Apache-2.0
+androidx.compose.ui:ui-text  Apache-2.0
+androidx.compose.ui:ui-text-android  Apache-2.0
+androidx.compose.ui:ui-tooling-preview  Apache-2.0
+androidx.compose.ui:ui-tooling-preview-android  Apache-2.0
+androidx.compose.ui:ui-unit  Apache-2.0
+androidx.compose.ui:ui-unit-android  Apache-2.0
+androidx.compose.ui:ui-util  Apache-2.0
+androidx.compose.ui:ui-util-android  Apache-2.0
+androidx.concurrent:concurrent-futures  Apache-2.0
+androidx.core:core  Apache-2.0
+androidx.core:core-ktx  Apache-2.0
+androidx.core:core-viewtree  Apache-2.0
+androidx.customview:customview  Apache-2.0
+androidx.customview:customview-poolingcontainer  Apache-2.0
+androidx.emoji2:emoji2  Apache-2.0
+androidx.fragment:fragment  Apache-2.0
+androidx.graphics:graphics-path  Apache-2.0
+androidx.interpolator:interpolator  Apache-2.0
+androidx.lifecycle:lifecycle-common  Apache-2.0
+androidx.lifecycle:lifecycle-common-java8  Apache-2.0
+androidx.lifecycle:lifecycle-common-jvm  Apache-2.0
+androidx.lifecycle:lifecycle-livedata  Apache-2.0
+androidx.lifecycle:lifecycle-livedata-core  Apache-2.0
+androidx.lifecycle:lifecycle-livedata-core-ktx  Apache-2.0
+androidx.lifecycle:lifecycle-process  Apache-2.0
+androidx.lifecycle:lifecycle-runtime  Apache-2.0
+androidx.lifecycle:lifecycle-runtime-android  Apache-2.0
+androidx.lifecycle:lifecycle-runtime-compose  Apache-2.0
+androidx.lifecycle:lifecycle-runtime-compose-android  Apache-2.0
+androidx.lifecycle:lifecycle-runtime-ktx  Apache-2.0
+androidx.lifecycle:lifecycle-runtime-ktx-android  Apache-2.0
+androidx.lifecycle:lifecycle-viewmodel  Apache-2.0
+androidx.lifecycle:lifecycle-viewmodel-android  Apache-2.0
+androidx.lifecycle:lifecycle-viewmodel-compose  Apache-2.0
+androidx.lifecycle:lifecycle-viewmodel-compose-android  Apache-2.0
+androidx.lifecycle:lifecycle-viewmodel-ktx  Apache-2.0
+androidx.lifecycle:lifecycle-viewmodel-savedstate  Apache-2.0
+androidx.lifecycle:lifecycle-viewmodel-savedstate-android  Apache-2.0
+androidx.loader:loader  Apache-2.0
+androidx.navigationevent:navigationevent  Apache-2.0
+androidx.navigationevent:navigationevent-android  Apache-2.0
+androidx.navigationevent:navigationevent-compose  Apache-2.0
+androidx.navigationevent:navigationevent-compose-android  Apache-2.0
+androidx.profileinstaller:profileinstaller  Apache-2.0
+androidx.savedstate:savedstate  Apache-2.0
+androidx.savedstate:savedstate-android  Apache-2.0
+androidx.savedstate:savedstate-compose  Apache-2.0
+androidx.savedstate:savedstate-compose-android  Apache-2.0
+androidx.savedstate:savedstate-ktx  Apache-2.0
+androidx.startup:startup-runtime  Apache-2.0
+androidx.tracing:tracing  Apache-2.0
+androidx.versionedparcelable:versionedparcelable  Apache-2.0
+androidx.viewpager:viewpager  Apache-2.0
+androidx.window:window  Apache-2.0
+androidx.window:window-core  Apache-2.0
+androidx.window:window-core-android  Apache-2.0
+ca.pranavpatel.algo:gridpointcode  Apache-2.0
+com.google.code.gson:gson  Apache-2.0
+com.google.guava:listenablefuture  Apache-2.0
+com.jakewharton.timber:timber  Apache-2.0
+com.squareup.okhttp3:okhttp  Apache-2.0  okhttp-public-suffix-list.txt
+com.squareup.okio:okio  Apache-2.0
+com.squareup.okio:okio-jvm  Apache-2.0
+org.jetbrains.kotlin:kotlin-stdlib  Apache-2.0
+org.jetbrains.kotlin:kotlin-stdlib-common  Apache-2.0
+org.jetbrains.kotlin:kotlin-stdlib-jdk7  Apache-2.0
+org.jetbrains.kotlin:kotlin-stdlib-jdk8  Apache-2.0
+org.jetbrains.kotlinx:kotlinx-coroutines-android  Apache-2.0
+org.jetbrains.kotlinx:kotlinx-coroutines-core  Apache-2.0
+org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm  Apache-2.0
+org.jetbrains.kotlinx:kotlinx-serialization-core  Apache-2.0
+org.jetbrains.kotlinx:kotlinx-serialization-core-jvm  Apache-2.0
+org.jetbrains:annotations  Apache-2.0
+org.jspecify:jspecify  Apache-2.0
+org.maplibre.gl:android-sdk  BSD-2-Clause  maplibre-native-android.md@13.6.1
+org.maplibre.gl:android-sdk-geojson  Apache-2.0
+org.maplibre.gl:android-sdk-turf  Apache-2.0
+org.maplibre.gl:maplibre-android-gestures  BSD-2-Clause  maplibre-gestures-android.md@0.0.4

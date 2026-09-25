@@ -134,6 +134,14 @@
 
     <string name="aloud_title">Read aloud</string>
     <string name="privacy">Privacy: what this app sends, and to whom</string>
+    <string name="notices_title">Open-source notices</string>
+    <string name="notices_intro">This app is built on the work below. Each piece is used under its own licence, and each notice its licence asks to travel with it is given here in full.</string>
+    <string name="notices_map">The map: MapLibre Native</string>
+    <string name="notices_gestures">Map gestures: MapLibre Gestures</string>
+    <string name="notices_typefaces">Typefaces: Bitter and IBM Plex</string>
+    <string name="notices_apache">Libraries under the Apache License 2.0</string>
+    <string name="notices_data">Map data</string>
+    <string name="notices_data_body">Map data \u00a9 OpenStreetMap contributors, available under the Open Database License from openstreetmap.org/copyright. Tiles from OpenFreeMap, in the OpenMapTiles schema \u00a9 OpenMapTiles. The credit is also on the map itself.</string>
     <string name="aloud_listener">The listener\'s language</string>
     <string name="aloud_explain">The code is the same in every language; only the words that spell it change. Choose the words the person listening already knows.</string>
     <string name="aloud_no_voice">This device has no %1$s voice. Read the words out yourself, or add the voice to the device\'s speech engine.</string>
