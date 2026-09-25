@@ -98,7 +98,9 @@ code, check and correction is arithmetic on the device.
   directions to its door. Saved places are listed from a button on the map,
   drawn on it as small rings, and found first as a name is typed, with no
   connection. Opening one brings its directions back, and Go on a saved name
-  goes straight there.
+  goes straight there. The list puts the nearest first, each with its distance
+  and an arrow pointing its way, measured from the device's fix or the place on
+  the screen, and can be put back in the order they were saved.
 - Shows a QR code for a place's link, directions and all, or an area's, to be
   scanned off the screen by any phone, with the screen at full brightness
   while it is up.

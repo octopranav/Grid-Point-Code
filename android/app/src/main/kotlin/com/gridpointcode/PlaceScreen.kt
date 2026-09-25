@@ -32,6 +32,12 @@ import androidx.core.view.WindowCompat
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import com.gridpointcode.core.AreaView
+import com.gridpointcode.core.SavedOrder
+import com.gridpointcode.core.savedRows
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.FilterChip
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.draw.rotate
 import com.gridpointcode.core.Doubt
 import com.gridpointcode.core.Slip
 import androidx.compose.ui.text.AnnotatedString
@@ -325,6 +331,10 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
     if (browsing) {
         SavedList(
             saved = saved,
+            // Measured from where the reader is, or the place they are looking
+            // at; never the opening example, which is nobody's.
+            from = ui.selection.takeIf { it.source != Source.SAMPLE && it.source != Source.AREA }?.point,
+            fromDevice = ui.selection.source == Source.DEVICE,
             onOpen = { place ->
                 browsing = false
                 model.recall(place)
@@ -1172,6 +1182,44 @@ private fun SavedButton(onClick: () -> Unit) {
 }
 
 /** A saved place's name, or its code when it has none, with the code and the directions under it. */
+/** Closer than any two cells' centres can be: the same place. */
+private const val SAME_PLACE_METRES = 1.0
+
+/** An arrow in a disc, turned to point at a saved place. */
+@Composable
+private fun Toward(heading: Double) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Arrow,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .size(20.dp)
+                .rotate(heading.toFloat()),
+        )
+    }
+}
+
+/** How far a saved place is, and which way, the way read aloud as a word. */
+@Composable
+private fun Away(metres: Double, octant: String) {
+    val word = direction(octant)
+    Column(horizontalAlignment = Alignment.End) {
+        Text(distance(metres), style = CodeStyle)
+        Text(
+            octant,
+            style = MaterialTheme.typography.labelSmall,
+            color = LocalGpcColors.current.inkSoft,
+            modifier = Modifier.semantics { contentDescription = word },
+        )
+    }
+}
+
 @Composable
 private fun SavedLines(place: SavedPlace) {
     Column {
@@ -1191,7 +1239,15 @@ private fun SavedLines(place: SavedPlace) {
 /** Every saved place, most recent first. Opening one goes there with its directions. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SavedList(saved: List<SavedPlace>, onOpen: (SavedPlace) -> Unit, onDismiss: () -> Unit) {
+private fun SavedList(
+    saved: List<SavedPlace>,
+    from: Point?,
+    fromDevice: Boolean,
+    onOpen: (SavedPlace) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var order by rememberSaveable { mutableStateOf(SavedOrder.NEAREST) }
+    val rows = remember(saved, from, order) { savedRows(saved, from, order) }
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
@@ -1200,16 +1256,48 @@ private fun SavedList(saved: List<SavedPlace>, onOpen: (SavedPlace) -> Unit, onD
             verticalArrangement = Arrangement.spacedBy(Space.step2),
         ) {
             Text(stringResource(R.string.saved_title), style = MaterialTheme.typography.titleMedium)
+            Quiet(stringResource(R.string.saved_kept))
             if (saved.isEmpty()) Quiet(stringResource(R.string.saved_empty))
+            // The order only means something when there is a point to measure from.
+            if (saved.isNotEmpty() && from != null) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.step1)) {
+                    FilterChip(
+                        selected = order == SavedOrder.NEAREST,
+                        onClick = { order = SavedOrder.NEAREST },
+                        label = { Text(stringResource(R.string.saved_nearest)) },
+                    )
+                    FilterChip(
+                        selected = order == SavedOrder.RECENT,
+                        onClick = { order = SavedOrder.RECENT },
+                        label = { Text(stringResource(R.string.saved_recent)) },
+                    )
+                }
+                Quiet(
+                    pluralStringResource(R.plurals.saved_count, saved.size, saved.size) + " \u00b7 " +
+                        stringResource(if (fromDevice) R.string.saved_from_you else R.string.saved_from_place),
+                )
+            }
             LazyColumn(Modifier.heightIn(max = SAVED_DP.dp)) {
-                items(saved, key = { it.code }) { place ->
+                items(rows, key = { it.place.code }) { row ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable(role = Role.Button) { onOpen(place) }
+                            .clickable(role = Role.Button) { onOpen(row.place) }
                             .padding(vertical = Space.step2),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Space.step2),
                     ) {
-                        SavedLines(place)
+                        val metres = row.metres
+                        val octant = row.octant
+                        // In the same cell a direction means nothing: the place is here. A
+                        // cell away is the next door, and gets its distance and its way.
+                        val here = metres != null && metres < SAME_PLACE_METRES
+                        row.heading?.takeUnless { here }?.let { Toward(it) }
+                        Box(Modifier.weight(1f)) { SavedLines(row.place) }
+                        when {
+                            here -> Text(stringResource(R.string.saved_here), style = CodeStyle)
+                            metres != null && octant != null -> Away(metres, octant)
+                        }
                     }
                     HorizontalDivider(color = LocalGpcColors.current.rule)
                 }
