@@ -30,7 +30,7 @@ code, check and correction is arithmetic on the device.
   the app's settings; location switched off; or no fix in thirty seconds.
 - Draws the place on a map as the cell it names, not a pin, with the eight
   cells around it. Tap the map to move there. North stays up.
-- Offers the website's basemaps from a button on the map: match the theme
+- Offers the website's basemaps on the settings page: match the theme
   (positron by day, fiord by night), positron, bright, liberty, dark or fiord.
   The choice is remembered, and the cell is drawn in inks that suit the map
   chosen rather than the app's theme.
@@ -95,7 +95,7 @@ code, check and correction is arithmetic on the device.
   device afresh when it opens, keeps the screen awake, needs no connection,
   and never shows a place the reader picked or typed as where they are.
 - Saves places: the bookmark on a place's card keeps it with a name and the
-  directions to its door. Saved places are listed from a button on the map,
+  directions to its door. Saved places are listed on their own tab,
   drawn on it as small rings, and found first as a name is typed, with no
   connection. Opening one brings its directions back, and Go on a saved name
   goes straight there. The list puts the nearest first, each with its distance
@@ -297,6 +297,15 @@ licence, and the build's `checkNotices` task fails when that list and the
 release's resolved libraries disagree, or when a notice was copied from a
 release other than the one resolved. The app shows them all from the end of the
 panel, under Open-source notices.
+
+**Three tabs: the map, the saved places, the settings.** A bar along the bottom
+of a phone and a rail down the side of a wide screen, as the canvas draws both.
+The map keeps only the buttons that act on it now, the emergency card, the zoom
+on a wide screen, and finding the device; the basemap, the listener's language,
+folded sections, the keys, the privacy page, the notices and the version are on
+the settings page, set once and left. A place arriving from anywhere, a link, a
+saved place opened, a code, is shown on the map whichever tab it arrived on,
+and Back from the other tabs is the map.
 
 **The panel is laid out as the canvas draws it.** The card under the code has
 four tiles, an icon over each word, reading aloud first and filled because

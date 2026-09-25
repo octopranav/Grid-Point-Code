@@ -32,6 +32,13 @@ import androidx.core.view.WindowCompat
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import com.gridpointcode.core.AreaView
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.compositionLocalOf
@@ -88,7 +95,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
 import com.gridpointcode.core.Format
 import com.gridpointcode.core.Origin
 import com.gridpointcode.core.OtherFormat
@@ -190,13 +196,10 @@ private const val WIDE_DP = 840
 private const val PANE_DP = 420
 
 /** How much of the panel shows over the map before it is pulled up: the code and its actions. */
-private const val PEEK_DP = 260
+private const val PEEK_DP = 300
 
 /** The search bar's height over the map, with its margin. */
 private const val SEARCH_DP = 96
-
-/** The tallest the saved list gets before it scrolls. */
-private const val SAVED_DP = 440
 
 /** The tallest the list of places gets before it scrolls: four and a half rows, so it plainly does. */
 private const val FOUND_DP = 270
@@ -217,7 +220,9 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
     val saved by model.saved.collectAsState()
     val carding by model.emergency.collectAsState()
     val anchoring by model.anchors.collectAsState()
-    var browsing by remember { mutableStateOf(false) }
+    // The map, the saved places, or the settings: a tab bar on a phone, a rail
+    // on a wide screen, as the canvas draws both.
+    var tab by rememberSaveable { mutableStateOf(Tab.MAP) }
     val savedPoints = remember(saved) {
         saved.mapNotNull { place -> runCatching { selectionOf(place.code, Source.SAVED).point }.getOrNull() }
     }
@@ -311,8 +316,6 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
                 // A mouse has no pinch; a wide window is where a mouse is likeliest.
                 if (wide) Zoom(control)
                 EmergencyButton(onClick = model::openEmergency)
-                SavedButton(onClick = { browsing = true })
-                Basemaps(chosen = basemap, onChoose = model::choose)
                 Locate(locating = ui.locating, onClick = locate)
             }
         }
@@ -334,20 +337,32 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
         )
     }
 
-    if (browsing) {
-        SavedList(
+    val savedPage: @Composable () -> Unit = {
+        SavedPage(
             saved = saved,
             // Measured from where the reader is, or the place they are looking
             // at; never the opening example, which is nobody's.
             from = ui.selection.takeIf { it.source != Source.SAMPLE && it.source != Source.AREA }?.point,
             fromDevice = ui.selection.source == Source.DEVICE,
-            onOpen = { place ->
-                browsing = false
-                model.recall(place)
-            },
-            onDismiss = { browsing = false },
+            onOpen = model::recall,
         )
     }
+    val folded by model.folded.collectAsState()
+    val settingsPage: @Composable () -> Unit = {
+        SettingsPage(
+            basemap = basemap,
+            onBasemap = model::choose,
+            listener = ui.listener,
+            onListener = model::readTo,
+            folded = folded.size,
+            onUnfold = model::unfoldAll,
+        )
+    }
+
+    // Any place arriving, a link, a saved place opened, a code, is shown on the
+    // map, whichever tab it arrived on; and Back from the other tabs is the map.
+    LaunchedEffect(ui.selection) { tab = Tab.MAP }
+    BackHandler(enabled = tab != Tab.MAP) { tab = Tab.MAP }
 
     // Focusable, and focused from the start, so a key pressed before anything
     // else is touched still reaches the shortcuts.
@@ -360,7 +375,18 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
             .focusable()
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                when (shortcutFor(event.key.nativeKeyCode, event.isCtrlPressed, event.isAltPressed, event.isShiftPressed, event.isMetaPressed, typing.active)) {
+                val asked = shortcutFor(event.key.nativeKeyCode, event.isCtrlPressed, event.isAltPressed, event.isShiftPressed, event.isMetaPressed, typing.active)
+                if (tab != Tab.MAP) {
+                    if (asked != Shortcut.SEARCH) return@onPreviewKeyEvent false
+                    tab = Tab.MAP
+                    scope.launch {
+                        withFrameNanos { }
+                        if (!wide) sheet.bottomSheetState.partialExpand()
+                        search.requestFocus()
+                    }
+                    return@onPreviewKeyEvent true
+                }
+                when (asked) {
                     // On a phone the sheet may be covering the search box; it is
                     // lowered first, so the box the keys go to can be seen.
                     Shortcut.SEARCH -> scope.launch {
@@ -379,40 +405,62 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
     ) {
     if (wide) {
         Row(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            map(Modifier.weight(1f).fillMaxHeight())
-            Panel(
-                ui = ui,
-                model = model,
-                speak = speak,
-                voiced = voiced,
-                editing = editing,
-                onEditing = { editing = it },
-                modifier = Modifier
-                    .width(PANE_DP.dp)
-                    .fillMaxHeight()
-                    .statusBarsPadding()
-                    .navigationBarsPadding(),
-            )
+            RailTabs(tab, onTab = { tab = it })
+            when (tab) {
+                Tab.MAP -> {
+                    map(Modifier.weight(1f).fillMaxHeight())
+                    Panel(
+                        ui = ui,
+                        model = model,
+                        speak = speak,
+                        voiced = voiced,
+                        editing = editing,
+                        onEditing = { editing = it },
+                        modifier = Modifier
+                            .width(PANE_DP.dp)
+                            .fillMaxHeight()
+                            .statusBarsPadding()
+                            .navigationBarsPadding(),
+                    )
+                }
+                Tab.SAVED -> Box(Modifier.weight(1f).fillMaxHeight()) { savedPage() }
+                Tab.SETTINGS -> Box(Modifier.weight(1f).fillMaxHeight()) { settingsPage() }
+            }
         }
     } else {
-        BottomSheetScaffold(
-            scaffoldState = sheet,
-            sheetContent = {
-                Panel(
-                    ui = ui,
-                    model = model,
-                    speak = speak,
-                    voiced = voiced,
-                    editing = editing,
-                    onEditing = { editing = it },
-                    modifier = Modifier.navigationBarsPadding(),
-                )
-            },
-            sheetPeekHeight = PEEK_DP.dp,
-            sheetContainerColor = MaterialTheme.colorScheme.background,
-            sheetShape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp),
-        ) {
-            map(Modifier.fillMaxSize())
+        Scaffold(
+            bottomBar = { PhoneTabs(tab, onTab = { tab = it }) },
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            containerColor = MaterialTheme.colorScheme.background,
+        ) { inner ->
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(bottom = inner.calculateBottomPadding()),
+            ) {
+                when (tab) {
+                    Tab.MAP -> BottomSheetScaffold(
+                        scaffoldState = sheet,
+                        sheetContent = {
+                            Panel(
+                                ui = ui,
+                                model = model,
+                                speak = speak,
+                                voiced = voiced,
+                                editing = editing,
+                                onEditing = { editing = it },
+                            )
+                        },
+                        sheetPeekHeight = PEEK_DP.dp,
+                        sheetContainerColor = MaterialTheme.colorScheme.background,
+                        sheetShape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp),
+                    ) {
+                        map(Modifier.fillMaxSize())
+                    }
+                    Tab.SAVED -> savedPage()
+                    Tab.SETTINGS -> settingsPage()
+                }
+            }
         }
     }
     }
@@ -435,7 +483,6 @@ private fun Panel(
     val keeping by model.offline.collectAsState()
     val saved by model.saved.collectAsState()
     val here = saved.savedAt(ui.selection.code)
-    var noticing by remember { mutableStateOf(false) }
     // The QR code for a link, shown in its own dialog until it is closed.
     var showing by remember { mutableStateOf<Qr?>(null) }
     showing?.let { QrDialog(it.title, it.code, it.link, onClose = { showing = null }) }
@@ -510,13 +557,6 @@ private fun Panel(
             share = { share(context, it) },
         )
         Aloud(ui.spoken, ui.listener, voiced, onChoose = model::readTo, speak = { speak(ui.spoken) })
-        // Said only where there is a keyboard to press them with.
-        if (LocalConfiguration.current.keyboard == Configuration.KEYBOARD_QWERTY) {
-            Quiet(stringResource(R.string.keys_hint))
-        }
-        TextButton(onClick = { open(context, PRIVACY_ADDRESS) }) { Text(stringResource(R.string.privacy)) }
-        TextButton(onClick = { noticing = true }) { Text(stringResource(R.string.notices_title)) }
-        if (noticing) NoticesPage(onClose = { noticing = false })
         Spacer(Modifier.height(Space.step5))
     }
     }
@@ -1171,21 +1211,6 @@ private fun EmergencyHere(here: Emergency.Here, near: String?, speak: (String) -
     }
 }
 
-/** The button that opens the saved places. */
-@Composable
-private fun SavedButton(onClick: () -> Unit) {
-    val label = stringResource(R.string.saved_title)
-    SmallFloatingActionButton(
-        onClick = onClick,
-        shape = ButtonShape,
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.semantics { contentDescription = label },
-    ) {
-        Icon(Bookmark, contentDescription = null)
-    }
-}
-
 /** A saved place's name, or its code when it has none, with the code and the directions under it. */
 /** Closer than any two cells' centres can be: the same place. */
 private const val SAME_PLACE_METRES = 1.0
@@ -1244,23 +1269,22 @@ private fun SavedLines(place: SavedPlace) {
 /** Every saved place, most recent first. Opening one goes there with its directions. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SavedList(
+private fun SavedPage(
     saved: List<SavedPlace>,
     from: Point?,
     fromDevice: Boolean,
     onOpen: (SavedPlace) -> Unit,
-    onDismiss: () -> Unit,
 ) {
     var order by rememberSaveable { mutableStateOf(SavedOrder.NEAREST) }
     val rows = remember(saved, from, order) { savedRows(saved, from, order) }
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.background) {
+    Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .padding(horizontal = Space.step3)
-                .navigationBarsPadding(),
+                .statusBarsPadding()
+                .padding(horizontal = Space.step3, vertical = Space.step3),
             verticalArrangement = Arrangement.spacedBy(Space.step2),
         ) {
-            Text(stringResource(R.string.saved_title), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.tab_saved), style = MaterialTheme.typography.displaySmall)
             Quiet(stringResource(R.string.saved_kept))
             if (saved.isEmpty()) Quiet(stringResource(R.string.saved_empty))
             // The order only means something when there is a point to measure from.
@@ -1282,7 +1306,7 @@ private fun SavedList(
                         stringResource(if (fromDevice) R.string.saved_from_you else R.string.saved_from_place),
                 )
             }
-            LazyColumn(Modifier.heightIn(max = SAVED_DP.dp)) {
+            LazyColumn(Modifier.weight(1f)) {
                 items(rows, key = { it.place.code }) { row ->
                     Row(
                         modifier = Modifier
@@ -1307,10 +1331,134 @@ private fun SavedList(
                     HorizontalDivider(color = LocalGpcColors.current.rule)
                 }
             }
-            Spacer(Modifier.height(Space.step3))
         }
     }
 }
+
+/** The three tabs, as the canvas names them. */
+private enum class Tab { MAP, SAVED, SETTINGS }
+
+private val tabs = listOf(
+    Triple(Tab.MAP, MapIcon, R.string.tab_map),
+    Triple(Tab.SAVED, Bookmark, R.string.tab_saved),
+    Triple(Tab.SETTINGS, SettingsIcon, R.string.tab_settings),
+)
+
+/** The tab bar a phone shows along the bottom. */
+@Composable
+private fun PhoneTabs(tab: Tab, onTab: (Tab) -> Unit) {
+    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+        tabs.forEach { (which, icon, label) ->
+            NavigationBarItem(
+                selected = tab == which,
+                onClick = { onTab(which) },
+                icon = { Icon(icon, contentDescription = null) },
+                label = { Text(stringResource(label)) },
+            )
+        }
+    }
+}
+
+/** The same tabs as a rail down the side of a wide screen. */
+@Composable
+private fun RailTabs(tab: Tab, onTab: (Tab) -> Unit) {
+    NavigationRail(containerColor = MaterialTheme.colorScheme.surface) {
+        Spacer(Modifier.height(Space.step3))
+        tabs.forEach { (which, icon, label) ->
+            NavigationRailItem(
+                selected = tab == which,
+                onClick = { onTab(which) },
+                icon = { Icon(icon, contentDescription = null) },
+                label = { Text(stringResource(label)) },
+            )
+        }
+    }
+}
+
+/**
+ * What the reader sets once and leaves: the map they look at, whose words a
+ * code is read out in, the panel's folded sections, and where the privacy page,
+ * the notices and the version are.
+ */
+@Composable
+private fun SettingsPage(
+    basemap: Basemap,
+    onBasemap: (Basemap) -> Unit,
+    listener: Spelling,
+    onListener: (Spelling) -> Unit,
+    folded: Int,
+    onUnfold: () -> Unit,
+) {
+    val context = LocalContext.current
+    var noticing by remember { mutableStateOf(false) }
+    if (noticing) NoticesPage(onClose = { noticing = false })
+    val version = remember {
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
+    }
+    Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .statusBarsPadding()
+                .padding(horizontal = Space.step3, vertical = Space.step3),
+            verticalArrangement = Arrangement.spacedBy(Space.step3),
+        ) {
+            Text(stringResource(R.string.tab_settings), style = MaterialTheme.typography.displaySmall)
+
+            Group(stringResource(R.string.basemap)) {
+                Column(Modifier.selectableGroup()) {
+                    Basemap.entries.forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .selectable(selected = option == basemap, role = Role.RadioButton) { onBasemap(option) }
+                                .padding(vertical = Space.step1),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Space.step2),
+                        ) {
+                            RadioButton(selected = option == basemap, onClick = null)
+                            Text(stringResource(basemapName(option)))
+                        }
+                    }
+                }
+            }
+
+            Group(stringResource(R.string.aloud_title)) { Listener(listener, onListener) }
+
+            if (folded > 0) {
+                Group(stringResource(R.string.settings_panel)) {
+                    Quiet(pluralStringResource(R.plurals.settings_folded, folded, folded))
+                    OutlinedButton(onClick = onUnfold, shape = ButtonShape) { Text(stringResource(R.string.settings_unfold)) }
+                }
+            }
+
+            // Named only where there is a keyboard to press them with.
+            if (LocalConfiguration.current.keyboard == Configuration.KEYBOARD_QWERTY) {
+                Group(stringResource(R.string.settings_keys)) { Quiet(stringResource(R.string.keys_hint)) }
+            }
+
+            Group(stringResource(R.string.settings_about)) {
+                Text(stringResource(R.string.settings_version, version), style = MaterialTheme.typography.bodyLarge)
+                TextButton(onClick = { open(context, PRIVACY_ADDRESS) }) { Text(stringResource(R.string.privacy)) }
+                TextButton(onClick = { noticing = true }) { Text(stringResource(R.string.notices_title)) }
+                TextButton(onClick = { open(context, SOURCE_ADDRESS) }) { Text(stringResource(R.string.settings_source)) }
+            }
+        }
+    }
+}
+
+/** A heading and what it governs, on the settings page. */
+@Composable
+private fun Group(title: String, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(Space.step1)) {
+        HorizontalDivider(color = LocalGpcColors.current.rule)
+        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+        content()
+    }
+}
+
+/** Where the app's source is, and the format's with it. */
+private const val SOURCE_ADDRESS = "https://github.com/octopranav/Grid-Point-Code"
 
 /**
  * Saving the place on screen, or changing one already saved: a name and the
@@ -1362,36 +1510,6 @@ private fun SaveDialog(
             }
         },
     )
-}
-
-/** The six basemaps the website offers, the chosen one marked. */
-@Composable
-private fun Basemaps(chosen: Basemap, onChoose: (Basemap) -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    val label = stringResource(R.string.basemap)
-    Box {
-        SmallFloatingActionButton(
-            onClick = { open = true },
-            shape = ButtonShape,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.semantics { contentDescription = label },
-        ) {
-            Icon(Layers, contentDescription = null)
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            Basemap.entries.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(stringResource(basemapName(option))) },
-                    leadingIcon = { RadioButton(selected = option == chosen, onClick = null) },
-                    onClick = {
-                        onChoose(option)
-                        open = false
-                    },
-                )
-            }
-        }
-    }
 }
 
 private fun basemapName(basemap: Basemap): Int = when (basemap) {

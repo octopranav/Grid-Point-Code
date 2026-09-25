@@ -235,3 +235,14 @@ val QrIcon: ImageVector = stroked("QR code", "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H
 
 /** A chevron pointing down, turned up when a section is open. */
 val Chevron: ImageVector = stroked("Chevron", "M6 9l6 6 6-6")
+
+/** A folded map, for the map's tab. */
+val MapIcon: ImageVector = stroked("Map", "M3.5 6.5l5.5-2.5 6 2.5 5.5-2.5v13.5l-5.5 2.5-6-2.5-5.5 2.5z", "M9 4v13.5M15 6.5V20")
+
+/** Two sliders, for the settings tab. */
+val SettingsIcon: ImageVector = stroked(
+    "Settings",
+    "M4 7h9M17 7h3M4 17h3M11 17h9",
+    "M13 7a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
+    "M7 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
+)
