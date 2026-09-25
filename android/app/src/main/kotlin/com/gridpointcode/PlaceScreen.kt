@@ -32,6 +32,32 @@ import androidx.core.view.WindowCompat
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import com.gridpointcode.core.AreaView
+import com.gridpointcode.core.Point
+import com.gridpointcode.core.metresBetween
+import com.gridpointcode.map.MapControl
+import com.gridpointcode.map.rememberMapControl
+import android.content.res.Configuration
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import com.gridpointcode.core.PRIVACY_ADDRESS
 import com.gridpointcode.core.SPELLINGS
 import com.gridpointcode.core.Spelling
@@ -177,6 +203,17 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
         saved.mapNotNull { place -> runCatching { selectionOf(place.code, Source.SAVED).point }.getOrNull() }
     }
     val wide = LocalConfiguration.current.screenWidthDp >= WIDE_DP
+    // The keyboard: what has it, where Ctrl+K sends it, and where it goes back to.
+    val typing = remember { Typing() }
+    val screen = remember { FocusRequester() }
+    val search = remember { FocusRequester() }
+    val control = rememberMapControl()
+    // A point asked about on the map, by a long press or a right-click.
+    var pointed by remember { mutableStateOf<Pointed?>(null) }
+    // Kept here rather than in the panel, because the map's menu can ask to save too.
+    var editing by remember { mutableStateOf(false) }
+    val sheet = rememberBottomSheetScaffoldState()
+    val scope = rememberCoroutineScope()
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + SEARCH_DP.dp
     val bottom = if (wide) WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else PEEK_DP.dp
 
@@ -211,8 +248,23 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
                 area = ui.area?.box,
                 // The buttons' column: its margin, the widest button, a gap.
                 creditEnd = Space.step3 + 56.dp + Space.step2,
+                control = control,
+                onMenu = { point, at -> pointed = Pointed(point, at) },
                 modifier = Modifier.fillMaxSize(),
             )
+            pointed?.let { asked ->
+                PointMenu(
+                    pointed = asked,
+                    from = ui.selection.point,
+                    onDismiss = { pointed = null },
+                    onSelect = { model.place(selectionAt(asked.point, Source.MAP)) },
+                    onSave = {
+                        model.place(selectionAt(asked.point, Source.MAP))
+                        editing = true
+                    },
+                    copy = { copy(context, it) },
+                )
+            }
             Search(
                 text = model.query,
                 onType = model::type,
@@ -223,6 +275,8 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
                 onInstead = model::openInstead,
                 problem = ui.problem,
                 onSettings = { openSettings(context) },
+                focus = search,
+                onLeave = { screen.requestFocus() },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
@@ -235,6 +289,8 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(Space.step2),
             ) {
+                // A mouse has no pinch; a wide window is where a mouse is likeliest.
+                if (wide) Zoom(control)
                 EmergencyButton(onClick = model::openEmergency)
                 SavedButton(onClick = { browsing = true })
                 Basemaps(chosen = basemap, onChoose = model::choose)
@@ -270,6 +326,34 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
         )
     }
 
+    // Focusable, and focused from the start, so a key pressed before anything
+    // else is touched still reaches the shortcuts.
+    LaunchedEffect(Unit) { screen.requestFocus() }
+    CompositionLocalProvider(LocalTyping provides typing) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .focusRequester(screen)
+            .focusable()
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (shortcutFor(event.key.nativeKeyCode, event.isCtrlPressed, event.isAltPressed, event.isShiftPressed, event.isMetaPressed, typing.active)) {
+                    // On a phone the sheet may be covering the search box; it is
+                    // lowered first, so the box the keys go to can be seen.
+                    Shortcut.SEARCH -> scope.launch {
+                        if (!wide) sheet.bottomSheetState.partialExpand()
+                        search.requestFocus()
+                    }
+                    Shortcut.COPY -> copy(context, ui.formatted)
+                    Shortcut.NUDGE_NORTH -> model.nudge(Compass.N)
+                    Shortcut.NUDGE_EAST -> model.nudge(Compass.E)
+                    Shortcut.NUDGE_SOUTH -> model.nudge(Compass.S)
+                    Shortcut.NUDGE_WEST -> model.nudge(Compass.W)
+                    null -> return@onPreviewKeyEvent false
+                }
+                true
+            },
+    ) {
     if (wide) {
         Row(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             map(Modifier.weight(1f).fillMaxHeight())
@@ -278,6 +362,8 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
                 model = model,
                 speak = speak,
                 voiced = voiced,
+                editing = editing,
+                onEditing = { editing = it },
                 modifier = Modifier
                     .width(PANE_DP.dp)
                     .fillMaxHeight()
@@ -287,8 +373,17 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
         }
     } else {
         BottomSheetScaffold(
+            scaffoldState = sheet,
             sheetContent = {
-                Panel(ui = ui, model = model, speak = speak, voiced = voiced, modifier = Modifier.navigationBarsPadding())
+                Panel(
+                    ui = ui,
+                    model = model,
+                    speak = speak,
+                    voiced = voiced,
+                    editing = editing,
+                    onEditing = { editing = it },
+                    modifier = Modifier.navigationBarsPadding(),
+                )
             },
             sheetPeekHeight = PEEK_DP.dp,
             sheetContainerColor = MaterialTheme.colorScheme.background,
@@ -296,6 +391,8 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
         ) {
             map(Modifier.fillMaxSize())
         }
+    }
+    }
     }
 }
 
@@ -306,6 +403,8 @@ private fun Panel(
     model: PlaceViewModel,
     speak: (String) -> Unit,
     voiced: Boolean?,
+    editing: Boolean,
+    onEditing: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -313,7 +412,6 @@ private fun Panel(
     val keeping by model.offline.collectAsState()
     val saved by model.saved.collectAsState()
     val here = saved.savedAt(ui.selection.code)
-    var editing by remember { mutableStateOf(false) }
     var noticing by remember { mutableStateOf(false) }
     if (editing) {
         SaveDialog(
@@ -321,13 +419,13 @@ private fun Panel(
             note = ui.note,
             onSave = { label, note ->
                 model.save(label, note)
-                editing = false
+                onEditing(false)
             },
             onRemove = {
                 model.unsave(ui.selection.code)
-                editing = false
+                onEditing(false)
             },
-            onDismiss = { editing = false },
+            onDismiss = { onEditing(false) },
         )
     }
     Column(
@@ -356,7 +454,7 @@ private fun Panel(
         Head(
             ui = ui,
             saved = here,
-            onBookmark = { editing = true },
+            onBookmark = { onEditing(true) },
             speak = { speak(ui.spoken) },
             share = { share(context, ui.formatted + "\n" + ui.link) },
             copy = { copy(context, ui.formatted) },
@@ -375,10 +473,87 @@ private fun Panel(
             share = { share(context, it) },
         )
         Aloud(ui.spoken, ui.listener, voiced, onChoose = model::readTo, speak = { speak(ui.spoken) })
+        // Said only where there is a keyboard to press them with.
+        if (LocalConfiguration.current.keyboard == Configuration.KEYBOARD_QWERTY) {
+            Quiet(stringResource(R.string.keys_hint))
+        }
         TextButton(onClick = { open(context, PRIVACY_ADDRESS) }) { Text(stringResource(R.string.privacy)) }
         TextButton(onClick = { noticing = true }) { Text(stringResource(R.string.notices_title)) }
         if (noticing) NoticesPage(onClose = { noticing = false })
         Spacer(Modifier.height(Space.step5))
+    }
+}
+
+private const val SEARCH_FIELD = "search"
+private const val NOTE_FIELD = "note"
+
+/** A point asked about on the map, and where on the map it was asked. */
+private data class Pointed(val point: Point, val at: Offset)
+
+/**
+ * What can be done with a point asked about on the map: its code, how far it
+ * is from the place already chosen, and choosing it, saving it, or copying it
+ * without leaving the place that is chosen now.
+ */
+@Composable
+private fun PointMenu(
+    pointed: Pointed,
+    from: Point,
+    onDismiss: () -> Unit,
+    onSelect: () -> Unit,
+    onSave: () -> Unit,
+    copy: (String) -> Unit,
+) {
+    val code = remember(pointed) { formatted(selectionAt(pointed.point, Source.MAP).code) }
+    val decimal = remember(pointed) {
+        String.format(Locale.ROOT, "%.6f, %.6f", pointed.point.latitude, pointed.point.longitude)
+    }
+    val away = remember(pointed, from) { metresBetween(from, pointed.point) }
+    Box(Modifier.offset { IntOffset(pointed.at.x.roundToInt(), pointed.at.y.roundToInt()) }) {
+        DropdownMenu(expanded = true, onDismissRequest = onDismiss) {
+            Column(Modifier.padding(horizontal = Space.step3, vertical = Space.step1)) {
+                Text(code, style = CodeStyle, color = LocalGpcColors.current.code)
+                Text(
+                    stringResource(R.string.menu_away, distance(away)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            HorizontalDivider()
+            val item: @Composable (Int, () -> Unit) -> Unit = { label, act ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(label)) },
+                    onClick = {
+                        act()
+                        onDismiss()
+                    },
+                )
+            }
+            item(R.string.menu_select, onSelect)
+            item(R.string.menu_save, onSave)
+            item(R.string.menu_copy_code) { copy(code) }
+            item(R.string.menu_copy_point) { copy(decimal) }
+        }
+    }
+}
+
+/** A step in and a step out, for a mouse. */
+@Composable
+private fun Zoom(control: MapControl) {
+    listOf(
+        Triple(ZoomIn, R.string.zoom_in, control::zoomIn),
+        Triple(ZoomOut, R.string.zoom_out, control::zoomOut),
+    ).forEach { (icon, name, step) ->
+        val label = stringResource(name)
+        SmallFloatingActionButton(
+            onClick = step,
+            shape = ButtonShape,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.semantics { contentDescription = label },
+        ) {
+            Icon(icon, contentDescription = null)
+        }
     }
 }
 
@@ -402,14 +577,19 @@ private fun Search(
     onInstead: (OtherFormat.At) -> Unit,
     problem: Problem?,
     onSettings: () -> Unit,
+    focus: FocusRequester,
+    onLeave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
-    val focus = LocalFocusManager.current
-    // The map is what answers, so the keyboard gets out of its way.
+    val typing = LocalTyping.current
+    DisposableEffect(Unit) { onDispose { typing.mark(SEARCH_FIELD, false) } }
+    // The map is what answers, so the keyboard gets out of its way, and the
+    // arrow keys go back to nudging the place.
     val go = {
         keyboard?.hide()
         onGo(text)
+        onLeave()
     }
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -426,23 +606,36 @@ private fun Search(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = { go() }),
                 trailingIcon = { TextButton(onClick = go) { Text(stringResource(R.string.search_go)) } },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focus)
+                    .typing(typing, SEARCH_FIELD)
+                    .onPreviewKeyEvent { event ->
+                        // Escape leaves the field, as it leaves any search box.
+                        if (event.type == KeyEventType.KeyDown && event.key == Key.Escape) {
+                            keyboard?.hide()
+                            onLeave()
+                            true
+                        } else {
+                            false
+                        }
+                    },
             )
             Found(
                 finding = finding,
                 onPick = { place ->
                     keyboard?.hide()
-                    focus.clearFocus()
+                    onLeave()
                     onPick(place)
                 },
                 onRecall = { place ->
                     keyboard?.hide()
-                    focus.clearFocus()
+                    onLeave()
                     onRecall(place)
                 },
                 onInstead = { at ->
                     keyboard?.hide()
-                    focus.clearFocus()
+                    onLeave()
                     onInstead(at)
                 },
             )
@@ -1353,6 +1546,8 @@ private fun formLabel(key: FormKey): String = when (key) {
 
 @Composable
 private fun GiveAddress(note: String, link: String, onNote: (String) -> Unit, share: () -> Unit) {
+    val typing = LocalTyping.current
+    DisposableEffect(Unit) { onDispose { typing.mark(NOTE_FIELD, false) } }
     Section(stringResource(R.string.address_title)) {
         OutlinedTextField(
             value = note,
@@ -1360,7 +1555,9 @@ private fun GiveAddress(note: String, link: String, onNote: (String) -> Unit, sh
             label = { Text(stringResource(R.string.address_note)) },
             supportingText = { Text(stringResource(R.string.address_count, note.length, NOTE_LIMIT)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .typing(typing, NOTE_FIELD),
         )
         Text(
             link,

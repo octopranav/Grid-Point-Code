@@ -134,6 +134,14 @@
 
     <string name="aloud_title">Read aloud</string>
     <string name="privacy">Privacy: what this app sends, and to whom</string>
+    <string name="keys_hint">Arrow keys nudge the place one cell \u00b7 Ctrl+C copies its code \u00b7 Ctrl+K searches \u00b7 right-click the map for any point</string>
+    <string name="menu_away">%1$s from the place chosen</string>
+    <string name="menu_select">Choose this point</string>
+    <string name="menu_save">Save this point</string>
+    <string name="menu_copy_code">Copy its code</string>
+    <string name="menu_copy_point">Copy its coordinates</string>
+    <string name="zoom_in">Zoom in</string>
+    <string name="zoom_out">Zoom out</string>
     <string name="notices_title">Open-source notices</string>
     <string name="notices_intro">This app is built on the work below. Each piece is used under its own licence, and each notice its licence asks to travel with it is given here in full.</string>
     <string name="notices_map">The map: MapLibre Native</string>

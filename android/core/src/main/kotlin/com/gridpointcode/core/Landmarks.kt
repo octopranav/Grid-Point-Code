@@ -153,6 +153,9 @@ private const val EARTH_METRES = 6371008.8
 
 private fun radians(degrees: Double) = degrees * PI / 180
 
+/** The distance between two points along the ground, in metres. */
+fun metresBetween(from: Point, to: Point): Double = metres(from, to.latitude, to.longitude)
+
 private fun metres(point: Point, latitude: Double, longitude: Double): Double {
     val dLat = radians(latitude - point.latitude)
     val dLng = radians(wrap(longitude - point.longitude))
