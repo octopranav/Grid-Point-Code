@@ -32,6 +32,12 @@ import androidx.core.view.WindowCompat
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import com.gridpointcode.core.AreaView
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextAlign
 import com.gridpointcode.core.SavedOrder
 import com.gridpointcode.core.savedRows
 import androidx.compose.foundation.shape.CircleShape
@@ -433,6 +439,8 @@ private fun Panel(
     // The QR code for a link, shown in its own dialog until it is closed.
     var showing by remember { mutableStateOf<Qr?>(null) }
     showing?.let { QrDialog(it.title, it.code, it.link, onClose = { showing = null }) }
+    val folded by model.folded.collectAsState()
+    CompositionLocalProvider(LocalFolding provides Folding(folded, model::fold)) {
     if (editing) {
         SaveDialog(
             existing = here,
@@ -480,6 +488,7 @@ private fun Panel(
             speak = { speak(ui.spoken) },
             share = { share(context, ui.formatted + "\n" + ui.link) },
             copy = { copy(context, ui.formatted) },
+            showQr = { showing = Qr(context.getString(R.string.qr_place), ui.formatted, ui.link) },
         )
         Nudge(ui.selection.code, ui.pad, onNudge = model::nudge)
         WrittenForms(ui.forms, copy = { copy(context, it) })
@@ -509,6 +518,7 @@ private fun Panel(
         TextButton(onClick = { noticing = true }) { Text(stringResource(R.string.notices_title)) }
         if (noticing) NoticesPage(onClose = { noticing = false })
         Spacer(Modifier.height(Space.step5))
+    }
     }
 }
 
@@ -959,7 +969,7 @@ private fun levelName(level: Int): String = stringResource(
  */
 @Composable
 private fun ShareArea(areas: List<AreaView>, chosen: Int?, onChoose: (Int) -> Unit) {
-    Section(stringResource(R.string.area_title)) {
+    Section(stringResource(R.string.area_title), key = "areas") {
         Quiet(stringResource(R.string.area_explain))
         Column(Modifier.selectableGroup()) {
             areas.forEach { area ->
@@ -1027,12 +1037,7 @@ private fun AreaHead(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Quiet(stringResource(R.string.area_note, area.cell))
-            Row(horizontalArrangement = Arrangement.spacedBy(Space.step1)) {
-                Button(onClick = speak, shape = ButtonShape) { Text(stringResource(R.string.read_aloud)) }
-                FilledTonalButton(onClick = share, shape = ButtonShape) { Text(stringResource(R.string.share)) }
-                OutlinedButton(onClick = copy, shape = ButtonShape) { Text(stringResource(R.string.copy)) }
-            }
-            TextButton(onClick = showQr) { Text(stringResource(R.string.qr_button)) }
+            Actions(speak = speak, share = share, copy = copy, showQr = showQr)
             if (onBack != null) TextButton(onClick = onBack) { Text(stringResource(R.string.area_back)) }
         }
     }
@@ -1429,6 +1434,7 @@ private fun Head(
     speak: () -> Unit,
     share: () -> Unit,
     copy: () -> Unit,
+    showQr: () -> Unit,
 ) {
     val colours = LocalGpcColors.current
     Surface(
@@ -1498,11 +1504,42 @@ private fun Head(
                     )
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(Space.step1)) {
-                Button(onClick = speak, shape = ButtonShape) { Text(stringResource(R.string.read_aloud)) }
-                FilledTonalButton(onClick = share, shape = ButtonShape) { Text(stringResource(R.string.share)) }
-                OutlinedButton(onClick = copy, shape = ButtonShape) { Text(stringResource(R.string.copy)) }
-            }
+            Actions(speak = speak, share = share, copy = copy, showQr = showQr)
+        }
+    }
+}
+
+/**
+ * The four things done with what the card shows, as the canvas draws them: a
+ * row of tiles, each an icon over its word, reading aloud first and filled,
+ * because saying the code is what the card is most often for.
+ */
+@Composable
+private fun Actions(speak: () -> Unit, share: () -> Unit, copy: () -> Unit, showQr: () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Space.step1)) {
+        Tile(Speak, R.string.read_aloud, speak, primary = true, modifier = Modifier.weight(1f))
+        Tile(ShareIcon, R.string.share, share, modifier = Modifier.weight(1f))
+        Tile(CopyIcon, R.string.copy, copy, modifier = Modifier.weight(1f))
+        Tile(QrIcon, R.string.qr_button, showQr, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun Tile(icon: ImageVector, label: Int, onClick: () -> Unit, modifier: Modifier = Modifier, primary: Boolean = false) {
+    Surface(
+        onClick = onClick,
+        shape = ButtonShape,
+        color = if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (primary) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+        modifier = modifier.heightIn(min = 60.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = Space.step1, horizontal = Space.step0),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Space.step0, Alignment.CenterVertically),
+        ) {
+            Icon(icon, contentDescription = null, tint = LocalContentColor.current, modifier = Modifier.size(22.dp))
+            Text(stringResource(label), style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
         }
     }
 }
@@ -1546,7 +1583,7 @@ private fun AnchorShort(
 ) {
     var all by remember(anchoring.code) { mutableStateOf(false) }
     val colours = LocalGpcColors.current
-    Section(stringResource(R.string.anchor_title)) {
+    Section(stringResource(R.string.anchor_title), key = "anchor") {
         Quiet(stringResource(R.string.anchor_explain))
         when (anchoring.status) {
             Anchoring.Status.LOOKING -> Quiet(stringResource(R.string.anchor_looking))
@@ -1670,17 +1707,48 @@ private fun distance(metres: Double): String =
     else stringResource(R.string.distance_kilometres, metres / 1000)
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
+private fun Section(title: String, key: String, content: @Composable () -> Unit) {
+    val folding = LocalFolding.current
+    val open = key !in folding.folded
+    val state = stringResource(if (open) R.string.section_open else R.string.section_folded)
+    val act = stringResource(if (open) R.string.section_fold else R.string.section_unfold)
     Column(verticalArrangement = Arrangement.spacedBy(Space.step2)) {
         HorizontalDivider(color = LocalGpcColors.current.rule)
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        content()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClickLabel = act, role = Role.Button) { folding.toggle(key) }
+                .semantics {
+                    heading()
+                    stateDescription = state
+                }
+                .padding(vertical = Space.step0),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Icon(
+                Chevron,
+                contentDescription = null,
+                tint = LocalGpcColors.current.inkSoft,
+                modifier = Modifier.rotate(if (open) 180f else 0f),
+            )
+        }
+        if (open) content()
     }
 }
 
+/**
+ * Which of the panel's sections are folded, and how to fold or open one. Every
+ * section is open until the reader folds it; what they fold stays folded, since
+ * a reader who never nudges should not scroll past the pad every time.
+ */
+private class Folding(val folded: Set<String>, val toggle: (String) -> Unit)
+
+private val LocalFolding = compositionLocalOf { Folding(emptySet()) {} }
+
 @Composable
 private fun Nudge(code: String, pad: Map<Compass, String>, onNudge: (Compass) -> Unit) {
-    Section(stringResource(R.string.nudge_title)) {
+    Section(stringResource(R.string.nudge_title), key = "nudge") {
         if (pad.isEmpty()) {
             Text(stringResource(R.string.nudge_pole), style = MaterialTheme.typography.bodySmall)
             return@Section
@@ -1730,7 +1798,7 @@ private fun PadCell(label: String, tail: String, current: Boolean, modifier: Mod
 @Composable
 private fun WrittenForms(forms: List<Form>, copy: (String) -> Unit) {
     val colours = LocalGpcColors.current
-    Section(stringResource(R.string.forms_title)) {
+    Section(stringResource(R.string.forms_title), key = "forms") {
         forms.forEach { form ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -1760,7 +1828,7 @@ private fun formLabel(key: FormKey): String = when (key) {
 private fun GiveAddress(note: String, link: String, onNote: (String) -> Unit, share: () -> Unit, showQr: () -> Unit) {
     val typing = LocalTyping.current
     DisposableEffect(Unit) { onDispose { typing.mark(NOTE_FIELD, false) } }
-    Section(stringResource(R.string.address_title)) {
+    Section(stringResource(R.string.address_title), key = "address") {
         OutlinedTextField(
             value = note,
             onValueChange = onNote,
@@ -1805,7 +1873,7 @@ private fun Aloud(
     speak: () -> Unit,
 ) {
     val context = LocalContext.current
-    Section(stringResource(R.string.aloud_title)) {
+    Section(stringResource(R.string.aloud_title), key = "aloud") {
         Text(spoken, style = MaterialTheme.typography.bodyLarge)
         Listener(listener, onChoose)
         if (voiced == false) {

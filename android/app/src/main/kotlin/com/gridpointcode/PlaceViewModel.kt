@@ -94,6 +94,7 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     private val preferences = Preferences(application)
     private val chosen = MutableStateFlow(preferences.basemap())
     private val listener = MutableStateFlow(preferences.listener())
+    private val foldedSections = MutableStateFlow(preferences.folded())
     private val state = MutableStateFlow(PlaceState(selectionAt(SAMPLE, Source.SAMPLE)))
     private var listening: Job? = null
     private val names = NameIndex()
@@ -125,6 +126,16 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
 
     fun choose(next: Basemap) {
         chosen.value = next
+        preferences.remember(next)
+    }
+
+    /** The panel's sections folded away, remembered across launches. */
+    val folded: StateFlow<Set<String>> = foldedSections
+
+    /** Folds a section of the panel, or opens it again. */
+    fun fold(section: String) {
+        val next = foldedSections.value.let { if (section in it) it - section else it + section }
+        foldedSections.value = next
         preferences.remember(next)
     }
 

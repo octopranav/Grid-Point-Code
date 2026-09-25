@@ -172,6 +172,10 @@
     <string name="menu_copy_point">Copy its coordinates</string>
     <string name="zoom_in">Zoom in</string>
     <string name="qr_button">QR code</string>
+    <string name="section_open">open</string>
+    <string name="section_folded">folded</string>
+    <string name="section_fold">fold</string>
+    <string name="section_unfold">open</string>
     <string name="qr_place">Scan to open this place</string>
     <string name="qr_area">Scan to open this area</string>
     <string name="qr_describe">A QR code for %1$s</string>
