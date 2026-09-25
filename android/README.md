@@ -99,6 +99,11 @@ code, check and correction is arithmetic on the device.
   drawn on it as small rings, and found first as a name is typed, with no
   connection. Opening one brings its directions back, and Go on a saved name
   goes straight there.
+- Answers a keyboard and a mouse, for Android on a desktop or a tablet with a
+  keyboard: the arrow keys nudge the place a cell, Ctrl+C copies its code and
+  Ctrl+K goes to the search box; a right-click on the map, or a long press on a
+  touch screen, shows any point's code and distance with ways to choose, save
+  or copy it; and a wide window has buttons to zoom.
 - Shares an area as well as a point: a place's card lists the areas around it,
   a region down to a building, each written as its first few characters with
   its size where it lies. Choosing one frames it on the map in brass, and it can
@@ -282,6 +287,15 @@ licence, and the build's `checkNotices` task fails when that list and the
 release's resolved libraries disagree, or when a notice was copied from a
 release other than the one resolved. The app shows them all from the end of the
 panel, under Open-source notices.
+
+**At a desk, the keys do what a finger does.** The arrows nudge as the pad
+does, and wait while a text field has the keyboard, where they move the cursor,
+as Ctrl+C then copies the selection rather than the code. Ctrl+K reaches the
+search box from anywhere, and on a phone it lowers the sheet first, so the box
+the keys go to can be seen. The screen keeps focus from the start, so a key
+pressed before anything is touched still counts, and it takes focus back when
+a search is done or Escape leaves the box. The keys are named at the end of the
+panel only when a keyboard is attached.
 
 **The backup leaves the map's tile cache out.** The map library keeps its cache
 in the app's own files, where Android's backup looks by default, and lets it

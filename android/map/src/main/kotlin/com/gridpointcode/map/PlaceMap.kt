@@ -34,6 +34,10 @@ import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.geometry.Offset
+import android.graphics.PointF
+import android.view.InputDevice
+import android.view.MotionEvent
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -135,6 +139,10 @@ private const val EARTH_METRES = 6_371_008.8
  * or a sheet below, so the cell is centred in what can actually be seen, and the
  * map's credit sits in the corner that is left. [creditEnd] keeps that line
  * clear of whatever the screen puts in the other corner.
+ *
+ * [onMenu] is asked for with a point and where it is on the map, by a long
+ * press or a mouse's second button, the two ways a map is asked "what is here".
+ * [control] steps the zoom for a reader with a mouse.
  */
 @Composable
 fun PlaceMap(
@@ -147,6 +155,8 @@ fun PlaceMap(
     saved: List<Point> = emptyList(),
     area: CellEdges? = null,
     creditEnd: Dp = 0.dp,
+    control: MapControl? = null,
+    onMenu: ((Point, Offset) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -162,6 +172,7 @@ fun PlaceMap(
     val colours = LocalGpcColors.current
     val ground = MaterialTheme.colorScheme.background.toArgb()
     val pick by rememberUpdatedState(onPick)
+    val menu by rememberUpdatedState(onMenu)
 
     var failed by remember { mutableStateOf(false) }
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
@@ -182,6 +193,26 @@ fun PlaceMap(
             // A source's credit arrives with its description of its tiles, a
             // moment after the style that names it.
             addOnSourceChangedListener { credit = style?.let(::declaredBy) }
+            // A mouse's second button asks for the menu, and the press is kept
+            // from the map, which would otherwise take it for a tap and move
+            // the place before the menu opened.
+            var secondary = false
+            setOnTouchListener { _, event ->
+                if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                    secondary = menu != null && event.isFromSource(InputDevice.SOURCE_MOUSE) &&
+                        event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)
+                    if (secondary) {
+                        map?.projection?.fromScreenLocation(PointF(event.x, event.y))?.let { at ->
+                            menu?.invoke(Point(at.latitude, at.longitude), Offset(event.x, event.y))
+                        }
+                    }
+                }
+                val kept = secondary
+                if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                    secondary = false
+                }
+                kept
+            }
             getMapAsync { ready ->
                 ready.uiSettings.setRotateGesturesEnabled(false)
                 ready.uiSettings.setTiltGesturesEnabled(false)
@@ -193,6 +224,13 @@ fun PlaceMap(
                     pick(Point(at.latitude, at.longitude))
                     true
                 }
+                ready.addOnMapLongClickListener { at ->
+                    val asked = menu ?: return@addOnMapLongClickListener false
+                    val on = ready.projection.toScreenLocation(at)
+                    asked(Point(at.latitude, at.longitude), Offset(on.x, on.y))
+                    true
+                }
+                control?.map = ready
                 map = ready
             }
         }

@@ -63,6 +63,18 @@ class CoreTest {
     }
 
     @Test
+    fun theDistanceBetweenTwoPointsIsMeasuredAlongTheGround() {
+        assertEquals(111_195.08, metresBetween(Point(0.0, 0.0), Point(1.0, 0.0)), 0.01, "a degree of latitude")
+        assertEquals(0.0, metresBetween(toronto.point, toronto.point), 1e-9)
+        assertEquals(
+            metresBetween(Point(0.0, 0.0), Point(0.0, 0.2)),
+            metresBetween(Point(0.0, 179.9), Point(0.0, -179.9)),
+            1e-6,
+            "across the antimeridian, the short way",
+        )
+    }
+
+    @Test
     fun thePrivacyPageIsTheSitesAndNotOneTheAppClaims() {
         // The app opens links under /play itself; the privacy page must go to the browser.
         assertEquals("https://gridpointcode.com/privacy", PRIVACY_ADDRESS)
