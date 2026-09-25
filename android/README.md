@@ -1,13 +1,15 @@
 # Grid Point Code for Android
 
-The application for phones, tablets, foldables and Android on the desktop, and
-later for Wear OS, cars and headsets. One APK for the large screens, laid out by
-the size of the window rather than the kind of device.
+The application for phones, tablets, foldables and Android on the desktop, a
+companion for Wear OS, and later for cars and headsets. One APK for the large
+screens, laid out by the size of the window rather than the kind of device, and
+one for the watch.
 
 What is built so far is the place: a map with the cell drawn on it, the panel
-that says everything about it, and a button that finds where the device is. The
-map is the only thing that uses the network, and nothing waits for it; every
-code, check and correction is arithmetic on the device.
+that says everything about it, and a button that finds where the device is; and
+on the watch, where the wrist is and the way to a saved place. The map is the
+only thing that uses the network, and nothing waits for it; every code, check
+and correction is arithmetic on the device.
 
 ## What is here
 
@@ -17,6 +19,7 @@ code, check and correction is arithmetic on the device.
 | [`designsystem`](designsystem) | The theme, the type scale, the bundled typefaces, the shapes and the ten-cell mark, built from the files [`design/build-tokens.mjs`](../design/build-tokens.mjs) generates |
 | [`map`](map) | MapLibre Native on the website's tile provider, its five styles, the cell drawn in brass with its eight neighbours faint around it, and a tap to place a point |
 | [`app`](app) | The place screen, the view model that holds the place, read aloud, fetching the name index and the landmark archive, and the ways a place arrives from another app |
+| [`wear`](wear) | The Wear OS app: where the watch is, the saved places nearest first, and the way to one, with the saved places kept in step with the phone's through the Wear Data Layer |
 
 ## What it does today
 
@@ -120,14 +123,28 @@ code, check and correction is arithmetic on the device.
   be read aloud, copied or shared with a link. A link to an area opens as that
   area, and so does a cell typed into the field.
 
+### On a watch
+
+- Shows where the watch is as the ten-cell mark, in two rows of five, with how
+  far to trust the fix, finding it only while the app is open.
+- Reads the code aloud in the listener's language, as the phone does, through
+  the watch's own speech engine.
+- Saves where the watch is, with no name; the phone's keyboard is the place to
+  give it one.
+- Lists the saved places nearest first, each with its distance and an arrow
+  that turns with the watch to point its way.
+- Walks to one: a large arrow, the distance, and its short form to say.
+- Works with no phone. The phone only brings the saved places, and takes back
+  the ones saved on the watch, whenever the two are in reach.
+
 ## Building
 
 ```
-./gradlew :core:test :app:assembleDebug
+./gradlew :core:test :app:assembleDebug :wear:assembleDebug
 ```
 
 Needs JDK 17 or later and the Android SDK with platform 37. Continuous
-integration runs both on every pull request.
+integration runs these on every pull request.
 
 To try the map against a local copy of the styles, for instance on a machine
 that cannot reach the tile host, point a debug build at it:
@@ -168,6 +185,14 @@ can be replaced.
 The bundle is about 23 MB, of which the map library's native code for four
 processor families is most. The store hands each device only its own, so a
 phone downloads about 16 MB.
+
+```
+./gradlew :wear:bundleRelease
+```
+
+The watch's bundle, about 4 MB, signed by the same four values. It has the
+phone's application ID, `com.gridpointcode`, and must have its key: the Data
+Layer carries items only between apps that share both.
 
 ## Decisions that shape the code
 
@@ -274,10 +299,29 @@ latitude and longitude. The code comes second, with how to say it. The
 coordinates are written with a full stop in every language, because a decimal
 comma between two numbers already separated by one is a trap.
 
-**Saved places stay on the device.** One small file in the app's own files, which
-the device's backup includes, so a new phone has them. No account to sync them
-to and no export, by the decision the website made when it took its export down.
-One place per code: saving a code again changes it rather than listing it twice.
+**Saved places stay on the device, and on a watch that has the app.** One small
+file in the app's own files, which the device's backup includes, so a new phone
+has them. No account to sync them to and no export, by the decision the website
+made when it took its export down. One place per code: saving a code again
+changes it rather than listing it twice. `SavedShelf` owns the list for the
+whole app, so the screen and the listener that takes in the watch's places
+change it in one place, and each change is written in the order it was made.
+
+**The watch shares the phone's list through the Wear Data Layer.** The phone's
+whole list is one item, `/saved`, in the encoding `SavedSync.kt` in `core`
+writes: a header naming its version, then a place to a line, with tabs, line
+breaks and backslashes in a name escaped, so a name arrives exactly. A place
+saved on the watch is its own item, `/from-watch/<code>`; the phone merges it,
+the later saving of a code winning, and deletes the item. Until the phone has,
+its list does not have the place, so the watch lays the items still waiting over
+each list that arrives, and deletes its own once the phone's list shows the
+place, so a place saved on the watch never vanishes from it on the way. A list
+with no line that reads is damage and is not taken; a list emptied on purpose
+is. The watch app says it is there with the Data Layer capability `gpc_watch`,
+and the phone hands its list to the Data Layer only when a watch says so, and
+takes it back out when none does, so a phone with no watch app keeps its places
+in its own file alone. On a phone with no Wear OS companion app, the Data Layer
+answers every call as unavailable, and the app carries on without it.
 
 **The map's credit is drawn by the screen, in full.** Every basemap is
 OpenStreetMap data, whose licence asks for credit in a corner of the map with a
@@ -292,6 +336,9 @@ and its gesture library are under the BSD licence, which requires their notice
 in whatever is distributed, and OkHttp carries a notice for the list of public
 suffixes it bundles. Each is in the app's assets, copied unchanged from the
 release the app uses, and the Apache License 2.0 is there once for the rest.
+The Play services libraries, under the Android Software Development Kit
+License, carry the notices of what is compiled into them; `play-services.txt`
+has each of those once, as the four libraries carry it.
 `licences/components.txt` names every library the release ships with its
 licence, and the build's `checkNotices` task fails when that list and the
 release's resolved libraries disagree, or when a notice was copied from a
@@ -350,7 +397,8 @@ it; what a backup takes is the saved places and the two settings, a few
 kilobytes.
 
 **What the app sends is on the site's privacy page.** Two hosts, the tile
-provider and this site's own files, and nothing else; the app links to
+provider and this site's own files, and Google Play services for a watch that
+has the app, and nothing else; the app links to
 [`/privacy`](https://gridpointcode.com/privacy) from the end of the panel, as
 the store requires of an app that reads the device's location. A change that
 sends something new somewhere new changes that page in the same pull request.
@@ -419,10 +467,11 @@ pixel square the store asks for.
 
 **Three SDK levels, three meanings.** `compileSdk` 37 because current AndroidX
 libraries compile against it. `targetSdk` 36 for runtime behaviour. `minSdk` 26,
-which covers the streaming calls in the library, which need 24.
+which covers the streaming calls in the library, which need 24. The watch app's
+`minSdk` is 30, Wear OS 3, the first release built on Android 11.
 
 ## Not here yet
 
 Verified links (which need the signing
-fingerprint published in `/.well-known/assetlinks.json`), and the Wear OS, car
-and headset modules.
+fingerprint published in `/.well-known/assetlinks.json`); the watch's tile, its
+complication and its own notices page; and the car and headset modules.

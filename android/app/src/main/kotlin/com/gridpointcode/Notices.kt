@@ -120,27 +120,32 @@ private fun linked(text: String): String =
 private fun readNotice(context: Context, name: String): String? =
     runCatching { context.assets.open("licences/$name").bufferedReader().use { it.readText() } }.getOrNull()
 
-/** Everything the page shows, read once from the assets. */
+/**
+ * Everything the page shows, read once from the assets and laid out into blocks
+ * there, off the main thread: the Play services notices alone run to half a
+ * megabyte.
+ */
 private class Notices(
-    val map: String,
-    val gestures: String,
-    val bitter: String,
-    val plex: String,
+    val map: List<Block>,
+    val gestures: List<Block>,
+    val typefaces: List<Block>,
     val apache: List<String>,
-    val okhttp: String,
-    val licence: String,
+    val apacheNotices: List<Block>,
+    val play: List<String>,
+    val playNotices: List<Block>,
 )
 
 private fun readNotices(context: Context): Notices? {
     val components = componentsIn(readNotice(context, "components.txt") ?: return null)
+    fun blocks(name: String) = readNotice(context, name)?.let(::blocksOf)
     return Notices(
-        map = readNotice(context, "maplibre-native-android.md") ?: return null,
-        gestures = readNotice(context, "maplibre-gestures-android.md") ?: return null,
-        bitter = readNotice(context, "bitter-OFL.txt") ?: return null,
-        plex = readNotice(context, "ibm-plex-OFL.txt") ?: return null,
+        map = blocks("maplibre-native-android.md") ?: return null,
+        gestures = blocks("maplibre-gestures-android.md") ?: return null,
+        typefaces = (blocks("bitter-OFL.txt") ?: return null) + Block.Rule + (blocks("ibm-plex-OFL.txt") ?: return null),
         apache = components.filter { it.licence == "Apache-2.0" }.map { it.module },
-        okhttp = readNotice(context, "okhttp-public-suffix-list.txt") ?: return null,
-        licence = readNotice(context, "apache-2.0.txt") ?: return null,
+        apacheNotices = (blocks("okhttp-public-suffix-list.txt") ?: return null) + Block.Rule + (blocks("apache-2.0.txt") ?: return null),
+        play = components.filter { it.licence == "Android-SDK-License" }.map { it.module },
+        playNotices = blocks("play-services.txt") ?: return null,
     )
 }
 
@@ -188,12 +193,16 @@ fun NoticesPage(onClose: () -> Unit) {
                 }
                 item { Text(stringResource(R.string.notices_intro), style = MaterialTheme.typography.bodyLarge) }
                 val shown = notices ?: return@LazyColumn
-                section(R.string.notices_map, blocksOf(shown.map))
-                section(R.string.notices_gestures, blocksOf(shown.gestures))
-                section(R.string.notices_typefaces, blocksOf(shown.bitter) + Block.Rule + blocksOf(shown.plex))
+                section(R.string.notices_map, shown.map)
+                section(R.string.notices_gestures, shown.gestures)
+                section(R.string.notices_typefaces, shown.typefaces)
                 item { Title(R.string.notices_apache) }
                 item { Text(shown.apache.joinToString("\n"), style = CodeStyle.copy(fontSize = MaterialTheme.typography.bodySmall.fontSize)) }
-                blocks(blocksOf(shown.okhttp) + Block.Rule + blocksOf(shown.licence))
+                blocks(shown.apacheNotices)
+                item { Title(R.string.notices_play) }
+                item { Text(stringResource(R.string.notices_play_body), style = MaterialTheme.typography.bodySmall) }
+                item { Text(shown.play.joinToString("\n"), style = CodeStyle.copy(fontSize = MaterialTheme.typography.bodySmall.fontSize)) }
+                blocks(shown.playNotices)
                 item { Title(R.string.notices_data) }
                 item { Text(stringResource(R.string.notices_data_body), style = MaterialTheme.typography.bodySmall) }
                 item { Text("", modifier = Modifier.padding(bottom = Space.step4)) }

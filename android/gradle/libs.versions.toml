@@ -8,6 +8,9 @@ lifecycle = "2.11.0"
 coreKtx = "1.19.0"
 maplibre = "13.6.1"
 zxing = "3.5.4"
+playServicesWearable = "20.0.1"
+wearCompose = "1.7.0"
+fragment = "1.8.9"
 
 [libraries]
 # The format itself, installed from Maven Central like anybody else installs it.
@@ -18,6 +21,18 @@ maplibre = { module = "org.maplibre.gl:android-sdk", version.ref = "maplibre" }
 
 # The QR code for a place's link: the standard encoder, of which the release keeps only the encoding.
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+
+# The Wear Data Layer, which carries saved places between the phone and the watch.
+play-services-wearable = { module = "com.google.android.gms:play-services-wearable", version.ref = "playServicesWearable" }
+
+# The watch's screens.
+wear-compose-material3 = { module = "androidx.wear.compose:compose-material3", version.ref = "wearCompose" }
+wear-compose-foundation = { module = "androidx.wear.compose:compose-foundation", version.ref = "wearCompose" }
+wear-compose-navigation = { module = "androidx.wear.compose:compose-navigation", version.ref = "wearCompose" }
+# Play services asks for fragment 1.1.0, older than the permission request the watch
+# makes can rely on. The phone reaches a current one through its other libraries;
+# the watch has none of them, so it names the same version itself.
+androidx-fragment = { module = "androidx.fragment:fragment", version.ref = "fragment" }
 
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 

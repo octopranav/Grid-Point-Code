@@ -70,5 +70,20 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+
+        <!-- Places saved on the watch arrive here, whether the app is open or not,
+             and a watch that newly has the app is sent the list. -->
+        <service
+            android:name=".WatchListener"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/from-watch" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.CAPABILITY_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:path="/gpc_watch" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>

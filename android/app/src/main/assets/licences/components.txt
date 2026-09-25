@@ -5,7 +5,9 @@
 # until this list says so. A file named after a licence holds a notice the
 # library requires to travel with it; a version after @ is the release that
 # notice was copied from, and the task fails when the build resolves another.
-# The Apache License 2.0 itself is apache-2.0.txt.
+# The Apache License 2.0 itself is apache-2.0.txt. Google Play services is under
+# the Android Software Development Kit License, developer.android.com/studio/terms,
+# and play-services.txt holds the notices its libraries carry.
 
 androidx.activity:activity  Apache-2.0
 androidx.activity:activity-compose  Apache-2.0
@@ -102,6 +104,10 @@ androidx.window:window  Apache-2.0
 androidx.window:window-core  Apache-2.0
 androidx.window:window-core-android  Apache-2.0
 ca.pranavpatel.algo:gridpointcode  Apache-2.0
+com.google.android.gms:play-services-base  Android-SDK-License  play-services.txt@18.5.0
+com.google.android.gms:play-services-basement  Android-SDK-License  play-services.txt@18.9.0
+com.google.android.gms:play-services-tasks  Android-SDK-License  play-services.txt@18.2.0
+com.google.android.gms:play-services-wearable  Android-SDK-License  play-services.txt@20.0.1
 com.google.code.gson:gson  Apache-2.0
 com.google.guava:listenablefuture  Apache-2.0
 com.google.zxing:core  Apache-2.0

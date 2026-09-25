@@ -79,6 +79,8 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.compose.ui.tooling.preview)
+    // Saved places to and from the watch.
+    implementation(libs.play.services.wearable)
     debugImplementation(libs.compose.ui.tooling)
 
     testImplementation(libs.kotlin.test.junit)

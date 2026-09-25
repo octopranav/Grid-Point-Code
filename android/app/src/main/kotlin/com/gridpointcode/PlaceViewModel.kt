@@ -64,7 +64,6 @@ import com.gridpointcode.core.view
 import com.gridpointcode.map.Basemap
 import java.io.File
 import kotlin.math.roundToInt
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -106,14 +105,12 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     )
     private val anchoring = MutableStateFlow(Anchoring())
     private val keeping = MutableStateFlow(Keeping())
-    private val savedStore = SavedPlaces(File(application.filesDir, "saved-places.json"))
     // Read once as the app opens: one small file, needed before the first
-    // frame so the bookmark on the card is right from the start.
-    private val savedList = MutableStateFlow(savedStore.load())
-
-    /** Writes happen one at a time, in order, so a quick save and remove cannot land backwards. */
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    private val writing = Dispatchers.IO.limitedParallelism(1)
+    // frame so the bookmark on the card is right from the start. Shared with
+    // the listener that takes in places saved on the watch.
+    init {
+        SavedShelf.open(application)
+    }
 
     /** Which landmark the reader chose, by name and region, so it survives a nudge that keeps it in reach. */
     private var anchorChoice: String? = null
@@ -168,7 +165,7 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     val offline: StateFlow<Keeping> = keeping
 
     /** The reader's saved places, most recent first. */
-    val saved: StateFlow<List<SavedPlace>> = savedList
+    val saved: StateFlow<List<SavedPlace>> = SavedShelf.saved
 
     private val carding = MutableStateFlow(false)
 
@@ -190,14 +187,12 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun save(label: String, note: String) {
         val code = state.value.selection.code
-        savedList.update { it.saving(SavedPlace(code, label, note, System.currentTimeMillis())) }
+        SavedShelf.change { it.saving(SavedPlace(code, label, note, System.currentTimeMillis())) }
         state.update { it.described(note) }
-        persist()
     }
 
     fun unsave(code: String) {
-        savedList.update { it.forgetting(code) }
-        persist()
+        SavedShelf.change { it.forgetting(code) }
     }
 
     /** A saved place, opened again with its own directions. */
@@ -205,11 +200,6 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
         settle()
         query = ""
         change { it.recalled(place) }
-    }
-
-    private fun persist() {
-        val snapshot = savedList.value
-        viewModelScope.launch(writing) { savedStore.store(snapshot) }
     }
 
     init {
@@ -392,7 +382,7 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
         looking?.cancel()
         // Saved places answer at once, and with no connection: they are the
         // reader's own, and the likeliest thing they meant.
-        val mine = matchSaved(text, savedList.value)
+        val mine = matchSaved(text, SavedShelf.saved.value)
         if (!isName(text)) {
             // Ten characters that are a code here and another system's code
             // too are read as a code, with the other reading offered beside it.
@@ -404,7 +394,7 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
         looking = viewModelScope.launch {
             delay(TYPING_MS)
             finding.update { it.copy(query = text, status = Finding.Status.LOOKING) }
-            finding.value = lookUp(text).copy(saved = matchSaved(text, savedList.value))
+            finding.value = lookUp(text).copy(saved = matchSaved(text, SavedShelf.saved.value))
         }
     }
 
@@ -443,7 +433,7 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
      * called that.
      */
     fun go(text: String) {
-        namedSaved(text, savedList.value)?.let { return recall(it) }
+        namedSaved(text, SavedShelf.saved.value)?.let { return recall(it) }
         if (!isName(text)) return open(text)
         looking?.cancel()
         looking = viewModelScope.launch {

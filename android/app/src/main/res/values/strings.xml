@@ -69,7 +69,7 @@
     <string name="save_place">Save this place</string>
     <string name="saved_edit">Saved place</string>
     <string name="saved_title">Saved places</string>
-    <string name="saved_kept">Kept on this phone, never on a server.</string>
+    <string name="saved_kept">Kept on this phone, and on your watch if it has the app.</string>
     <string name="saved_nearest">Nearest first</string>
     <string name="saved_here">Here</string>
     <string name="saved_recent">Most recent first</string>
@@ -200,6 +200,8 @@
     <string name="notices_gestures">Map gestures: MapLibre Gestures</string>
     <string name="notices_typefaces">Typefaces: Bitter and IBM Plex</string>
     <string name="notices_apache">Libraries under the Apache License 2.0</string>
+    <string name="notices_play">Google Play services</string>
+    <string name="notices_play_body">The Wear Data Layer, which carries saved places to and from a watch, is part of Google Play services, used under the Android Software Development Kit License at developer.android.com/studio/terms. The notices its libraries carry follow.</string>
     <string name="notices_data">Map data</string>
     <string name="notices_data_body">Map data \u00a9 OpenStreetMap contributors, available under the Open Database License from openstreetmap.org/copyright. Tiles from OpenFreeMap, in the OpenMapTiles schema \u00a9 OpenMapTiles. The credit is also on the map itself.</string>
     <string name="aloud_listener">The listener\'s language</string>
