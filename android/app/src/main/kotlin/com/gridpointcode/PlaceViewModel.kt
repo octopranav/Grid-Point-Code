@@ -132,6 +132,12 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     /** The panel's sections folded away, remembered across launches. */
     val folded: StateFlow<Set<String>> = foldedSections
 
+    /** Opens every section the reader folded. */
+    fun unfoldAll() {
+        foldedSections.value = emptySet()
+        preferences.remember(emptySet<String>())
+    }
+
     /** Folds a section of the panel, or opens it again. */
     fun fold(section: String) {
         val next = foldedSections.value.let { if (section in it) it - section else it + section }
