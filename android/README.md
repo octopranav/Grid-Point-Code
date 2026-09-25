@@ -272,6 +272,17 @@ off and the line the map's sources declare is drawn in the corner that can be
 seen, each name a link, shown in full as the website shows it. Until a source
 has declared its line, the provider's own words stand in.
 
+**The open-source notices ship as their authors wrote them.** MapLibre Native
+and its gesture library are under the BSD licence, which requires their notice
+in whatever is distributed, and OkHttp carries a notice for the list of public
+suffixes it bundles. Each is in the app's assets, copied unchanged from the
+release the app uses, and the Apache License 2.0 is there once for the rest.
+`licences/components.txt` names every library the release ships with its
+licence, and the build's `checkNotices` task fails when that list and the
+release's resolved libraries disagree, or when a notice was copied from a
+release other than the one resolved. The app shows them all from the end of the
+panel, under Open-source notices.
+
 **The backup leaves the map's tile cache out.** The map library keeps its cache
 in the app's own files, where Android's backup looks by default, and lets it
 grow to 200 MB. A cloud backup over 25 MB is refused whole, so the cache would
