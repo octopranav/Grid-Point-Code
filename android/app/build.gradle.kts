@@ -3,6 +3,21 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+// The key a release is signed with for upload never enters the repository. It
+// is named by four values, set in ~/.gradle/gradle.properties or as environment
+// variables; with all four, a release is signed with it, and without them it is
+// built unsigned, which is how CI proves the shrunk build still builds.
+val upload: Map<String, String?> = mapOf(
+    "store" to "gpc.upload.store",
+    "storePassword" to "gpc.upload.storePassword",
+    "alias" to "gpc.upload.alias",
+    "keyPassword" to "gpc.upload.keyPassword",
+).mapValues { (_, property) ->
+    providers.gradleProperty(property)
+        .orElse(providers.environmentVariable(property.uppercase().replace('.', '_')))
+        .orNull
+}
+
 android {
     namespace = "com.gridpointcode"
     compileSdk = 37
@@ -25,10 +40,25 @@ android {
         compose = true
     }
 
+    signingConfigs {
+        if (upload.values.all { it != null }) {
+            create("upload") {
+                storeFile = file(upload.getValue("store")!!)
+                storePassword = upload.getValue("storePassword")
+                keyAlias = upload.getValue("alias")
+                keyPassword = upload.getValue("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // Shrunk and optimised. No rules of the app's own are needed: the
+            // JSON it reads is parsed by hand with the platform's org.json, and
+            // the map library brings its own.
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            signingConfig = signingConfigs.findByName("upload")
         }
     }
 }

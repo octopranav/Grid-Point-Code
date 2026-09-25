@@ -124,6 +124,36 @@ that cannot reach the tile host, point a debug build at it:
 `10.0.2.2` is the emulator's name for the machine it runs on. Debug builds allow
 plain HTTP to that one address and nowhere else; release builds allow none.
 
+### A release
+
+```
+./gradlew :app:bundleRelease
+```
+
+The bundle the store takes, shrunk and optimised by R8. CI builds it on every
+pull request, unsigned, because a class removed that something still needed
+breaks only the release. It needs no shrinking rules of its own: the JSON the
+app reads is parsed with the platform's `org.json`, and the map library brings
+its own rules.
+
+It is signed for upload when four values are set, in `~/.gradle/gradle.properties`
+or as environment variables, and never in the repository:
+
+| Gradle property | Environment variable | What it is |
+| --- | --- | --- |
+| `gpc.upload.store` | `GPC_UPLOAD_STORE` | the path to the upload keystore |
+| `gpc.upload.storePassword` | `GPC_UPLOAD_STOREPASSWORD` | its password |
+| `gpc.upload.alias` | `GPC_UPLOAD_ALIAS` | the key's alias in it |
+| `gpc.upload.keyPassword` | `GPC_UPLOAD_KEYPASSWORD` | the key's password |
+
+Without all four the bundle is built unsigned. With the store signing the app
+for users, this key only proves an upload came from its owner, and a lost one
+can be replaced.
+
+The bundle is about 23 MB, of which the map library's native code for four
+processor families is most. The store hands each device only its own, so a
+phone downloads about 16 MB.
+
 ## Decisions that shape the code
 
 **The engine is the published package, not a port.** `core` depends on
