@@ -234,6 +234,14 @@ the device's backup includes, so a new phone has them. No account to sync them
 to and no export, by the decision the website made when it took its export down.
 One place per code: saving a code again changes it rather than listing it twice.
 
+**The map's credit is drawn by the screen, in full.** Every basemap is
+OpenStreetMap data, whose licence asks for credit in a corner of the map with a
+way to its copyright page, and the tile provider asks for its own line beside
+it. The map library's own credit button sits under the sheet, so it is turned
+off and the line the map's sources declare is drawn in the corner that can be
+seen, each name a link, shown in full as the website shows it. Until a source
+has declared its line, the provider's own words stand in.
+
 **The backup leaves the map's tile cache out.** The map library keeps its cache
 in the app's own files, where Android's backup looks by default, and lets it
 grow to 200 MB. A cloud backup over 25 MB is refused whole, so the cache would

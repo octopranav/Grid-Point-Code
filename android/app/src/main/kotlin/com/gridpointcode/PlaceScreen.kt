@@ -209,6 +209,8 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
                 basemap = basemap,
                 saved = savedPoints,
                 area = ui.area?.box,
+                // The buttons' column: its margin, the widest button, a gap.
+                creditEnd = Space.step3 + 56.dp + Space.step2,
                 modifier = Modifier.fillMaxSize(),
             )
             Search(

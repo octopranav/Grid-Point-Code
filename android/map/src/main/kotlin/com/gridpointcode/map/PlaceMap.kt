@@ -28,6 +28,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.fromHtml
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -125,7 +132,9 @@ private const val EARTH_METRES = 6_371_008.8
  * turns the cell into a diamond that no longer looks like what it names.
  *
  * [padding] is the part of the map something else covers, a search bar above
- * or a sheet below, so the cell is centred in what can actually be seen.
+ * or a sheet below, so the cell is centred in what can actually be seen, and the
+ * map's credit sits in the corner that is left. [creditEnd] keeps that line
+ * clear of whatever the screen puts in the other corner.
  */
 @Composable
 fun PlaceMap(
@@ -137,6 +146,7 @@ fun PlaceMap(
     dark: Boolean = isSystemInDarkTheme(),
     saved: List<Point> = emptyList(),
     area: CellEdges? = null,
+    creditEnd: Dp = 0.dp,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -157,6 +167,7 @@ fun PlaceMap(
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var style by remember { mutableStateOf<Style?>(null) }
     var placed by remember { mutableStateOf(false) }
+    var credit by remember { mutableStateOf<String?>(null) }
 
     val view = remember {
         MapLibre.getInstance(context)
@@ -168,9 +179,16 @@ fun PlaceMap(
             onCreate(null)
             addOnDidFailLoadingMapListener { failed = true }
             addOnDidFinishLoadingStyleListener { failed = false }
+            // A source's credit arrives with its description of its tiles, a
+            // moment after the style that names it.
+            addOnSourceChangedListener { credit = style?.let(::declaredBy) }
             getMapAsync { ready ->
                 ready.uiSettings.setRotateGesturesEnabled(false)
                 ready.uiSettings.setTiltGesturesEnabled(false)
+                // Drawn below the sheet, where nobody could see them; the
+                // credit is drawn by this screen instead, where it can be.
+                ready.uiSettings.setAttributionEnabled(false)
+                ready.uiSettings.setLogoEnabled(false)
                 ready.addOnMapClickListener { at ->
                     pick(Point(at.latitude, at.longitude))
                     true
@@ -210,6 +228,7 @@ fun PlaceMap(
         ready.setStyle(Style.Builder().fromUri(url)) { loaded ->
             addDrawing(loaded, ink)
             style = loaded
+            credit = declaredBy(loaded)
         }
     }
 
@@ -283,6 +302,15 @@ fun PlaceMap(
 
     Box(modifier) {
         AndroidView(factory = { view }, modifier = Modifier.fillMaxSize())
+        if (style != null) {
+            Credit(
+                html = credit ?: PROVIDER_CREDIT,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(padding)
+                    .padding(start = Space.step1, bottom = Space.step1, end = creditEnd + Space.step1),
+            )
+        }
         if (failed) {
             // Set in ink on purpose: brass is the colour of a code, and this is not one.
             Text(
@@ -367,6 +395,28 @@ private fun framing(area: CellEdges, view: MapView, inset: DoubleArray, density:
         .zoom(zoom.coerceIn(0.0, START_ZOOM))
         .padding(inset)
         .build()
+}
+
+/** What the loaded style's sources say about where their data comes from. */
+private fun declaredBy(style: Style): String = creditOf(style.sources.map { it.attribution })
+
+/**
+ * The credit line, small, on a plate of the page's own surface so it reads over
+ * any map, with each name a link to its page.
+ */
+@Composable
+private fun Credit(html: String, modifier: Modifier = Modifier) {
+    val text = remember(html) {
+        AnnotatedString.fromHtml(html, linkStyles = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline)))
+    }
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 15.sp),
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.88f), RoundedCornerShape(Radius.card))
+            .padding(horizontal = Space.step1, vertical = 2.dp),
+    )
 }
 
 /** Nothing of the place drawn, while an area is shown instead. */
