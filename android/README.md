@@ -99,6 +99,9 @@ code, check and correction is arithmetic on the device.
   drawn on it as small rings, and found first as a name is typed, with no
   connection. Opening one brings its directions back, and Go on a saved name
   goes straight there.
+- Shows a QR code for a place's link, directions and all, or an area's, to be
+  scanned off the screen by any phone, with the screen at full brightness
+  while it is up.
 - Offers the codes one slip away when a typed code lands far from the reader:
   a code heard over a telephone with one character wrong opens as typed, and
   the panel says where it landed and lists the codes one character changed, or
@@ -292,6 +295,14 @@ licence, and the build's `checkNotices` task fails when that list and the
 release's resolved libraries disagree, or when a notice was copied from a
 release other than the one resolved. The app shows them all from the end of the
 panel, under Open-source notices.
+
+**The QR code is the website's, drawn by the standard encoder.** The payload is
+the link, as the site's is, so scanning it opens the place with or without this
+app; error correction M and a four-module quiet zone, as the site sets them;
+dark on white in either theme, because a camera nobody here has seen reads it.
+ZXing's core draws it, the one library added for it, which the release shrinks
+to its encoder; the notices check refused the build until it was listed. Each
+module is a whole number of pixels, so none is drawn blurred across two.
 
 **A slip is offered, never declared.** Section 15 of the specification forbids
 claiming to detect typos, and a code can be right and far. So a typed code

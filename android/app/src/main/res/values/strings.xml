@@ -161,6 +161,11 @@
     <string name="menu_copy_code">Copy its code</string>
     <string name="menu_copy_point">Copy its coordinates</string>
     <string name="zoom_in">Zoom in</string>
+    <string name="qr_button">QR code</string>
+    <string name="qr_place">Scan to open this place</string>
+    <string name="qr_area">Scan to open this area</string>
+    <string name="qr_describe">A QR code for %1$s</string>
+    <string name="qr_note">Any phone\'s camera opens it, with or without this app. The directions travel in it, as they do in the link.</string>
     <string name="zoom_out">Zoom out</string>
     <string name="notices_title">Open-source notices</string>
     <string name="notices_intro">This app is built on the work below. Each piece is used under its own licence, and each notice its licence asks to travel with it is given here in full.</string>

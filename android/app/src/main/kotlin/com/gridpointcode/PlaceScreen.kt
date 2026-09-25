@@ -420,6 +420,9 @@ private fun Panel(
     val saved by model.saved.collectAsState()
     val here = saved.savedAt(ui.selection.code)
     var noticing by remember { mutableStateOf(false) }
+    // The QR code for a link, shown in its own dialog until it is closed.
+    var showing by remember { mutableStateOf<Qr?>(null) }
+    showing?.let { QrDialog(it.title, it.code, it.link, onClose = { showing = null }) }
     if (editing) {
         SaveDialog(
             existing = here,
@@ -453,6 +456,7 @@ private fun Panel(
                 speak = { speak(area.spoken) },
                 share = { share(context, area.cell + "\n" + area.link) },
                 copy = { copy(context, area.cell) },
+                showQr = { showing = Qr(context.getString(R.string.qr_area), area.cell, area.link) },
             )
             if (fromPlace) ShareArea(ui.areas, chosen = area.level, onChoose = model::widen)
             Spacer(Modifier.height(Space.step5))
@@ -469,7 +473,13 @@ private fun Panel(
         )
         Nudge(ui.selection.code, ui.pad, onNudge = model::nudge)
         WrittenForms(ui.forms, copy = { copy(context, it) })
-        GiveAddress(ui.note, ui.link, onNote = model::describeTheWay, share = { share(context, ui.formatted + "\n" + ui.link) })
+        GiveAddress(
+            ui.note,
+            ui.link,
+            onNote = model::describeTheWay,
+            share = { share(context, ui.formatted + "\n" + ui.link) },
+            showQr = { showing = Qr(context.getString(R.string.qr_place), ui.formatted, ui.link) },
+        )
         ShareArea(ui.areas, chosen = null, onChoose = model::widen)
         AnchorShort(
             anchoring = anchoring,
@@ -984,6 +994,7 @@ private fun AreaHead(
     speak: () -> Unit,
     share: () -> Unit,
     copy: () -> Unit,
+    showQr: () -> Unit,
 ) {
     val colours = LocalGpcColors.current
     Surface(
@@ -1011,6 +1022,7 @@ private fun AreaHead(
                 FilledTonalButton(onClick = share, shape = ButtonShape) { Text(stringResource(R.string.share)) }
                 OutlinedButton(onClick = copy, shape = ButtonShape) { Text(stringResource(R.string.copy)) }
             }
+            TextButton(onClick = showQr) { Text(stringResource(R.string.qr_button)) }
             if (onBack != null) TextButton(onClick = onBack) { Text(stringResource(R.string.area_back)) }
         }
     }
@@ -1657,7 +1669,7 @@ private fun formLabel(key: FormKey): String = when (key) {
 }
 
 @Composable
-private fun GiveAddress(note: String, link: String, onNote: (String) -> Unit, share: () -> Unit) {
+private fun GiveAddress(note: String, link: String, onNote: (String) -> Unit, share: () -> Unit, showQr: () -> Unit) {
     val typing = LocalTyping.current
     DisposableEffect(Unit) { onDispose { typing.mark(NOTE_FIELD, false) } }
     Section(stringResource(R.string.address_title)) {
@@ -1680,9 +1692,15 @@ private fun GiveAddress(note: String, link: String, onNote: (String) -> Unit, sh
                 .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Radius.card))
                 .padding(Space.step2),
         )
-        Button(onClick = share, shape = ButtonShape) { Text(stringResource(R.string.share)) }
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.step1)) {
+            Button(onClick = share, shape = ButtonShape) { Text(stringResource(R.string.share)) }
+            OutlinedButton(onClick = showQr, shape = ButtonShape) { Text(stringResource(R.string.qr_button)) }
+        }
     }
 }
+
+/** A QR code to show: what it opens, written out, and the link it carries. */
+private data class Qr(val title: String, val code: String, val link: String)
 
 /**
  * The line to read out, in the words of the listener's language. The code is the
