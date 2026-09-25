@@ -581,6 +581,12 @@ jobs:
       # so this is also where a release that no longer dexes would surface.
       - name: The app assembles
         run: ./gradlew --no-daemon :app:assembleDebug
+      # The release is shrunk and optimised, which the debug build never is: a
+      # class removed that something still needed breaks only here. Built as
+      # the bundle the store takes, unsigned, because the upload key is never
+      # in the repository or in CI.
+      - name: The release bundle shrinks and builds
+        run: ./gradlew --no-daemon :app:bundleRelease
 
   conformance:
     name: All four ports agree
