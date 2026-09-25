@@ -32,6 +32,13 @@ import androidx.core.view.WindowCompat
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import com.gridpointcode.core.AreaView
+import com.gridpointcode.core.Doubt
+import com.gridpointcode.core.Slip
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import com.gridpointcode.core.Point
 import com.gridpointcode.core.metresBetween
 import com.gridpointcode.map.MapControl
@@ -451,6 +458,7 @@ private fun Panel(
             Spacer(Modifier.height(Space.step5))
             return@Column
         }
+        ui.doubt?.let { Doubted(it, onUse = model::correct, onKeep = model::keep) }
         Head(
             ui = ui,
             saved = here,
@@ -483,6 +491,110 @@ private fun Panel(
         Spacer(Modifier.height(Space.step5))
     }
 }
+
+/**
+ * A typed code that lands far from the reader, offered the codes one slip away
+ * that land near them. It never says the code is wrong: the specification
+ * forbids claiming to detect a typo, and a code can be right and far. It says
+ * where the code lands, and what one slip would have made of it.
+ */
+@Composable
+private fun Doubted(doubt: Doubt, onUse: (String) -> Unit, onKeep: () -> Unit) {
+    val colours = LocalGpcColors.current
+    val reference = stringResource(if (doubt.fromDevice) R.string.doubt_you else R.string.doubt_place)
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(Radius.card),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, colours.rule, RoundedCornerShape(Radius.card)),
+    ) {
+        Column(Modifier.padding(Space.step3), verticalArrangement = Arrangement.spacedBy(Space.step2)) {
+            Text(
+                stringResource(R.string.doubt_label).uppercase(Locale.getDefault()),
+                style = MaterialTheme.typography.labelSmall,
+                color = colours.inkSoft,
+            )
+            Text(
+                stringResource(
+                    R.string.doubt_far,
+                    formatted(doubt.typed),
+                    distance(doubt.metres),
+                    direction(doubt.bearing),
+                    reference,
+                ),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Quiet(stringResource(R.string.doubt_heard))
+            doubt.suggestions.forEach { suggestion ->
+                Surface(
+                    onClick = { onUse(suggestion.code) },
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(Radius.card),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(Radius.card)),
+                ) {
+                    Column(Modifier.padding(Space.step2), verticalArrangement = Arrangement.spacedBy(Space.step0)) {
+                        Text(marked(suggestion.code, suggestion.slip), style = CodeStyle, color = colours.code)
+                        val where = if (suggestion.metres < HERE_METRES) {
+                            stringResource(if (doubt.fromDevice) R.string.doubt_at_you else R.string.doubt_at_place)
+                        } else {
+                            stringResource(R.string.doubt_away, distance(suggestion.metres), direction(suggestion.bearing), reference)
+                        }
+                        val how = when (val slip = suggestion.slip) {
+                            is Slip.Replaced -> stringResource(R.string.doubt_replaced, slip.position, slip.was.toString())
+                            is Slip.Swapped -> stringResource(R.string.doubt_swapped, slip.position, slip.position + 1)
+                        }
+                        Text(
+                            "$where \u00b7 $how",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            Quiet(stringResource(R.string.doubt_checked, doubt.checked, reference))
+            TextButton(onClick = onKeep) { Text(stringResource(R.string.doubt_keep, formatted(doubt.typed))) }
+        }
+    }
+}
+
+/** Closer than this, a suggestion is where the reader is, not some metres off it. */
+private const val HERE_METRES = 5.0
+
+/** The code written out, with the characters one slip changed underlined. */
+private fun marked(code: String, slip: Slip): AnnotatedString {
+    val changed = when (slip) {
+        is Slip.Replaced -> setOf(slip.position)
+        is Slip.Swapped -> setOf(slip.position, slip.position + 1)
+    }
+    // Position p of the bare code is character p of the written form, after the
+    // hash, and one further on past the hyphen.
+    val at = changed.map { if (it <= 5) it else it + 1 }.toSet()
+    val written = formatted(code)
+    return buildAnnotatedString {
+        written.forEachIndexed { index, character ->
+            if (index in at) withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) { append(character) }
+            else append(character)
+        }
+    }
+}
+
+/** Eight points of the compass, as words. */
+@Composable
+private fun direction(octant: String): String = stringResource(
+    when (octant) {
+        "N" -> R.string.dir_n
+        "NE" -> R.string.dir_ne
+        "E" -> R.string.dir_e
+        "SE" -> R.string.dir_se
+        "S" -> R.string.dir_s
+        "SW" -> R.string.dir_sw
+        "W" -> R.string.dir_w
+        else -> R.string.dir_nw
+    },
+)
 
 private const val SEARCH_FIELD = "search"
 private const val NOTE_FIELD = "note"
