@@ -153,6 +153,9 @@ private const val EARTH_METRES = 6371008.8
 
 private fun radians(degrees: Double) = degrees * PI / 180
 
+/** The heading from one point to another, in degrees clockwise from north: for an arrow to point along. */
+fun headingBetween(from: Point, to: Point): Double = heading(from, to.latitude, to.longitude)
+
 /** The direction from one point to another, as eight points of the compass: N, NE, E and so on. */
 fun bearingBetween(from: Point, to: Point): String = bearing(from, to.latitude, to.longitude)
 
@@ -174,14 +177,17 @@ private fun metres(point: Point, latitude: Double, longitude: Double): Double {
  */
 private val OCTANTS = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
 
-private fun bearing(point: Point, latitude: Double, longitude: Double): String {
+/** The initial great-circle heading from a point, in degrees clockwise from north, 0 to 360. */
+private fun heading(point: Point, latitude: Double, longitude: Double): Double {
     val dLng = radians(wrap(longitude - point.longitude))
     val y = sin(dLng) * cos(radians(latitude))
     val x = cos(radians(point.latitude)) * sin(radians(latitude)) -
         sin(radians(point.latitude)) * cos(radians(latitude)) * cos(dLng)
-    val degrees = atan2(y, x) * 180 / PI
-    return OCTANTS[(((degrees + 360) % 360) / 45).roundToInt() % 8]
+    return (atan2(y, x) * 180 / PI + 360) % 360
 }
+
+private fun bearing(point: Point, latitude: Double, longitude: Double): String =
+    OCTANTS[(heading(point, latitude, longitude) / 45).roundToInt() % 8]
 
 /** How many shards the kept area reaches out from the place's own, every way. */
 private const val AREA_REACH = 2

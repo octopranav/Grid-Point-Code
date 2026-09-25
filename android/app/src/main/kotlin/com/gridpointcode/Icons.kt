@@ -42,6 +42,28 @@ val Crosshair: ImageVector = ImageVector.Builder(
     }
 }.build()
 
+/** An arrow pointing up, turned to point at a saved place. */
+val Arrow: ImageVector = ImageVector.Builder(
+    name = "Arrow",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+).apply {
+    path(
+        stroke = SolidColor(Color.Black),
+        strokeLineWidth = 2f,
+        strokeLineCap = StrokeCap.Round,
+        strokeLineJoin = StrokeJoin.Round,
+    ) {
+        moveTo(12f, 20f)
+        lineTo(12f, 4.5f)
+        moveTo(6f, 10.5f)
+        lineTo(12f, 4.5f)
+        lineTo(18f, 10.5f)
+    }
+}.build()
+
 /** A plus, for stepping the map in. */
 val ZoomIn: ImageVector = ImageVector.Builder(
     name = "ZoomIn",
