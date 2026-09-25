@@ -36,6 +36,8 @@ import com.gridpointcode.core.unplaced
 import com.gridpointcode.core.forgetting
 import com.gridpointcode.core.matchSaved
 import com.gridpointcode.core.narrowed
+import com.gridpointcode.core.corrected
+import com.gridpointcode.core.kept
 import com.gridpointcode.core.widened
 import com.gridpointcode.core.namedSaved
 import com.gridpointcode.core.recalled
@@ -447,6 +449,12 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Back from the area to the place inside it. */
     fun narrow() = state.update { it.narrowed() }
+
+    /** One of the codes offered one slip away, instead of the one typed. */
+    fun correct(code: String) = state.update { it.corrected(code) }
+
+    /** The code as typed, with the offer set aside. */
+    fun keep() = state.update { it.kept() }
 
     /** The reader said no to the permission prompt. */
     fun refused() = change { it.locationRefused() }

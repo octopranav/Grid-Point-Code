@@ -84,6 +84,7 @@ data class PlaceState(
     val locating: Locating = Locating.IDLE,
     val origin: Origin? = null,
     val area: AreaCell? = null,
+    val doubt: Doubt? = null,
 )
 
 /**
@@ -108,13 +109,14 @@ fun PlaceState.placed(next: Selection, note: String = ""): PlaceState =
  */
 fun PlaceState.nudged(direction: Compass): PlaceState {
     val code = around(selection.code)[direction] ?: return this
-    return copy(selection = selectionOf(code, Source.NUDGE), problem = null, locating = Locating.IDLE, origin = null, area = null)
+    return copy(selection = selectionOf(code, Source.NUDGE), problem = null, locating = Locating.IDLE, origin = null, area = null, doubt = null)
 }
 
 /** Whatever was typed, pasted, linked or selected, read and gone to if it is a place. */
 fun PlaceState.opened(text: String, source: Source): PlaceState =
     when (val reading = read(text)) {
         is Reading.Code -> placed(selectionOf(reading.code, source), reading.note)
+            .copy(doubt = if (source == Source.CODE && !reading.checked) doubtFrom(reading.code) else null)
         is Reading.At -> placed(selectionAt(reading.point, source))
         is Reading.Short -> recover(reading.text, selection.point)
             ?.let { placed(it) }
@@ -140,6 +142,24 @@ fun PlaceState.opened(text: String, source: Source): PlaceState =
         is Reading.Reserved -> copy(problem = Problem.Reserved(reading.code))
         is Reading.Unread -> copy(problem = Problem.Unread(reading.reason))
     }
+
+/**
+ * The doubt about a code typed while this state was showing. The reference is
+ * where the reader was: the device's fix if that is what they had, or else the
+ * place they had chosen. Never the opening example, which is nobody's, nor an
+ * area's centre, which is a region and not a place.
+ */
+private fun PlaceState.doubtFrom(code: String): Doubt? {
+    val reference = selection.takeIf { it.source != Source.SAMPLE && it.source != Source.AREA } ?: return null
+    return doubtAbout(code, reference.point, fromDevice = reference.source == Source.DEVICE)
+}
+
+/** One of the codes offered in doubt, chosen instead of the one typed. */
+fun PlaceState.corrected(code: String): PlaceState =
+    runCatching { selectionOf(code, Source.CODE) }.map { placed(it) }.getOrDefault(this)
+
+/** The code typed, kept as typed: the doubt is set aside. */
+fun PlaceState.kept(): PlaceState = copy(doubt = null)
 
 /**
  * A place chosen by name. Somewhere else by name is a different door, so it is a
@@ -253,6 +273,8 @@ data class PlaceView(
     val area: AreaView?,
     /** The areas around the place, a region down to a building, for choosing one to share. */
     val areas: List<AreaView>,
+    /** A typed code that lands far from the reader, with the codes one slip away that land near them. */
+    val doubt: Doubt?,
     /** Whose words the spoken lines are in. */
     val listener: Spelling,
 )
@@ -291,4 +313,5 @@ fun PlaceState.view(locale: Locale = Locale.getDefault(), listener: Spelling = I
     area = area?.view(listener),
     areas = AREA_LEVELS.reversed().mapNotNull { level -> areaHolding(selection.code, level)?.view(listener) },
     listener = listener,
+    doubt = doubt,
 )

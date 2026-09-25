@@ -13,7 +13,7 @@ import ca.pranavpatel.algo.gridpointcode.GPCException
  */
 sealed interface Reading {
     /** A full code, with the directions a link carried alongside it, if any. */
-    data class Code(val code: String, val note: String = "") : Reading
+    data class Code(val code: String, val note: String = "", val checked: Boolean = false) : Reading
 
     /** A short form, which names nowhere until it is given a reference point. */
     data class Short(val text: String) : Reading
@@ -58,7 +58,7 @@ fun read(text: String): Reading {
 
     val verdict = GPC.Validate(given)
     return when (verdict.Kind) {
-        CodeClass.GEOMETRIC -> Reading.Code(GPC.Normalise(given)[0])
+        CodeClass.GEOMETRIC -> GPC.Normalise(given).let { Reading.Code(it[0], checked = it[1] != null) }
         CodeClass.RESERVED -> Reading.Reserved(GPC.Normalise(given)[0])
         else -> degrees(given) ?: Reading.Unread(verdict.Reason)
     }

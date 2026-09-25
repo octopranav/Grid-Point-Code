@@ -153,6 +153,9 @@ private const val EARTH_METRES = 6371008.8
 
 private fun radians(degrees: Double) = degrees * PI / 180
 
+/** The direction from one point to another, as eight points of the compass: N, NE, E and so on. */
+fun bearingBetween(from: Point, to: Point): String = bearing(from, to.latitude, to.longitude)
+
 /** The distance between two points along the ground, in metres. */
 fun metresBetween(from: Point, to: Point): Double = metres(from, to.latitude, to.longitude)
 

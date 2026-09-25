@@ -99,6 +99,11 @@ code, check and correction is arithmetic on the device.
   drawn on it as small rings, and found first as a name is typed, with no
   connection. Opening one brings its directions back, and Go on a saved name
   goes straight there.
+- Offers the codes one slip away when a typed code lands far from the reader:
+  a code heard over a telephone with one character wrong opens as typed, and
+  the panel says where it landed and lists the codes one character changed, or
+  two swapped, that land near the reader's fix or the place they had, each
+  with its distance and the character that differs.
 - Answers a keyboard and a mouse, for Android on a desktop or a tablet with a
   keyboard: the arrow keys nudge the place a cell, Ctrl+C copies its code and
   Ctrl+K goes to the search box; a right-click on the map, or a long press on a
@@ -287,6 +292,16 @@ licence, and the build's `checkNotices` task fails when that list and the
 release's resolved libraries disagree, or when a notice was copied from a
 release other than the one resolved. The app shows them all from the end of the
 panel, under Open-source notices.
+
+**A slip is offered, never declared.** Section 15 of the specification forbids
+claiming to detect typos, and a code can be right and far. So a typed code
+always opens as typed, on the map, and the offer says only where it landed and
+what one slip would have made of it. The candidates and their order are the
+library's `SuggestCorrections`, section 15.3, at level 6, the window the
+specification recommends for a device fix or a named place. It asks only about
+codes typed or pasted in, not links, which nobody heard; not a code with a
+check character that holds; and only against a reference the reader had, the
+device's fix or the place chosen before, never the opening example.
 
 **At a desk, the keys do what a finger does.** The arrows nudge as the pad
 does, and wait while a text field has the keyboard, where they move the cursor,

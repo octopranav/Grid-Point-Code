@@ -106,7 +106,7 @@ class CoreTest {
     @Test
     fun theReaderTakesACodeHoweverItIsWritten() {
         assertEquals(Reading.Code("G3RJM98NM9"), read("g3rjm 98nm9"))
-        assertEquals(Reading.Code("G3RJM98NM9"), read("#G3RJM-98NM9*T"))
+        assertEquals(Reading.Code("G3RJM98NM9", checked = true), read("#G3RJM-98NM9*T"), "and knows a check character held")
     }
 
     @Test
