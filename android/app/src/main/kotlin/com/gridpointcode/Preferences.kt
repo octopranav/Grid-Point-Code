@@ -40,8 +40,16 @@ class Preferences(context: Context) {
         store.edit().putString(LISTENER, listener.tag).apply()
     }
 
+    /** The panel's sections the reader folded away; none, until they fold one. */
+    fun folded(): Set<String> = store.getStringSet(FOLDED, null)?.toSet() ?: emptySet()
+
+    fun remember(folded: Set<String>) {
+        store.edit().putStringSet(FOLDED, folded).apply()
+    }
+
     private companion object {
         const val BASEMAP = "basemap"
         const val LISTENER = "listener"
+        const val FOLDED = "folded"
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
@@ -190,3 +191,47 @@ val Layers: ImageVector = ImageVector.Builder(
         lineTo(21f, 12.8f)
     }
 }.build()
+
+/**
+ * An icon from SVG path data, stroked as the canvas draws its icons: 1.8 wide,
+ * round caps and joins, on a 24-unit square. The paths below are the canvas's
+ * own, so the app's icons are the design's and not a library's.
+ */
+private fun stroked(name: String, vararg paths: String): ImageVector = ImageVector.Builder(
+    name = name,
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+).apply {
+    paths.forEach { data ->
+        addPath(
+            pathData = addPathNodes(data),
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 1.8f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        )
+    }
+}.build()
+
+/** A speaker and its sound, for reading aloud. */
+val Speak: ImageVector = stroked("Speak", "M4 9.5h3.5L12 5.5v13l-4.5-4H4z", "M15.5 9a4 4 0 0 1 0 6M18.2 6.3a7.8 7.8 0 0 1 0 11.4")
+
+/** Three joined dots, for sharing. */
+val ShareIcon: ImageVector = stroked(
+    "Share",
+    "M15 5.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0",
+    "M4 12a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0",
+    "M15 18.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0",
+    "M8.7 10.8l6.6-4M8.7 13.2l6.6 4",
+)
+
+/** Two sheets, one over the other, for copying. */
+val CopyIcon: ImageVector = stroked("Copy", "M10 8.5h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1 -1.5 1.5h-8a1.5 1.5 0 0 1 -1.5 -1.5v-8a1.5 1.5 0 0 1 1.5 -1.5z", "M5 15.5V5.5a1 1 0 0 1 1-1h9.5")
+
+/** Three finder squares and a scatter of modules, for a QR code. */
+val QrIcon: ImageVector = stroked("QR code", "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z", "M14 14h2.5v2.5H14zM18 14h2M14 18.5h2M18.5 17.5V20h-2")
+
+/** A chevron pointing down, turned up when a section is open. */
+val Chevron: ImageVector = stroked("Chevron", "M6 9l6 6 6-6")

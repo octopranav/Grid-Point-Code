@@ -298,6 +298,14 @@ release's resolved libraries disagree, or when a notice was copied from a
 release other than the one resolved. The app shows them all from the end of the
 panel, under Open-source notices.
 
+**The panel is laid out as the canvas draws it.** The card under the code has
+four tiles, an icon over each word, reading aloud first and filled because
+saying the code is what the card is most often for; the icons are the canvas's
+own paths, not an icon library's. Every section below folds, and what a reader
+folds stays folded across launches, so somebody who never nudges does not
+scroll past the pad each time; nothing is folded until they fold it, so nothing
+is hidden from a reader who has not chosen to hide it.
+
 **The QR code is the website's, drawn by the standard encoder.** The payload is
 the link, as the site's is, so scanning it opens the place with or without this
 app; error correction M and a four-module quiet zone, as the site sets them;
