@@ -354,6 +354,7 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
         )
     }
     val folded by model.folded.collectAsState()
+    val packs by model.placePacks.collectAsState()
     val settingsPage: @Composable () -> Unit = {
         SettingsPage(
             basemap = basemap,
@@ -362,6 +363,10 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
             onListener = model::readTo,
             folded = folded.size,
             onUnfold = model::unfoldAll,
+            packs = packs,
+            onListPacks = model::listPacks,
+            onKeepPack = model::keepPack,
+            onForgetPack = model::forgetPack,
         )
     }
 
@@ -1543,9 +1548,15 @@ private fun SettingsPage(
     onListener: (Spelling) -> Unit,
     folded: Int,
     onUnfold: () -> Unit,
+    packs: Packs,
+    onListPacks: () -> Unit,
+    onKeepPack: (PlacePacks.Offered) -> Unit,
+    onForgetPack: (String) -> Unit,
 ) {
     val context = LocalContext.current
     var noticing by remember { mutableStateOf(false) }
+    var choosingPack by remember { mutableStateOf(false) }
+    if (choosingPack) PacksDialog(packs, onKeep = onKeepPack, onDismiss = { choosingPack = false })
     if (noticing) NoticesPage(onClose = { noticing = false })
     val version = remember {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
@@ -1580,6 +1591,31 @@ private fun SettingsPage(
 
             Group(stringResource(R.string.aloud_title)) { Listener(listener, onListener) }
 
+            Group(stringResource(R.string.packs_title)) {
+                Quiet(stringResource(R.string.packs_about))
+                packs.kept.forEach { kept ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(kept.name, style = MaterialTheme.typography.bodyLarge)
+                            Quiet(Formatter.formatShortFileSize(context, kept.bytes))
+                        }
+                        TextButton(onClick = { onForgetPack(kept.code) }) { Text(stringResource(R.string.packs_forget)) }
+                    }
+                }
+                when (packs.note) {
+                    Packs.Note.FAILED -> Quiet(stringResource(R.string.packs_failed, packs.failed.orEmpty()))
+                    Packs.Note.UNREACHABLE -> Quiet(stringResource(R.string.packs_unreachable))
+                    null -> Unit
+                }
+                OutlinedButton(
+                    onClick = {
+                        choosingPack = true
+                        onListPacks()
+                    },
+                    shape = ButtonShape,
+                ) { Text(stringResource(R.string.packs_keep)) }
+            }
+
             if (folded > 0) {
                 Group(stringResource(R.string.settings_panel)) {
                     Quiet(pluralStringResource(R.plurals.settings_folded, folded, folded))
@@ -1600,6 +1636,61 @@ private fun SettingsPage(
             }
         }
     }
+}
+
+/**
+ * Every country's place names, to keep one: the list the Landmarks workflow
+ * publishes, filtered as a name is typed, each with what it costs to fetch.
+ */
+@Composable
+private fun PacksDialog(packs: Packs, onKeep: (PlacePacks.Offered) -> Unit, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    var filter by remember { mutableStateOf("") }
+    val kept = packs.kept.map { it.code }.toSet()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.packs_keep)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Space.step2)) {
+                OutlinedTextField(
+                    value = filter,
+                    onValueChange = { filter = it },
+                    label = { Text(stringResource(R.string.packs_filter)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                val offered = packs.offered
+                when {
+                    packs.listing -> Quiet(stringResource(R.string.packs_listing))
+                    offered == null -> Quiet(stringResource(R.string.packs_unreachable))
+                    else -> LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                        val shown = offered.filter { it.name.contains(filter.trim(), ignoreCase = true) }
+                        items(shown, key = { it.code }) { pack ->
+                            val busy = packs.keeping == pack.code
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = packs.keeping == null && pack.code !in kept, role = Role.Button) { onKeep(pack) }
+                                    .padding(vertical = Space.step2),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(pack.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    when {
+                                        busy -> stringResource(R.string.packs_keeping)
+                                        pack.code in kept -> stringResource(R.string.packs_kept)
+                                        else -> Formatter.formatShortFileSize(context, pack.download)
+                                    },
+                                    style = CodeStyle,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.packs_done)) } },
+    )
 }
 
 /** A heading and what it governs, on the settings page. */

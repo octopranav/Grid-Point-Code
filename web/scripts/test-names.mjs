@@ -30,11 +30,16 @@
 // run of a single name, and a reader that began at that mark never saw the
 // lines before it -- the largest places. `al marj` answered with a village in
 // Syria and never reached the city in Libya.
+//
+// And the packs the Android app keeps for searching with no network: each must
+// be exactly its country's lines of the index, in the index's order, or a name
+// found online would be missing, or out of order, on the phone offline.
 
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
 
 import { transform } from 'esbuild';
 
@@ -218,15 +223,17 @@ const complain = (what) => { console.error(`  ${what}`); failed += 1; };
 try {
     const geonames = path.join(where, 'geonames');
     const out = path.join(where, 'out');
+    const packs = path.join(where, 'packs');
     await mkdir(geonames, { recursive: true });
     await mkdir(out, { recursive: true });
+    await mkdir(packs, { recursive: true });
 
     await writeFile(path.join(geonames, 'countryInfo.txt'), COUNTRIES, 'utf8');
     await writeFile(path.join(geonames, 'admin1CodesASCII.txt'), ADMINS, 'utf8');
     const dump = path.join(geonames, 'XX.txt');
     await writeFile(dump, PLACES.map(row).join('\n'), 'utf8');
 
-    const report = await build({ geonames, out, dumps: [dump] });
+    const report = await build({ geonames, out, dumps: [dump], packs });
     const { index, places, bytes } = await readBack(out);
     const toronto = places.filter((place) => place.folded === 'toronto');
 
@@ -296,6 +303,38 @@ try {
     }
     if (index.marks[0]?.[1] !== 0) {
         complain('the first mark does not point at the start of the file');
+    }
+
+    // The packs: a country each, its lines exactly the index's, in its order.
+    const manifest = JSON.parse(await readFile(path.join(packs, 'packs.json'), 'utf8'));
+    const countries = Object.keys(manifest.countries).sort();
+    if (JSON.stringify(countries) !== JSON.stringify(['AU', 'CA', 'LY', 'SY', 'TZ', 'US'])) {
+        complain(`the packs are ${JSON.stringify(countries)}`);
+    }
+    if (JSON.stringify(manifest.regions) !== JSON.stringify(index.regions)) {
+        complain('the packs point into a different table of regions than the index');
+    }
+    const whole = (await readFile(path.join(out, 'names.txt'), 'utf8')).split('\n').filter(Boolean);
+    let inPacks = 0;
+    for (const cc of countries) {
+        const entry = manifest.countries[cc];
+        const body = gunzipSync(await readFile(path.join(packs, `${cc}.txt.gz`))).toString('utf8');
+        const lines = body.split('\n').filter(Boolean);
+        const expected = whole.filter((line) => manifest.regions[Number(line.split(TAB)[4])].endsWith(entry.name));
+        if (JSON.stringify(lines) !== JSON.stringify(expected)) {
+            complain(`the ${cc} pack is not the index's ${entry.name} lines in the index's order`);
+        }
+        if (entry.lines !== lines.length || entry.bytes !== Buffer.byteLength(body)) {
+            complain(`the manifest says ${entry.lines} lines and ${entry.bytes} bytes for ${cc}; the pack has ${lines.length} and ${Buffer.byteLength(body)}`);
+        }
+        inPacks += lines.length;
+    }
+    if (inPacks !== places.length) {
+        complain(`${inPacks} lines across the packs, ${places.length} in the index`);
+    }
+    const canada = gunzipSync(await readFile(path.join(packs, 'CA.txt.gz'))).toString('utf8').split('\n');
+    if (manifest.regions[Number(canada[0]?.split(TAB)[4])] !== 'Ontario, Canada') {
+        complain('the Canadian pack does not begin with the Toronto in Ontario');
     }
 
     // And now the same file through the reader that will actually read it.
