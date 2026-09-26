@@ -485,6 +485,8 @@ private fun Panel(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val qrArea = stringResource(R.string.qr_area)
+    val qrPlace = stringResource(R.string.qr_place)
     val anchoring by model.anchors.collectAsState()
     val keeping by model.offline.collectAsState()
     val saved by model.saved.collectAsState()
@@ -527,7 +529,7 @@ private fun Panel(
                 speak = { speak(area.spoken) },
                 share = { share(context, area.cell + "\n" + area.link) },
                 copy = { copy(context, area.cell) },
-                showQr = { showing = Qr(context.getString(R.string.qr_area), area.cell, area.link) },
+                showQr = { showing = Qr(qrArea, area.cell, area.link) },
             )
             if (fromPlace) ShareArea(ui.areas, chosen = area.level, onChoose = model::widen)
             Spacer(Modifier.height(Space.step5))
@@ -541,7 +543,7 @@ private fun Panel(
             speak = { speak(ui.spoken) },
             share = { share(context, ui.formatted + "\n" + ui.link) },
             copy = { copy(context, ui.formatted) },
-            showQr = { showing = Qr(context.getString(R.string.qr_place), ui.formatted, ui.link) },
+            showQr = { showing = Qr(qrPlace, ui.formatted, ui.link) },
         )
         Nudge(ui.selection.code, ui.pad, onNudge = model::nudge)
         WrittenForms(ui.forms, copy = { copy(context, it) })
@@ -550,7 +552,7 @@ private fun Panel(
             ui.link,
             onNote = model::describeTheWay,
             share = { share(context, ui.formatted + "\n" + ui.link) },
-            showQr = { showing = Qr(context.getString(R.string.qr_place), ui.formatted, ui.link) },
+            showQr = { showing = Qr(qrPlace, ui.formatted, ui.link) },
         )
         ShareArea(ui.areas, chosen = null, onChoose = model::widen)
         AnchorShort(
@@ -587,7 +589,7 @@ private fun Doubted(doubt: Doubt, onUse: (String) -> Unit, onKeep: () -> Unit) {
     ) {
         Column(Modifier.padding(Space.step3), verticalArrangement = Arrangement.spacedBy(Space.step2)) {
             Text(
-                stringResource(R.string.doubt_label).uppercase(Locale.getDefault()),
+                stringResource(R.string.doubt_label).uppercase(screenLocale()),
                 style = MaterialTheme.typography.labelSmall,
                 color = colours.inkSoft,
             )
@@ -889,7 +891,7 @@ private fun Found(
             ) {
                 Text(stringResource(R.string.instead_digipin), style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    text = String.format(Locale.getDefault(), "%.5f, %.5f", at.point.latitude, at.point.longitude),
+                    text = String.format(screenLocale(), "%.5f, %.5f", at.point.latitude, at.point.longitude),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1072,7 +1074,7 @@ private fun AreaHead(
     ) {
         Column(Modifier.padding(Space.step3), verticalArrangement = Arrangement.spacedBy(Space.step2)) {
             Text(
-                text = stringResource(R.string.area_label, area.level, levelName(area.level)).uppercase(Locale.getDefault()),
+                text = stringResource(R.string.area_label, area.level, levelName(area.level)).uppercase(screenLocale()),
                 style = MaterialTheme.typography.labelSmall,
                 color = colours.inkSoft,
             )
@@ -1722,7 +1724,7 @@ private fun Head(
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = (ui.origin?.let { fromLabel(it.format) } ?: sourceLabel(ui.selection.source))
-                            .uppercase(Locale.getDefault()),
+                            .uppercase(screenLocale()),
                         style = MaterialTheme.typography.labelSmall,
                         color = colours.inkSoft,
                     )
@@ -1979,6 +1981,13 @@ private fun distance(metres: Double): String =
     if (metres < 1000) stringResource(R.string.distance_metres, metres.roundToInt())
     else stringResource(R.string.distance_kilometres, metres / 1000)
 
+/**
+ * The locale the screen is written in, read from the configuration so that a
+ * change of language redraws whatever is written in it.
+ */
+@Composable
+private fun screenLocale(): Locale = LocalConfiguration.current.locales[0]
+
 @Composable
 private fun Section(title: String, key: String, content: @Composable () -> Unit) {
     val folding = LocalFolding.current
@@ -2204,7 +2213,8 @@ private fun addVoice(context: Context) {
     runCatching { context.startActivity(install) }
 }
 
-private fun metres(value: Double): String = String.format(Locale.getDefault(), "%.2f", value)
+@Composable
+private fun metres(value: Double): String = String.format(screenLocale(), "%.2f", value)
 
 private fun share(context: Context, text: String) {
     val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)

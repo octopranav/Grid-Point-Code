@@ -618,6 +618,11 @@ jobs:
       # what is typed into it, are tested here too.
       - name: Every library each release ships is in its notices
         run: ./gradlew --no-daemon :app:checkNotices :wear:checkNotices :automotive:checkNotices :notices:testDebugUnitTest :app:testDebugUnitTest :wear:testDebugUnitTest :car:testDebugUnitTest
+      # Lint's errors fail the build in every module; its warnings do not. The
+      # errors it has found so far were screens reading the device's language,
+      # or a string, in a way a change of language would not redraw.
+      - name: Lint finds no errors in any module
+        run: ./gradlew --no-daemon :app:lintDebug :wear:lintDebug :automotive:lintDebug :car:lintDebug :map:lintDebug :designsystem:lintDebug :notices:lintDebug
 
   conformance:
     name: All four ports agree
