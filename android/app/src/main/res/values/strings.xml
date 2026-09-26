@@ -7,8 +7,8 @@
     <string name="search_go">Go</string>
     <string name="names_looking">Looking up place names</string>
     <string name="names_missing">No place in the index is called \"%1$s\".</string>
-    <string name="names_local">No connection, so these are the places kept or seen on this device. A name two places share within one region is not among them.</string>
-    <string name="names_offline">Place names need a connection. A code, coordinates or a link still work.</string>
+    <string name="names_local">No connection, so these are the places kept or seen on this device. A name two places share within one region is found only in a country kept in Settings.</string>
+    <string name="names_offline">Place names need a connection, or a country\'s names kept in Settings. A code, coordinates or a link still work.</string>
 
     <string name="source_sample">An example: the specification\'s own</string>
     <string name="source_device">Here</string>
@@ -79,6 +79,17 @@
         <item quantity="one">%d place</item>
         <item quantity="other">%d places</item>
     </plurals>
+    <string name="packs_title">Place names offline</string>
+    <string name="packs_about">Keep a country\'s place names on the phone, and searching by name works with no connection. They come from GitHub, where this app\'s source is kept.</string>
+    <string name="packs_keep">Keep a country\'s names</string>
+    <string name="packs_forget">Forget</string>
+    <string name="packs_filter">Country</string>
+    <string name="packs_listing">Reading the list…</string>
+    <string name="packs_unreachable">The list of countries could not be reached. Try again with a connection.</string>
+    <string name="packs_failed">%1$s could not be fetched in full, so nothing was kept.</string>
+    <string name="packs_keeping">Keeping…</string>
+    <string name="packs_kept">Kept</string>
+    <string name="packs_done">Done</string>
     <string name="round_start">Walking order</string>
     <string name="round_title">Walking order</string>
     <string name="round_choose">Choose the stops to walk to, and they are put in an order that keeps the walk short.</string>
@@ -220,8 +231,8 @@
     <string name="notices_mit">Libraries under the MIT licence</string>
     <string name="notices_play">Google Play services</string>
     <string name="notices_play_body">The Wear Data Layer, which carries saved places to and from a watch, is part of Google Play services, used under the Android Software Development Kit License at developer.android.com/studio/terms. The notices its libraries carry follow.</string>
-    <string name="notices_data">Map data</string>
-    <string name="notices_data_body">Map data \u00a9 OpenStreetMap contributors, available under the Open Database License from openstreetmap.org/copyright. Tiles from OpenFreeMap, in the OpenMapTiles schema \u00a9 OpenMapTiles. The credit is also on the map itself.</string>
+    <string name="notices_data">Map and place data</string>
+    <string name="notices_data_body">Map data \u00a9 OpenStreetMap contributors, available under the Open Database License from openstreetmap.org/copyright. Tiles from OpenFreeMap, in the OpenMapTiles schema \u00a9 OpenMapTiles. The credit is also on the map itself. Place names, and the landmarks a short form is anchored to, from GeoNames at geonames.org, under the Creative Commons Attribution 4.0 licence.</string>
     <string name="aloud_listener">The listener\'s language</string>
     <string name="aloud_explain">The code is the same in every language; only the words that spell it change. Choose the words the person listening already knows.</string>
     <string name="aloud_no_voice">This device has no %1$s voice. Read the words out yourself, or add the voice to the device\'s speech engine.</string>

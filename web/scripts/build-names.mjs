@@ -14,7 +14,7 @@
 
 // The index that lets a reader type a place name.
 //
-//   node scripts/build-names.mjs --geonames <dir> [--out <dir>]
+//   node scripts/build-names.mjs --geonames <dir> [--out <dir>] [--packs <dir>]
 //
 // The landmark archive answers "what is near this point". This answers the
 // other direction, which is the first thing anybody reaches for and the one
@@ -46,12 +46,21 @@
 // -- verified, not assumed: 100% of admissible rows in a sample country carry
 // one. That keeps the sort, the search and the file itself in one script, and
 // means a reader typing `Trá Mhór` or `Tra Mhor` finds the same place.
+//
+// **Packs, for searching with no network.** With `--packs`, the same lines are
+// also written a file a country, in the same order, each compressed, with
+// `packs.json` beside them naming every country, its size and the table of
+// regions the lines point into. The Android app keeps the ones a reader asks
+// for and searches them on the phone. They are the index's own lines rather
+// than a second format, so the reader that searches one searches the other.
 
 import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createInterface } from 'node:readline';
 import path from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
+import { createGzip } from 'node:zlib';
 
 import { GPC } from '@pranavpatel.ca/algo-gridpointcode';
 
@@ -176,7 +185,7 @@ function bucketOf(folded) {
     return 'x';                                             // anything else
 }
 
-export async function build({ geonames, out, dumps }) {
+export async function build({ geonames, out, dumps, packs }) {
     const { countries, regions } = await tables(geonames);
 
     const spill = path.join(out, '.spill');
@@ -185,6 +194,8 @@ export async function build({ geonames, out, dumps }) {
 
     const writers = new Map();
     const regionIds = new Map();
+    // The country each region is in, by the region's number, for the packs.
+    const regionCountries = [];
     let counted = 0;
     let skipped = 0;
     let doubled = 0;
@@ -228,7 +239,10 @@ export async function build({ geonames, out, dumps }) {
             const where = regions.get(`${cc}.${row[field.admin1]}`)
                 ? `${regions.get(`${cc}.${row[field.admin1]}`)}, ${countries.get(cc) ?? cc}`
                 : (countries.get(cc) ?? cc);
-            if (!regionIds.has(where)) regionIds.set(where, regionIds.size);
+            if (!regionIds.has(where)) {
+                regionIds.set(where, regionIds.size);
+                regionCountries.push(cc);
+            }
 
             // Tabs separate, so they cannot appear in a field. A name carrying
             // one would split a line into the wrong columns.
@@ -260,6 +274,15 @@ export async function build({ geonames, out, dumps }) {
     let group = null;
     let seen = new Set();
 
+    // One file a country while the lines go by, compressed once they are all written.
+    const raw = packs ? path.join(packs, '.raw') : null;
+    const packWriters = new Map();
+    const packLines = new Map();
+    if (raw) {
+        await rm(raw, { recursive: true, force: true });
+        await mkdir(raw, { recursive: true });
+    }
+
     for (const bucket of [...writers.keys()].sort()) {
         const body = await readFile(path.join(spill, `${bucket}.tsv`), 'utf8');
         const rows = body.split('\n').filter(Boolean);
@@ -280,6 +303,18 @@ export async function build({ geonames, out, dumps }) {
             if (!output.write(row + '\n')) {
                 await new Promise((drained) => output.once('drain', drained));
             }
+            if (raw) {
+                const cc = regionCountries[Number(parts[4])];
+                let pack = packWriters.get(cc);
+                if (!pack) {
+                    pack = createWriteStream(path.join(raw, `${cc}.txt`), 'utf8');
+                    packWriters.set(cc, pack);
+                }
+                if (!pack.write(row + '\n')) {
+                    await new Promise((drained) => pack.once('drain', drained));
+                }
+                packLines.set(cc, (packLines.get(cc) ?? 0) + 1);
+            }
             offset += chunk;
             lines += 1;
         }
@@ -287,6 +322,36 @@ export async function build({ geonames, out, dumps }) {
 
     await new Promise((done) => output.end(done));
     await rm(spill, { recursive: true, force: true });
+
+    let packed = 0;
+    if (raw) {
+        await Promise.all([...packWriters.values()].map(
+            (handle) => new Promise((done) => handle.end(done)),
+        ));
+        const entries = {};
+        for (const cc of [...packWriters.keys()].sort()) {
+            const plain = path.join(raw, `${cc}.txt`);
+            const gzipped = path.join(packs, `${cc}.txt.gz`);
+            await pipeline(createReadStream(plain), createGzip({ level: 9 }), createWriteStream(gzipped));
+            entries[cc] = {
+                name: countries.get(cc) ?? cc,
+                lines: packLines.get(cc),
+                bytes: (await stat(plain)).size,
+                gzip: (await stat(gzipped)).size,
+            };
+        }
+        await rm(raw, { recursive: true, force: true });
+        await writeFile(
+            path.join(packs, 'packs.json'),
+            JSON.stringify({
+                built: new Date().toISOString(),
+                regions: [...regionIds.keys()],
+                countries: entries,
+            }),
+            'utf8',
+        );
+        packed = Object.keys(entries).length;
+    }
 
     await writeFile(
         path.join(out, 'names.index.json'),
@@ -301,7 +366,7 @@ export async function build({ geonames, out, dumps }) {
         'utf8',
     );
 
-    return { counted, skipped, doubled, lines, bytes: offset, marks: sparse.length };
+    return { counted, skipped, doubled, lines, bytes: offset, marks: sparse.length, packs: packed };
 }
 
 async function main() {
@@ -312,8 +377,10 @@ async function main() {
 
     const geonames = argument('geonames', path.join(web, '..', 'geonames'));
     const out = argument('out', path.join(web, 'names'));
+    const packs = argument('packs', null);
 
     await mkdir(out, { recursive: true });
+    if (packs) await mkdir(packs, { recursive: true });
 
     const present = await readdir(geonames);
     const dumps = (present.includes('allCountries.txt')
@@ -327,12 +394,13 @@ async function main() {
     }
 
     const started = Date.now();
-    const report = await build({ geonames, out, dumps });
+    const report = await build({ geonames, out, dumps, packs });
     const seconds = ((Date.now() - started) / 1000).toFixed(1);
 
     console.log(`indexed ${report.counted.toLocaleString('en')} names in ${seconds} s`);
     console.log(`  ${(report.bytes / 1e6).toFixed(1)} MB in names.txt`);
     console.log(`  ${report.marks.toLocaleString('en')} marks in names.index.json`);
+    if (packs) console.log(`  ${report.packs.toLocaleString('en')} country packs in ${packs}`);
     if (report.doubled) {
         console.log(`  ${report.doubled.toLocaleString('en')} said the same name in the same place`);
     }

@@ -65,7 +65,8 @@ and correction is arithmetic on the device.
 - Finds a place by name from the same field, listing the places a name could
   mean as it is typed, largest first within one name, from the website's own
   index of 7.3 million names. Go takes the first one. With no connection it
-  says names need one, and codes and coordinates carry on working.
+  searches the names kept on the phone, as below, says names need one when
+  there are none, and codes and coordinates carry on working.
 - Anchors the short form to a landmark, from the website's archive of 6.5
   million places each named uniquely within its region: every one near enough
   for recovery to be guaranteed, nearest first, with its distance and bearing,
@@ -85,6 +86,12 @@ and correction is arithmetic on the device.
   reading an anchored line and finding a place by name all work with no
   connection. An area is kept whole or not at all, only what was asked for is
   ever counted as kept, and Forget gives it all back.
+- Keeps a country's place names on request, from the settings page: that
+  country's lines of the website's name index, with the size of each shown
+  before it is fetched. With no connection a name is then found in every
+  country kept, largest first, ahead of the landmarks already seen, and a name
+  two places share in one region, which the landmark archive leaves out, is
+  found too. A country is kept whole or not at all, and Forget gives it back.
 - Works offline wherever it has already been used: the map draws from the tiles
   it has already drawn, up to 200 MB, and the landmarks of places already looked
   at are cached apart from the kept areas.
@@ -187,6 +194,14 @@ that cannot reach the tile host, point a debug build at it:
 `10.0.2.2` is the emulator's name for the machine it runs on. Debug builds allow
 plain HTTP to that one address and nowhere else; release builds allow none.
 
+The place-name packs can be pointed at a local copy the same way, for instance
+one written by `node web/scripts/build-names.mjs --packs <dir>` from a few
+places:
+
+```
+./gradlew :app:assembleDebug -Pgpc.packs=http://10.0.2.2:8099
+```
+
 ### A release
 
 ```
@@ -280,6 +295,21 @@ the file (the tests hold it to the builder's own answers) and decides where to
 read. It starts at the last mark strictly before the query, not at or before it:
 about a quarter of the marks land partway through a run of one name, and
 starting at such a mark skips the largest places of that name.
+
+**A country's names are the index's own lines, from the repository's releases.**
+The builder writes each country's lines, in the index's order, beside the index
+it writes, gzipped, with a list of every country's lines and bytes and the
+regions table. The Landmarks workflow publishes them as the `place-packs`
+release, the list last, so the list never names a pack not yet there. They are
+not on the site because the site's host allows a gigabyte and the site already
+uses more than half of it; the whole index gzipped is 120 MB. On the phone a
+pack is unzipped as it arrives and gets the same table of every 512th line the
+site's file has, so a keystroke reads one block of one file, and the kept packs
+are searched together and merged into the order the site's file has, by the
+same code. A pack counts as kept only when its lines and bytes are what the list
+says; one cut short is thrown away. A landmark already seen whose name and
+region a kept pack also gives is that place, since the archive keeps only names
+unique within their region, and is shown once, as the pack writes it.
 
 **The recovery box is 1,562 finest rows, not half a level-5 cell.** Section
 12.3 prints it as 0.03598848 by 0.04798464 degrees: the whole rows and columns
@@ -467,9 +497,9 @@ have taken the saved places down with it. The backup rules in `res/xml` exclude
 it; what a backup takes is the saved places and the two settings, a few
 kilobytes.
 
-**What the app sends is on the site's privacy page.** Two hosts, the tile
-provider and this site's own files, and Google Play services for a watch that
-has the app, and nothing else; the app links to
+**What the app sends is on the site's privacy page.** Three hosts, the tile
+provider, this site's own files and GitHub's release downloads for a country's
+names, and Google Play services for a watch that has the app, and nothing else; the app links to
 [`/privacy`](https://gridpointcode.com/privacy) from the end of the panel, as
 the store requires of an app that reads the device's location. A change that
 sends something new somewhere new changes that page in the same pull request.
