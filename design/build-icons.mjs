@@ -251,10 +251,11 @@ function lightness(hex) {
  * icons are on. One colour cannot carry a ramp of tints, so the ramp is carried
  * in opacity instead, each bar as opaque as its tint is dark against the
  * ground, measured in lightness. The finest bar stays faint, as it is in colour.
+ *
+ * The watch's complication draws the same monochrome bars on a small canvas of
+ * its own, which the watch face tints; `canvas` and `shown` set that size.
  */
-function launcherLayer(monochrome) {
-    const canvas = 108;
-    const shown = 72;
+function launcherLayer(monochrome, canvas = 108, shown = 72) {
     const gap = MASKED.gap * shown;
     const width = (MASKED.band * shown - gap * 3) / 4;
     const height = MASKED.tall * shown;
@@ -341,6 +342,8 @@ const FILES = [
     [`${wear}/drawable/launcher_bars.xml`, () => launcherLayer(false)],
     [`${wear}/drawable/launcher_bars_monochrome.xml`, () => launcherLayer(true)],
     [`${wear}/values/launcher.xml`, () => launcherColours(false)],
+    // The complication's mark, on any watch face, in the face's own colour.
+    [`${wear}/drawable/complication_bars.xml`, () => launcherLayer(true, 24, 22)],
 ];
 
 const digest = (body) => createHash('sha256').update(body).digest('hex').slice(0, 12);

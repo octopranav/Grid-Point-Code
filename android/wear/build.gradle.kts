@@ -66,6 +66,7 @@ dependencies {
     implementation(project(":core"))
     // The palette and the bundled typefaces; the watch draws its own screens.
     implementation(project(":designsystem"))
+    implementation(project(":notices"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.wear.compose.material3)
@@ -76,4 +77,15 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.play.services.wearable)
     implementation(libs.androidx.fragment)
+    implementation(libs.wear.tiles)
+    implementation(libs.wear.protolayout)
+    implementation(libs.wear.protolayout.material3)
+    implementation(libs.wear.protolayout.expression)
+    implementation(libs.wear.complications.data.source.ktx)
+    implementation(libs.androidx.concurrent.futures)
+
+    testImplementation(libs.kotlin.test.junit)
 }
+
+// Holds the watch's notices to what its release really ships.
+apply(from = rootProject.file("gradle/notices.gradle.kts"))

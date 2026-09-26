@@ -12,10 +12,13 @@ import android.location.Location
 import android.location.LocationManager
 import android.os.Build
 import android.speech.tts.TextToSpeech
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationListenerCompat
 import androidx.core.location.LocationManagerCompat
 import androidx.core.location.LocationRequestCompat
+import com.gridpointcode.core.aloud
+import com.gridpointcode.core.spellingFor
 import java.util.Locale
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -104,26 +107,42 @@ class WatchCompass(context: Context) {
     }
 }
 
-/** Reads aloud through the watch's own speech engine, in the listener's language, and says when it cannot. */
+/**
+ * Reads aloud through the watch's own speech engine, in the listener's
+ * language, and says on the screen when it cannot: with no voice for the
+ * language, and with no engine at all, which a watch may well have.
+ */
 class WatchSpeaker(context: Context) {
 
-    private var ready = false
+    private val app = context.applicationContext
+    private var engineState = EngineState.STARTING
     private var waiting: Pair<String, Locale>? = null
-    private val engine = TextToSpeech(context.applicationContext) { status ->
-        ready = status == TextToSpeech.SUCCESS
-        if (ready) waiting?.let { (line, language) -> say(line, language) }
+    private val engine = TextToSpeech(app) { status ->
+        engineState = if (status == TextToSpeech.SUCCESS) EngineState.READY else EngineState.NONE
+        waiting?.let { (line, language) -> say(line, language) }
         waiting = null
     }
 
-    fun say(line: String, language: Locale): Boolean {
-        if (!ready) {
-            waiting = line to language
-            return true
+    /** Says [line] in [language]; a line asked for while the engine starts is said once it has. */
+    fun say(line: String, language: Locale) {
+        when (engineState) {
+            EngineState.STARTING -> waiting = line to language
+            EngineState.NONE -> noVoice()
+            EngineState.READY ->
+                if (engine.setLanguage(language) < TextToSpeech.LANG_AVAILABLE) noVoice()
+                else engine.speak(line, TextToSpeech.QUEUE_FLUSH, null, "gpc")
         }
-        if (engine.setLanguage(language) < TextToSpeech.LANG_AVAILABLE) return false
-        engine.speak(line, TextToSpeech.QUEUE_FLUSH, null, "gpc")
-        return true
     }
+
+    /** Reads [code] aloud in the words of the listener's language. */
+    fun sayCode(code: String) {
+        val spelling = spellingFor(Locale.getDefault())
+        say(aloud(code, spelling), spelling.locale)
+    }
+
+    private fun noVoice() = Toast.makeText(app, R.string.no_voice, Toast.LENGTH_SHORT).show()
+
+    private enum class EngineState { STARTING, READY, NONE }
 
     fun close() {
         engine.stop()

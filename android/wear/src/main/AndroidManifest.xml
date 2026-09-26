@@ -30,15 +30,51 @@
             android:name="com.google.android.wearable.standalone"
             android:value="true" />
 
+        <!-- One of it, so the tile and the complication open the app that is
+             already open rather than another. -->
         <activity
             android:name=".WatchActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:taskAffinity="">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- The tile: the code the app last found. Only the system may bind it. -->
+        <service
+            android:name=".CodeTile"
+            android:exported="true"
+            android:label="@string/tile_label"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@mipmap/ic_launcher" />
+        </service>
+
+        <!-- The complication: the last short form, on any watch face with room
+             for a short text. Updated when the app finds a place, never on a clock. -->
+        <service
+            android:name=".CodeComplication"
+            android:exported="true"
+            android:icon="@drawable/complication_bars"
+            android:label="@string/complication_label"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="SHORT_TEXT" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="0" />
+        </service>
 
         <!-- The phone's saved places arrive here while the app is closed, so the
              watch has them the next time it opens, with or without the phone. -->

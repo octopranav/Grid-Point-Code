@@ -41,7 +41,7 @@ fun forms(
     selection: Selection,
     locale: Locale = Locale.getDefault(),
 ): List<Form> = listOf(
-    Form(FormKey.SHORT, "-" + GPC.Shorten(selection.code)),
+    Form(FormKey.SHORT, shortForm(selection.code)),
     Form(FormKey.CHECK, GPC.WithCheck(selection.code)),
     Form(FormKey.INTEGER, grouped(GPC.ToInteger(selection.code), locale)),
     Form(FormKey.DMS, GPC.ToDMS(selection.point.latitude, selection.point.longitude)),
@@ -50,6 +50,12 @@ fun forms(
 
 /** The code as it is printed: a hash, five characters, a hyphen, five more. */
 fun formatted(code: String): String = GPC.FormatGPC(code)
+
+/**
+ * The short form as it is written: the last five characters after a hyphen,
+ * as the site writes it, so it cannot be taken for a whole code.
+ */
+fun shortForm(code: String): String = "-" + GPC.Shorten(code)
 
 /** Thousands grouped the way the reader's own language groups them. */
 internal fun grouped(value: Long, locale: Locale): String =
