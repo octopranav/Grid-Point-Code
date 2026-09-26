@@ -53,9 +53,26 @@ android {
         }
     }
 
+    androidResources {
+        // The shrunk release keeps only the face the watch draws, IBM Plex Mono,
+        // so it leaves Bitter's licence out with Bitter; Plex's stays.
+        ignoreAssetsPatterns += "bitter-OFL.txt"
+    }
+
+    lint {
+        // Backup is off: releases before Android 12 read that from allowBackup,
+        // and the extraction rules keep it off from Android 12 on. Lint would
+        // have the older backup rules too, which a release with backup off
+        // never reads.
+        disable += "DataExtractionRules"
+    }
+
     buildTypes {
         release {
+            // Shrunk, resources too: the fonts the watch never draws, Bitter and
+            // Plex Sans, go with the part of the design system that sets them.
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
             signingConfig = signingConfigs.findByName("upload")
         }

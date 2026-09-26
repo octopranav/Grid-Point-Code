@@ -50,7 +50,8 @@ private fun readWatchNotices(context: Context): WatchNotices? {
     val components = componentsIn(readNotice(context, "components.txt") ?: return null)
     fun blocks(name: String) = readNotice(context, name)?.let(::blocksOf)
     return WatchNotices(
-        typefaces = (blocks("bitter-OFL.txt") ?: return null) + Block.Rule + (blocks("ibm-plex-OFL.txt") ?: return null),
+        // Only Plex Mono: the release is shrunk, and Bitter, which it never draws, is not in it.
+        typefaces = blocks("ibm-plex-OFL.txt") ?: return null,
         apache = components.filter { it.licence == "Apache-2.0" }.map { it.module },
         apacheNotice = blocks("apache-2.0.txt") ?: return null,
         protobuf = blocks("protobuf-lite.txt") ?: return null,

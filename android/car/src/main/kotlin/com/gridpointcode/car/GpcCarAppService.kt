@@ -1,5 +1,6 @@
 package com.gridpointcode.car
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import androidx.car.app.CarAppService
@@ -21,6 +22,10 @@ abstract class GpcCarAppService : CarAppService() {
 
     abstract fun places(): CarPlaces
 
+    // The list is the library's own, private only in that the library may change
+    // it, which is the point: a host Google adds arrives with the next update.
+    // The library's documentation names it for exactly this.
+    @SuppressLint("PrivateResource")
     override fun createHostValidator(): HostValidator =
         if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
             HostValidator.ALLOW_ALL_HOSTS_VALIDATOR

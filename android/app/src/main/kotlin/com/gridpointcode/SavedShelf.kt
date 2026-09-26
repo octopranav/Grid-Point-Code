@@ -1,5 +1,6 @@
 package com.gridpointcode
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import com.google.android.gms.tasks.Tasks
@@ -33,7 +34,11 @@ import kotlinx.coroutines.launch
  * watch keeps its places in its own file and nowhere else. Without Google's
  * services on the phone the Data Layer is not there at all, and the list is
  * simply not sent; nothing else here needs them.
+ *
+ * It holds a context only ever the application's, which lives as long as the
+ * process, so keeping it here keeps nothing alive that would otherwise go.
  */
+@SuppressLint("StaticFieldLeak")
 object SavedShelf {
 
     private val list = MutableStateFlow<List<SavedPlace>>(emptyList())

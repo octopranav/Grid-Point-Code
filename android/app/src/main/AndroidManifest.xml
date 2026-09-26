@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- The map is the only thing that needs the network: tiles, and nothing
          else. Every code, check and correction is arithmetic on the device. -->
@@ -87,10 +88,12 @@
         </service>
 
         <!-- Android Auto: the car screens, as a point-of-interest app on the car's
-             own map. Only the car may bind it; the service checks which. -->
+             own map. Only the car may bind it; the service checks which, so it is
+             exported with no permission for the host to hold. -->
         <service
             android:name=".PhoneCarService"
-            android:exported="true">
+            android:exported="true"
+            tools:ignore="ExportedService">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
                 <category android:name="androidx.car.app.category.POI" />

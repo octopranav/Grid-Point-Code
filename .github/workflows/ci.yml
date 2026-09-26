@@ -590,13 +590,22 @@ jobs:
       # The watch app, debug and release alike. The privacy page says it has no
       # internet access of its own, and a library can bring the permission with
       # it, so what the release really asks for is read from its merged manifest.
-      - name: The watch app builds and cannot reach the internet
+      # Its notices credit IBM Plex alone, true only while the shrunk release
+      # leaves Bitter out, so the bundle is read for that too.
+      - name: The watch app builds, cannot reach the internet, and ships one face
         run: |
           ./gradlew --no-daemon :wear:assembleDebug :wear:bundleRelease
           manifest=wear/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
           test -f "$manifest"
           if grep -q 'android.permission.INTERNET' "$manifest"; then
             echo "::error::The watch app asks for the internet, which the privacy page says it has no access to."
+            exit 1
+          fi
+          bundle=wear/build/outputs/bundle/release/wear-release.aab
+          test -f "$bundle"
+          unzip -l "$bundle" | grep -q 'res/font/ibm_plex_mono_semibold.ttf'
+          if unzip -l "$bundle" | grep -Eq 'res/font/(bitter|ibm_plex_sans)\.ttf'; then
+            echo "::error::The watch's release ships a face its notices do not credit; see WatchNotices.kt."
             exit 1
           fi
       # The car's own app, for Android Automotive, the same way, under the same

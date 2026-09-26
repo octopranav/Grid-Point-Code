@@ -2,7 +2,6 @@ package com.gridpointcode.car
 
 import android.content.Intent
 import android.content.res.Configuration
-import android.net.Uri
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import androidx.car.app.CarContext
@@ -21,6 +20,7 @@ import androidx.car.app.model.Row
 import androidx.car.app.model.Template
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.IconCompat
+import androidx.core.net.toUri
 import com.gridpointcode.core.SavedPlace
 import com.gridpointcode.core.Selection
 import com.gridpointcode.core.Source
@@ -117,7 +117,7 @@ class PlaceScreen(
     /** Hands the place to whichever navigation app the driver uses, as a point: the code is this app's to read. */
     private fun navigate() {
         val point = shown.selection.point
-        val address = Uri.parse(String.format(Locale.ROOT, "geo:%.6f,%.6f", point.latitude, point.longitude))
+        val address = String.format(Locale.ROOT, "geo:%.6f,%.6f", point.latitude, point.longitude).toUri()
         runCatching { carContext.startCarApp(Intent(CarContext.ACTION_NAVIGATE, address)) }
             .onFailure { CarToast.makeText(carContext, R.string.car_no_navigation, CarToast.LENGTH_LONG).show() }
     }

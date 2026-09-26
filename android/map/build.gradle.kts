@@ -31,6 +31,12 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
+
+    lint {
+        // Timber arrives with the map library, bringing a check that would send
+        // every log through it. This module logs one line, with the platform's.
+        disable += "LogNotTimber"
+    }
 }
 
 dependencies {

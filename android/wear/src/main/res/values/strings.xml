@@ -16,7 +16,6 @@
     <string name="speak">Speak</string>
     <string name="no_fix">Where you are is needed to measure the way.</string>
     <string name="no_voice">No voice for reading aloud on this watch</string>
-    <string name="toward">%1$s, %2$s away</string>
 
     <string name="tile_label">Your code</string>
     <string name="tile_title">My code</string>
@@ -33,7 +32,7 @@
     <string name="notices_title">Notices</string>
     <string name="notices_intro">This app is built on the work below. Each piece is used under its own licence, and each notice its licence asks to travel with it is given here in full.</string>
     <string name="notices_reading">Reading the notices…</string>
-    <string name="notices_typefaces">Typefaces: Bitter and IBM Plex</string>
+    <string name="notices_typefaces">Typeface: IBM Plex Mono</string>
     <string name="notices_apache">Libraries under the Apache License 2.0</string>
     <string name="notices_protobuf">Protocol Buffers, in the tile library</string>
     <string name="notices_play">Google Play services</string>

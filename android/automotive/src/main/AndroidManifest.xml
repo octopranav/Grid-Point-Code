@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- A car, with the host that draws the templates. -->
     <uses-feature
@@ -26,9 +27,12 @@
         </intent>
     </queries>
 
-    <!-- The app keeps nothing, so there is nothing to back up. -->
+    <!-- The app keeps nothing, so there is nothing to back up, nor to carry to
+         another car; the rules say so to releases that no longer read allowBackup
+         for a transfer. -->
     <application
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true">
@@ -37,10 +41,13 @@
             android:name="com.android.automotive"
             android:resource="@xml/automotive_app_desc" />
 
-        <!-- The car screens, as a point-of-interest app on the car's own map. -->
+        <!-- The car screens, as a point-of-interest app on the car's own map.
+             Exported with no permission, as the car's host binds it; the service
+             checks which host is asking. -->
         <service
             android:name=".CarService"
-            android:exported="true">
+            android:exported="true"
+            tools:ignore="ExportedService">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
                 <category android:name="androidx.car.app.category.POI" />
@@ -51,7 +58,6 @@
         <activity
             android:name="androidx.car.app.activity.CarAppActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:launchMode="singleTask"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
             <intent-filter>

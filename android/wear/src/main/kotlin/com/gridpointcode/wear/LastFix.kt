@@ -3,6 +3,7 @@ package com.gridpointcode.wear
 import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import androidx.wear.tiles.TileService
 import androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
 
@@ -68,7 +69,7 @@ class LastFixStore(context: Context) {
     }
 
     fun write(fix: LastFix) {
-        preferences.edit().putString(CODE, fix.code).putInt(METRES, fix.metres).putLong(AT, fix.at).apply()
+        preferences.edit { putString(CODE, fix.code).putInt(METRES, fix.metres).putLong(AT, fix.at) }
     }
 
     private companion object {
