@@ -79,6 +79,23 @@
         <item quantity="one">%d place</item>
         <item quantity="other">%d places</item>
     </plurals>
+    <string name="round_start">Walking order</string>
+    <string name="round_title">Walking order</string>
+    <string name="round_choose">Choose the stops to walk to, and they are put in an order that keeps the walk short.</string>
+    <plurals name="round_order">
+        <item quantity="one">Order %d stop</item>
+        <item quantity="other">Order %d stops</item>
+    </plurals>
+    <string name="round_cancel">Cancel</string>
+    <plurals name="round_summary">
+        <item quantity="one">%1$d stop · %2$s in a straight line</item>
+        <item quantity="other">%1$d stops · %2$s in all, in straight lines</item>
+    </plurals>
+    <string name="round_from_you">From where you are, ending at the last stop.</string>
+    <string name="round_from_place">From the place shown, ending at the last stop.</string>
+    <string name="round_from_first">Starting at one end of the round and ending at the other.</string>
+    <string name="round_share">Share the list</string>
+    <string name="round_done">Done</string>
     <string name="saved_empty">Nothing saved yet. The bookmark on a place\'s card keeps it here, with its directions.</string>
     <string name="save_label">Name</string>
     <string name="save_label_hint">Home, the clinic\'s side door</string>
