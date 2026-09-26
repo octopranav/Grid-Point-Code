@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -259,7 +260,7 @@ private fun Walk(model: WatchModel, speaker: WatchSpeaker, code: String) {
 /** The code in two rows of five cells, tinted by depth as on the phone, read aloud as its callouts. */
 @Composable
 private fun Mark(code: String) {
-    val spoken = aloud(code, spellingFor(Locale.getDefault()))
+    val spoken = aloud(code, spellingFor(screenLocale()))
     Column(
         modifier = Modifier.clearAndSetSemantics { contentDescription = spoken },
         verticalArrangement = Arrangement.spacedBy(3.dp),
@@ -306,7 +307,7 @@ private fun Arrow(degrees: Float, modifier: Modifier = Modifier) {
 
 @Composable
 private fun Eyebrow(text: String) {
-    Text(text.uppercase(Locale.getDefault()), style = CodeStyle.copy(fontSize = 11.sp, letterSpacing = 1.5.sp), color = inkSoftDark)
+    Text(text.uppercase(screenLocale()), style = CodeStyle.copy(fontSize = 11.sp, letterSpacing = 1.5.sp), color = inkSoftDark)
 }
 
 @Composable
@@ -317,6 +318,14 @@ private fun Quiet(text: String) {
 /** A saved place's name, or its code when it was saved with none. */
 private fun name(place: SavedPlace): String = place.label.ifEmpty { formatted(place.code) }
 
+@Composable
 private fun distance(metres: Double): String =
-    if (metres < 1000) String.format(Locale.getDefault(), "%d m", metres.toInt())
-    else String.format(Locale.getDefault(), "%.1f km", metres / 1000)
+    if (metres < 1000) String.format(screenLocale(), "%d m", metres.toInt())
+    else String.format(screenLocale(), "%.1f km", metres / 1000)
+
+/**
+ * The locale the watch is written in, read from the configuration so that a
+ * change of language redraws whatever is written in it.
+ */
+@Composable
+private fun screenLocale(): Locale = LocalConfiguration.current.locales[0]
