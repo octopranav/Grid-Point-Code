@@ -18,6 +18,12 @@ val upload: Map<String, String?> = mapOf(
         .orNull
 }
 
+// Where the place-name packs come from: the release the Landmarks workflow
+// publishes, unless a build says otherwise with -Pgpc.packs=<url>, as the map's
+// styles can be pointed at a local copy with -Pgpc.styles.
+val packs: String = providers.gradleProperty("gpc.packs")
+    .getOrElse("https://github.com/octopranav/Grid-Point-Code/releases/download/place-packs")
+
 android {
     namespace = "com.gridpointcode"
     compileSdk = 37
@@ -29,6 +35,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        buildConfigField("String", "PACKS", "\"$packs\"")
     }
 
     compileOptions {
@@ -38,6 +45,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     signingConfigs {

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Debug builds only. A build made with -Pgpc.styles pointing at the
-         emulator's host can read a local copy of the map over plain HTTP.
+    <!-- Debug builds only. A build made with -Pgpc.styles or -Pgpc.packs
+         pointing at the emulator's host can read a local copy of the map, or
+         of the place-name packs, over plain HTTP.
          Nothing else is allowed in the clear, and release builds carry no
          exception at all. -->
     <domain-config cleartextTrafficPermitted="true">

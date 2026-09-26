@@ -89,11 +89,31 @@ fun isName(text: String): Boolean = read(text) is Reading.Unread && fold(text).l
  * Null when the file could not be read at all, which is not the same answer as
  * nothing being called that.
  */
-fun findNamed(query: String, table: NameTable, file: NameFile, most: Int = 12): List<Named>? {
+fun findNamed(query: String, table: NameTable, file: NameFile, most: Int = 12): List<Named>? =
+    matchingLines(query, table, file, most)?.mapNotNull { parse(it, table.regions) }
+
+/** One searchable file of the index: its sparse table, and a way to read it. */
+class NameSource(val table: NameTable, val file: NameFile)
+
+/**
+ * Places whose name begins with [query] across [sources], in the index's order,
+ * as though they were one file. Each source is a country's lines of the same
+ * sorted index, so its matches merge back into the order the whole file has.
+ * A source that cannot be read gives nothing, and the others still answer.
+ */
+fun findNamedAcross(query: String, sources: List<NameSource>, most: Int = 12): List<Named> =
+    sources
+        .flatMap { source -> matchingLines(query, source.table, source.file, most).orEmpty().map { it to source.table.regions } }
+        .sortedBy { it.first }
+        .take(most)
+        .mapNotNull { (line, regions) -> parse(line, regions) }
+
+/** The lines of one file whose name begins with [query], in its order; null when it could not be read at all. */
+private fun matchingLines(query: String, table: NameTable, file: NameFile, most: Int): List<String>? {
     val folded = fold(query)
     if (folded.length < NAME_SHORTEST) return emptyList()
 
-    val hits = mutableListOf<Named>()
+    val hits = mutableListOf<String>()
     var block = blockFor(table, folded)
     repeat(MOST_BLOCKS) {
         if (block >= table.keys.size) return hits
@@ -110,13 +130,42 @@ fun findNamed(query: String, table: NameTable, file: NameFile, most: Int = 12): 
             // and nothing later in the file can match.
             if (!key.startsWith(folded)) return hits
             matched = true
-            parse(line, table.regions)?.let { hits += it }
+            if (line.count { it == '\t' } >= 4) hits += line
             if (hits.size >= most) return hits
         }
         if (!matched && hits.isNotEmpty()) return hits
         block += 1
     }
     return hits
+}
+
+/** How many lines apart the marks of a sparse table fall, as the builder spaces them. */
+const val NAME_STRIDE = 512
+
+/**
+ * The sparse table of a file, built as its lines are written: the name at every
+ * [stride]th line and the byte where that line starts, counted in UTF-8 as the
+ * file is written, so a kept pack is searched exactly as the site's file is.
+ */
+class NameMarks(private val stride: Int = NAME_STRIDE) {
+    private val keys = mutableListOf<String>()
+    private val starts = mutableListOf<Long>()
+
+    var bytes = 0L
+        private set
+    var lines = 0
+        private set
+
+    fun add(line: String) {
+        if (lines % stride == 0) {
+            keys += line.substringBefore('\t')
+            starts += bytes
+        }
+        bytes += line.toByteArray(Charsets.UTF_8).size + 1
+        lines += 1
+    }
+
+    fun table(regions: List<String>): NameTable = NameTable(bytes, regions, keys.toList(), starts.toLongArray())
 }
 
 /**
