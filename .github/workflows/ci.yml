@@ -599,12 +599,14 @@ jobs:
             echo "::error::The watch app asks for the internet, which the privacy page says it has no access to."
             exit 1
           fi
-      # Several licences the app is built under require their notice to travel
-      # with it. The list of what the release ships is held to what it really
-      # resolves, and a notice copied from one release of a library is held to
-      # that release, so neither can drift out of date unnoticed.
-      - name: Every library the release ships is in its notices
-        run: ./gradlew --no-daemon :app:checkNotices :app:testDebugUnitTest
+      # Several licences the apps are built under require their notice to travel
+      # with them. Each app's list of what its release ships is held to what it
+      # really resolves, and a notice copied from one release of a library is
+      # held to that release, so neither can drift out of date unnoticed. The
+      # watch's own rules, when its tile and complication show the last fix and
+      # for how long, are tested here too.
+      - name: Every library either release ships is in its notices
+        run: ./gradlew --no-daemon :app:checkNotices :wear:checkNotices :notices:testDebugUnitTest :app:testDebugUnitTest :wear:testDebugUnitTest
 
   conformance:
     name: All four ports agree

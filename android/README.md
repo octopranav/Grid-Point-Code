@@ -18,8 +18,9 @@ and correction is arithmetic on the device.
 | [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line in the words of seven languages, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, reading the website's name index, which landmarks can anchor a short form, saved places, reading locations written in other systems, the emergency card, and areas |
 | [`designsystem`](designsystem) | The theme, the type scale, the bundled typefaces, the shapes and the ten-cell mark, built from the files [`design/build-tokens.mjs`](../design/build-tokens.mjs) generates |
 | [`map`](map) | MapLibre Native on the website's tile provider, its five styles, the cell drawn in brass with its eight neighbours faint around it, and a tap to place a point |
+| [`notices`](notices) | The notices both apps ship, the Apache License and the Play services notices, and reading them: an app's list of libraries, and a notice laid out in blocks a screen can show |
 | [`app`](app) | The place screen, the view model that holds the place, read aloud, fetching the name index and the landmark archive, and the ways a place arrives from another app |
-| [`wear`](wear) | The Wear OS app: where the watch is, the saved places nearest first, and the way to one, with the saved places kept in step with the phone's through the Wear Data Layer |
+| [`wear`](wear) | The Wear OS app: where the watch is, the saved places nearest first, and the way to one, with the saved places kept in step with the phone's through the Wear Data Layer; its tile, its complication and its notices |
 
 ## What it does today
 
@@ -134,6 +135,11 @@ and correction is arithmetic on the device.
 - Lists the saved places nearest first, each with its distance and an arrow
   that turns with the watch to point its way.
 - Walks to one: a large arrow, the distance, and its short form to say.
+- Has a tile with the code the app last found, when and how closely, and Read
+  aloud at its foot, which opens the app and reads where the wrist is now.
+- Has a complication for any watch face with room for a short text: the last
+  short form beside the four bars, and how long ago, where the face shows it.
+- Shows its open-source notices, from the foot of the Here screen.
 - Works with no phone. The phone only brings the saved places, and takes back
   the ones saved on the watch, whenever the two are in reach.
 
@@ -190,7 +196,7 @@ phone downloads about 16 MB.
 ./gradlew :wear:bundleRelease
 ```
 
-The watch's bundle, about 4 MB, signed by the same four values. It has the
+The watch's bundle, about 6 MB, signed by the same four values. It has the
 phone's application ID, `com.gridpointcode`, and must have its key: the Data
 Layer carries items only between apps that share both.
 
@@ -338,12 +344,32 @@ suffixes it bundles. Each is in the app's assets, copied unchanged from the
 release the app uses, and the Apache License 2.0 is there once for the rest.
 The Play services libraries, under the Android Software Development Kit
 License, carry the notices of what is compiled into them; `play-services.txt`
-has each of those once, as the four libraries carry it.
-`licences/components.txt` names every library the release ships with its
-licence, and the build's `checkNotices` task fails when that list and the
-release's resolved libraries disagree, or when a notice was copied from a
-release other than the one resolved. The app shows them all from the end of the
-panel, under Open-source notices.
+has each of those once, as the four libraries carry it. The two notices both
+apps need, that one and the Apache License, are in the `notices` module once.
+Each app's `licences/components.txt` names every library its release ships with
+its licence, and `checkNotices`, one script both apps apply, fails when that
+list and the release's resolved libraries disagree, or when a notice was copied
+from a release other than the one resolved. A licence is read from each
+library's own POM, not assumed from its group: the tile library's
+`protolayout-external-protobuf` is Protocol Buffers under the BSD licence, and
+its copy of the terms leaves out the copyright line they ask to be reproduced,
+so `protobuf-lite.txt` gives that line from the project's own LICENSE before
+the terms. The phone shows them all on its settings page, and the watch from the
+foot of its Here screen.
+
+**The tile and the complication show what the app last found, and never
+look.** The watch is found only while the app is open, as the privacy page
+says, so neither asks where it is. The app keeps its last fix, and asks both to
+redraw when the code changes, the fix tightens, or a minute passes, not with
+every fix. Each shows it for an hour, as the first entry of a timeline whose
+second entry offers to open the app, so an old code goes without another
+request; an entry left without an end ends at zero, not never, and draws the
+tile empty. The tile says when the code was found as a time, beside the clock
+the watch draws above every tile, where the canvas has "2 min ago": a count of
+minutes would need the tile redrawn every minute or a dynamic string older
+watches cannot show. The complication's title is the watch's own count since
+then. Read aloud on the tile opens the app, which reads the next place it
+finds, not the code the tile showed.
 
 **Three tabs: the map, the saved places, the settings.** A bar along the bottom
 of a phone and a rail down the side of a wide screen, as the canvas draws both.
@@ -473,5 +499,5 @@ which covers the streaming calls in the library, which need 24. The watch app's
 ## Not here yet
 
 Verified links (which need the signing
-fingerprint published in `/.well-known/assetlinks.json`); the watch's tile, its
-complication and its own notices page; and the car and headset modules.
+fingerprint published in `/.well-known/assetlinks.json`), and the car and
+headset modules.

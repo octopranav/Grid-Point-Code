@@ -24,6 +24,7 @@ class CoreTest {
     fun theSampleEncodesToTheSpecificationsCode() {
         assertEquals("G3RJM98NM9", toronto.code)
         assertEquals("#G3RJM-98NM9", formatted(toronto.code))
+        assertEquals("-98NM9", shortForm(toronto.code))
     }
 
     @Test

@@ -28,7 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.widget.Toast
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
@@ -43,7 +42,6 @@ import androidx.wear.compose.material3.Text
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
-import ca.pranavpatel.algo.gridpointcode.GPC
 import ca.pranavpatel.algo.gridpointcode.design.CodeStyle
 import ca.pranavpatel.algo.gridpointcode.design.brassDark
 import ca.pranavpatel.algo.gridpointcode.design.groundDark
@@ -80,14 +78,15 @@ import com.gridpointcode.core.metresBetween
 import com.gridpointcode.core.savedAt
 import com.gridpointcode.core.savedRows
 import com.gridpointcode.core.selectionOf
+import com.gridpointcode.core.shortForm
 import com.gridpointcode.core.spellingFor
 import com.gridpointcode.core.Source
 import java.util.Locale
 
 /*
- * The watch's three screens, from the canvas: where the watch is, the saved
- * places nearest first, and walking to one of them. Dark always, as a watch
- * face is, in the palette's night colours.
+ * The watch's screens, from the canvas: where the watch is, the saved places
+ * nearest first, and walking to one of them; and the notices. Dark always, as
+ * a watch face is, in the palette's night colours.
  */
 
 private val WatchColours = ColorScheme(
@@ -109,6 +108,7 @@ private val INKS = listOf(
 private const val HERE_ROUTE = "here"
 private const val SAVED_ROUTE = "saved"
 private const val WALK_ROUTE = "walk"
+private const val NOTICES_ROUTE = "notices"
 
 @Composable
 fun WatchApp(model: WatchModel, speaker: WatchSpeaker, onAllow: () -> Unit) {
@@ -116,9 +116,18 @@ fun WatchApp(model: WatchModel, speaker: WatchSpeaker, onAllow: () -> Unit) {
         AppScaffold {
             val navigation = rememberSwipeDismissableNavController()
             SwipeDismissableNavHost(navController = navigation, startDestination = HERE_ROUTE) {
-                composable(HERE_ROUTE) { Here(model, speaker, onAllow, onSaved = { navigation.navigate(SAVED_ROUTE) }) }
+                composable(HERE_ROUTE) {
+                    Here(
+                        model,
+                        speaker,
+                        onAllow,
+                        onSaved = { navigation.navigate(SAVED_ROUTE) },
+                        onNotices = { navigation.navigate(NOTICES_ROUTE) },
+                    )
+                }
                 composable(SAVED_ROUTE) { Saved(model, onOpen = { navigation.navigate("$WALK_ROUTE/$it") }) }
                 composable("$WALK_ROUTE/{code}") { entry -> Walk(model, speaker, entry.arguments?.getString("code").orEmpty()) }
+                composable(NOTICES_ROUTE) { Notices() }
             }
         }
     }
@@ -126,12 +135,11 @@ fun WatchApp(model: WatchModel, speaker: WatchSpeaker, onAllow: () -> Unit) {
 
 /** Where the watch is: its code in two rows of cells, how far to trust it, and saying it or saving it. */
 @Composable
-private fun Here(model: WatchModel, speaker: WatchSpeaker, onAllow: () -> Unit, onSaved: () -> Unit) {
+private fun Here(model: WatchModel, speaker: WatchSpeaker, onAllow: () -> Unit, onSaved: () -> Unit, onNotices: () -> Unit) {
     val fix by model.fix.collectAsState()
     val saved by model.shelf.saved.collectAsState()
     val permitted by model.permitted.collectAsState()
     val context = LocalContext.current
-    val noVoice = stringResource(R.string.no_voice)
     val list = rememberScalingLazyListState()
     ScreenScaffold(scrollState = list) {
         ScalingLazyColumn(state = list, modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -146,22 +154,12 @@ private fun Here(model: WatchModel, speaker: WatchSpeaker, onAllow: () -> Unit, 
                 else -> {
                     val code = here.code
                     item { Mark(code) }
-                    item {
-                        Quiet(
-                            if (here.metres <= INSIDE_ONE_CELL) stringResource(R.string.accuracy_inside)
-                            else stringResource(R.string.accuracy, here.metres),
-                        )
-                    }
+                    item { Quiet(accuracyText(context, here.metres)) }
                     item {
                         val kept = saved.savedAt(code) != null
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
-                                onClick = {
-                                    val spelling = spellingFor(Locale.getDefault())
-                                    if (!speaker.say(aloud(code, spelling), spelling.locale)) {
-                                        Toast.makeText(context, noVoice, Toast.LENGTH_SHORT).show()
-                                    }
-                                },
+                                onClick = { speaker.sayCode(code) },
                                 label = { Text(stringResource(R.string.read_aloud)) },
                             )
                             Button(
@@ -180,6 +178,14 @@ private fun Here(model: WatchModel, speaker: WatchSpeaker, onAllow: () -> Unit, 
                     colors = ButtonDefaults.filledTonalButtonColors(),
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(R.string.saved_open)) },
+                )
+            }
+            item {
+                Button(
+                    onClick = onNotices,
+                    colors = ButtonDefaults.outlinedButtonColors(),
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.notices_open), fontSize = 12.sp) },
                 )
             }
         }
@@ -221,8 +227,6 @@ private fun Walk(model: WatchModel, speaker: WatchSpeaker, code: String) {
     val place = saved.savedAt(code) ?: SavedPlace(code, "", "", 0)
     val there = runCatching { selectionOf(code, Source.SAVED).point }.getOrNull()
     val here = fix
-    val context = LocalContext.current
-    val noVoice = stringResource(R.string.no_voice)
     val list = rememberScalingLazyListState()
     ScreenScaffold(scrollState = list) {
         ScalingLazyColumn(state = list, modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -237,19 +241,14 @@ private fun Walk(model: WatchModel, speaker: WatchSpeaker, code: String) {
             }
             item {
                 Text(
-                    runCatching { GPC.Shorten(code) }.getOrDefault(formatted(code)),
+                    runCatching { shortForm(code) }.getOrDefault(formatted(code)),
                     style = CodeStyle.copy(fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
                     color = brassDark,
                 )
             }
             item {
                 Button(
-                    onClick = {
-                        val spelling = spellingFor(Locale.getDefault())
-                        if (!speaker.say(aloud(code, spelling), spelling.locale)) {
-                            Toast.makeText(context, noVoice, Toast.LENGTH_SHORT).show()
-                        }
-                    },
+                    onClick = { speaker.sayCode(code) },
                     label = { Text(stringResource(R.string.speak)) },
                 )
             }
@@ -321,6 +320,3 @@ private fun name(place: SavedPlace): String = place.label.ifEmpty { formatted(pl
 private fun distance(metres: Double): String =
     if (metres < 1000) String.format(Locale.getDefault(), "%d m", metres.toInt())
     else String.format(Locale.getDefault(), "%.1f km", metres / 1000)
-
-/** A fix this tight names one cell, as the phone says it. */
-private const val INSIDE_ONE_CELL = 2

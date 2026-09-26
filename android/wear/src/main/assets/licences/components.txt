@@ -1,14 +1,11 @@
-# Every library the release build ships, with its licence, one per line.
-#
-# The build's checkNotices task compares this list with what the release
-# actually resolves, and CI runs it: a library added, dropped or renamed fails
-# until this list says so. A file named after a licence holds a notice the
-# library requires to travel with it; a version after @ is the release that
-# notice was copied from, and the task fails when the build resolves another.
-# The Apache License 2.0 itself is apache-2.0.txt. Google Play services is under
-# the Android Software Development Kit License, developer.android.com/studio/terms,
-# and play-services.txt holds the notices its libraries carry. Those two are in the
-# notices module, which the phone shares with the watch.
+# Every library the watch app's release ships, with its licence, as the
+# phone's list is kept: the build's checkNotices task fails until this list
+# says so. A file named after a licence holds a notice the library requires to
+# travel with it; a version after @ is the release that notice was copied from.
+# The Apache License 2.0 is apache-2.0.txt, and play-services.txt holds the
+# notices the Play services libraries carry, both in the notices module, which
+# the watch shares with the phone. Google Play services is under the Android
+# Software Development Kit License, developer.android.com/studio/terms.
 
 androidx.activity:activity  Apache-2.0
 androidx.activity:activity-compose  Apache-2.0
@@ -16,8 +13,11 @@ androidx.activity:activity-ktx  Apache-2.0
 androidx.annotation:annotation  Apache-2.0
 androidx.annotation:annotation-experimental  Apache-2.0
 androidx.annotation:annotation-jvm  Apache-2.0
+androidx.appcompat:appcompat  Apache-2.0
+androidx.appcompat:appcompat-resources  Apache-2.0
 androidx.arch.core:core-common  Apache-2.0
 androidx.arch.core:core-runtime  Apache-2.0
+androidx.asynclayoutinflater:asynclayoutinflater  Apache-2.0
 androidx.autofill:autofill  Apache-2.0
 androidx.collection:collection  Apache-2.0
 androidx.collection:collection-jvm  Apache-2.0
@@ -26,12 +26,16 @@ androidx.compose.animation:animation  Apache-2.0
 androidx.compose.animation:animation-android  Apache-2.0
 androidx.compose.animation:animation-core  Apache-2.0
 androidx.compose.animation:animation-core-android  Apache-2.0
+androidx.compose.animation:animation-graphics  Apache-2.0
+androidx.compose.animation:animation-graphics-android  Apache-2.0
 androidx.compose.foundation:foundation  Apache-2.0
 androidx.compose.foundation:foundation-android  Apache-2.0
 androidx.compose.foundation:foundation-layout  Apache-2.0
 androidx.compose.foundation:foundation-layout-android  Apache-2.0
 androidx.compose.material3:material3  Apache-2.0
 androidx.compose.material3:material3-android  Apache-2.0
+androidx.compose.material:material-icons-core  Apache-2.0
+androidx.compose.material:material-icons-core-android  Apache-2.0
 androidx.compose.material:material-ripple  Apache-2.0
 androidx.compose.material:material-ripple-android  Apache-2.0
 androidx.compose.runtime:runtime  Apache-2.0
@@ -57,15 +61,24 @@ androidx.compose.ui:ui-unit-android  Apache-2.0
 androidx.compose.ui:ui-util  Apache-2.0
 androidx.compose.ui:ui-util-android  Apache-2.0
 androidx.concurrent:concurrent-futures  Apache-2.0
+androidx.concurrent:concurrent-futures-ktx  Apache-2.0
+androidx.coordinatorlayout:coordinatorlayout  Apache-2.0
 androidx.core:core  Apache-2.0
 androidx.core:core-ktx  Apache-2.0
 androidx.core:core-viewtree  Apache-2.0
+androidx.cursoradapter:cursoradapter  Apache-2.0
 androidx.customview:customview  Apache-2.0
 androidx.customview:customview-poolingcontainer  Apache-2.0
+androidx.documentfile:documentfile  Apache-2.0
+androidx.drawerlayout:drawerlayout  Apache-2.0
 androidx.emoji2:emoji2  Apache-2.0
 androidx.fragment:fragment  Apache-2.0
 androidx.graphics:graphics-path  Apache-2.0
+androidx.graphics:graphics-shapes  Apache-2.0
+androidx.graphics:graphics-shapes-android  Apache-2.0
 androidx.interpolator:interpolator  Apache-2.0
+androidx.legacy:legacy-support-core-ui  Apache-2.0
+androidx.legacy:legacy-support-core-utils  Apache-2.0
 androidx.lifecycle:lifecycle-common  Apache-2.0
 androidx.lifecycle:lifecycle-common-java8  Apache-2.0
 androidx.lifecycle:lifecycle-common-jvm  Apache-2.0
@@ -87,20 +100,52 @@ androidx.lifecycle:lifecycle-viewmodel-ktx  Apache-2.0
 androidx.lifecycle:lifecycle-viewmodel-savedstate  Apache-2.0
 androidx.lifecycle:lifecycle-viewmodel-savedstate-android  Apache-2.0
 androidx.loader:loader  Apache-2.0
+androidx.localbroadcastmanager:localbroadcastmanager  Apache-2.0
+androidx.navigation:navigation-common  Apache-2.0
+androidx.navigation:navigation-common-ktx  Apache-2.0
+androidx.navigation:navigation-compose  Apache-2.0
+androidx.navigation:navigation-runtime  Apache-2.0
+androidx.navigation:navigation-runtime-ktx  Apache-2.0
 androidx.navigationevent:navigationevent  Apache-2.0
 androidx.navigationevent:navigationevent-android  Apache-2.0
 androidx.navigationevent:navigationevent-compose  Apache-2.0
 androidx.navigationevent:navigationevent-compose-android  Apache-2.0
+androidx.preference:preference  Apache-2.0
+androidx.print:print  Apache-2.0
 androidx.profileinstaller:profileinstaller  Apache-2.0
+androidx.recyclerview:recyclerview  Apache-2.0
 androidx.savedstate:savedstate  Apache-2.0
 androidx.savedstate:savedstate-android  Apache-2.0
 androidx.savedstate:savedstate-compose  Apache-2.0
 androidx.savedstate:savedstate-compose-android  Apache-2.0
 androidx.savedstate:savedstate-ktx  Apache-2.0
+androidx.slidingpanelayout:slidingpanelayout  Apache-2.0
 androidx.startup:startup-runtime  Apache-2.0
+androidx.swiperefreshlayout:swiperefreshlayout  Apache-2.0
 androidx.tracing:tracing  Apache-2.0
+androidx.vectordrawable:vectordrawable  Apache-2.0
+androidx.vectordrawable:vectordrawable-animated  Apache-2.0
 androidx.versionedparcelable:versionedparcelable  Apache-2.0
 androidx.viewpager:viewpager  Apache-2.0
+androidx.wear.compose:compose-foundation  Apache-2.0
+androidx.wear.compose:compose-material  Apache-2.0
+androidx.wear.compose:compose-material-core  Apache-2.0
+androidx.wear.compose:compose-material3  Apache-2.0
+androidx.wear.compose:compose-navigation  Apache-2.0
+androidx.wear.protolayout:protolayout  Apache-2.0
+androidx.wear.protolayout:protolayout-expression  Apache-2.0
+androidx.wear.protolayout:protolayout-expression-pipeline  Apache-2.0
+androidx.wear.protolayout:protolayout-external-protobuf  BSD-3-Clause  protobuf-lite.txt@1.4.2
+androidx.wear.protolayout:protolayout-material-core  Apache-2.0
+androidx.wear.protolayout:protolayout-material3  Apache-2.0
+androidx.wear.protolayout:protolayout-proto  Apache-2.0
+androidx.wear.tiles:tiles  Apache-2.0
+androidx.wear.tiles:tiles-proto  Apache-2.0
+androidx.wear.watchface:watchface-complications  Apache-2.0
+androidx.wear.watchface:watchface-complications-data  Apache-2.0
+androidx.wear.watchface:watchface-complications-data-source  Apache-2.0
+androidx.wear.watchface:watchface-complications-data-source-ktx  Apache-2.0
+androidx.wear:wear-core  Apache-2.0
 androidx.window:window  Apache-2.0
 androidx.window:window-core  Apache-2.0
 androidx.window:window-core-android  Apache-2.0
@@ -109,17 +154,10 @@ com.google.android.gms:play-services-base  Android-SDK-License  play-services.tx
 com.google.android.gms:play-services-basement  Android-SDK-License  play-services.txt@18.9.0
 com.google.android.gms:play-services-tasks  Android-SDK-License  play-services.txt@18.2.0
 com.google.android.gms:play-services-wearable  Android-SDK-License  play-services.txt@20.0.1
-com.google.code.gson:gson  Apache-2.0
 com.google.guava:listenablefuture  Apache-2.0
 com.google.zxing:core  Apache-2.0
-com.jakewharton.timber:timber  Apache-2.0
-com.squareup.okhttp3:okhttp  Apache-2.0  okhttp-public-suffix-list.txt
-com.squareup.okio:okio  Apache-2.0
-com.squareup.okio:okio-jvm  Apache-2.0
 org.jetbrains.kotlin:kotlin-stdlib  Apache-2.0
 org.jetbrains.kotlin:kotlin-stdlib-common  Apache-2.0
-org.jetbrains.kotlin:kotlin-stdlib-jdk7  Apache-2.0
-org.jetbrains.kotlin:kotlin-stdlib-jdk8  Apache-2.0
 org.jetbrains.kotlinx:kotlinx-coroutines-android  Apache-2.0
 org.jetbrains.kotlinx:kotlinx-coroutines-core  Apache-2.0
 org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm  Apache-2.0
@@ -127,7 +165,3 @@ org.jetbrains.kotlinx:kotlinx-serialization-core  Apache-2.0
 org.jetbrains.kotlinx:kotlinx-serialization-core-jvm  Apache-2.0
 org.jetbrains:annotations  Apache-2.0
 org.jspecify:jspecify  Apache-2.0
-org.maplibre.gl:android-sdk  BSD-2-Clause  maplibre-native-android.md@13.6.1
-org.maplibre.gl:android-sdk-geojson  Apache-2.0
-org.maplibre.gl:android-sdk-turf  Apache-2.0
-org.maplibre.gl:maplibre-android-gestures  BSD-2-Clause  maplibre-gestures-android.md@0.0.4

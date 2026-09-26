@@ -17,4 +17,25 @@
     <string name="no_fix">Where you are is needed to measure the way.</string>
     <string name="no_voice">No voice for reading aloud on this watch</string>
     <string name="toward">%1$s, %2$s away</string>
+
+    <string name="tile_label">Your code</string>
+    <string name="tile_title">My code</string>
+    <string name="tile_found">Found %1$s · %2$s</string>
+    <string name="tile_open_note">Open the app to find where you are.</string>
+    <string name="tile_open">Open</string>
+
+    <string name="complication_label">Your short form</string>
+    <string name="complication_find">Find</string>
+    <string name="complication_said">Short form %1$s</string>
+    <string name="complication_said_none">Open Grid Point Code to find where you are</string>
+
+    <string name="notices_open">Open-source notices</string>
+    <string name="notices_title">Notices</string>
+    <string name="notices_intro">This app is built on the work below. Each piece is used under its own licence, and each notice its licence asks to travel with it is given here in full.</string>
+    <string name="notices_reading">Reading the notices…</string>
+    <string name="notices_typefaces">Typefaces: Bitter and IBM Plex</string>
+    <string name="notices_apache">Libraries under the Apache License 2.0</string>
+    <string name="notices_protobuf">Protocol Buffers, in the tile library</string>
+    <string name="notices_play">Google Play services</string>
+    <string name="notices_play_body">The Wear Data Layer, which carries saved places to and from the phone, is part of Google Play services, used under the Android Software Development Kit License at developer.android.com/studio/terms. The notices its libraries carry follow.</string>
 </resources>

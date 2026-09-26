@@ -133,7 +133,9 @@ const REPO = 'https://github.com/octopranav/Grid-Point-Code';
             <p>
                 The Wear OS app works out where the watch is on the watch, only while the app is
                 open, and sends it nowhere. It has no internet access of its own, and reads aloud
-                with the watch's own speech engine.
+                with the watch's own speech engine. Its tile and its complication never ask where
+                the watch is: they show the code the app last found, kept on the watch until the
+                next one replaces it, and stop showing it an hour after it was found.
             </p>
             <p>
                 If a watch paired with your phone has the app, your saved places, with their names
@@ -147,8 +149,9 @@ const REPO = 'https://github.com/octopranav/Grid-Point-Code';
                 at all.
             </p>
             <p>
-                The watch keeps its copy in the app's own storage, left out of backups, since the
-                phone's is the one kept. Uninstalling the watch app removes it.
+                The watch keeps its copy, and the last code it found, in the app's own storage,
+                left out of backups, since the phone's list is the one kept. Uninstalling the watch
+                app removes both.
             </p>
 
             <h2 id="changes">Changes and questions</h2>

@@ -143,7 +143,7 @@ fun shardsFor(point: Point, level: Int): List<String> {
  */
 fun anchored(code: String, landmark: Landmark): String {
     val place = if (landmark.region.isEmpty()) landmark.name else "${landmark.name}, ${landmark.region}"
-    return "-${GPC.Shorten(code)} near $place"
+    return "${shortForm(code)} near $place"
 }
 
 /** A longitude difference carried into the range holding the short way round. */
