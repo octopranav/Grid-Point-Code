@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from design/tokens.json by design/build-icons.mjs. Do not edit by hand. -->
+<resources>
+    <color name="launcher_ground">#E9EEEF</color>
+    <color name="window_ground">#E9EEEF</color>
+</resources>

@@ -200,6 +200,7 @@
     <string name="notices_gestures">Map gestures: MapLibre Gestures</string>
     <string name="notices_typefaces">Typefaces: Bitter and IBM Plex</string>
     <string name="notices_apache">Libraries under the Apache License 2.0</string>
+    <string name="notices_mit">Libraries under the MIT licence</string>
     <string name="notices_play">Google Play services</string>
     <string name="notices_play_body">The Wear Data Layer, which carries saved places to and from a watch, is part of Google Play services, used under the Android Software Development Kit License at developer.android.com/studio/terms. The notices its libraries carry follow.</string>
     <string name="notices_data">Map data</string>

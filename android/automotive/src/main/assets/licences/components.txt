@@ -1,0 +1,67 @@
+# Every library the car app's release ships, with its licence, as the phone's
+# list is kept: the build's checkNotices task fails until this list says so. A
+# file named after a licence holds a notice the library requires to travel with
+# it; a version after @ is the release that notice was copied from. The Apache
+# License 2.0 is apache-2.0.txt and checker-qual's is checker-qual-MIT.txt, both
+# in the notices module, which the car app shares with the phone.
+
+
+androidx.activity:activity  Apache-2.0
+androidx.annotation:annotation  Apache-2.0
+androidx.annotation:annotation-experimental  Apache-2.0
+androidx.annotation:annotation-jvm  Apache-2.0
+androidx.arch.core:core-common  Apache-2.0
+androidx.arch.core:core-runtime  Apache-2.0
+androidx.car.app:app  Apache-2.0
+androidx.car.app:app-automotive  Apache-2.0
+androidx.collection:collection  Apache-2.0
+androidx.collection:collection-jvm  Apache-2.0
+androidx.concurrent:concurrent-futures  Apache-2.0
+androidx.core:core  Apache-2.0
+androidx.core:core-ktx  Apache-2.0
+androidx.core:core-viewtree  Apache-2.0
+androidx.customview:customview  Apache-2.0
+androidx.fragment:fragment  Apache-2.0
+androidx.interpolator:interpolator  Apache-2.0
+androidx.lifecycle:lifecycle-common  Apache-2.0
+androidx.lifecycle:lifecycle-common-java8  Apache-2.0
+androidx.lifecycle:lifecycle-common-jvm  Apache-2.0
+androidx.lifecycle:lifecycle-livedata  Apache-2.0
+androidx.lifecycle:lifecycle-livedata-core  Apache-2.0
+androidx.lifecycle:lifecycle-livedata-core-ktx  Apache-2.0
+androidx.lifecycle:lifecycle-runtime  Apache-2.0
+androidx.lifecycle:lifecycle-runtime-android  Apache-2.0
+androidx.lifecycle:lifecycle-runtime-ktx  Apache-2.0
+androidx.lifecycle:lifecycle-runtime-ktx-android  Apache-2.0
+androidx.lifecycle:lifecycle-viewmodel  Apache-2.0
+androidx.lifecycle:lifecycle-viewmodel-android  Apache-2.0
+androidx.lifecycle:lifecycle-viewmodel-savedstate  Apache-2.0
+androidx.lifecycle:lifecycle-viewmodel-savedstate-android  Apache-2.0
+androidx.loader:loader  Apache-2.0
+androidx.media:media  Apache-2.0
+androidx.profileinstaller:profileinstaller  Apache-2.0
+androidx.savedstate:savedstate  Apache-2.0
+androidx.savedstate:savedstate-android  Apache-2.0
+androidx.startup:startup-runtime  Apache-2.0
+androidx.tracing:tracing  Apache-2.0
+androidx.versionedparcelable:versionedparcelable  Apache-2.0
+androidx.viewpager:viewpager  Apache-2.0
+ca.pranavpatel.algo:gridpointcode  Apache-2.0
+com.google.auto.value:auto-value-annotations  Apache-2.0
+com.google.code.findbugs:jsr305  Apache-2.0
+com.google.errorprone:error_prone_annotations  Apache-2.0
+com.google.guava:failureaccess  Apache-2.0
+com.google.guava:guava  Apache-2.0
+com.google.guava:listenablefuture  Apache-2.0
+com.google.j2objc:j2objc-annotations  Apache-2.0
+com.google.zxing:core  Apache-2.0
+org.checkerframework:checker-qual  MIT  checker-qual-MIT.txt@3.12.0
+org.jetbrains.kotlin:kotlin-stdlib  Apache-2.0
+org.jetbrains.kotlin:kotlin-stdlib-common  Apache-2.0
+org.jetbrains.kotlinx:kotlinx-coroutines-android  Apache-2.0
+org.jetbrains.kotlinx:kotlinx-coroutines-core  Apache-2.0
+org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm  Apache-2.0
+org.jetbrains.kotlinx:kotlinx-serialization-core  Apache-2.0
+org.jetbrains.kotlinx:kotlinx-serialization-core-jvm  Apache-2.0
+org.jetbrains:annotations  Apache-2.0
+org.jspecify:jspecify  Apache-2.0

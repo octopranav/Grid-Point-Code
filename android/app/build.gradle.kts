@@ -68,6 +68,9 @@ dependencies {
     implementation(project(":designsystem"))
     implementation(project(":map"))
     implementation(project(":notices"))
+    // Android Auto: the car screens, projected from the phone.
+    implementation(project(":car"))
+    implementation(libs.car.app.projected)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)

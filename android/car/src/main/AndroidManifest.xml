@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- The car screens ask where the car is, only while they show. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- The places list on the car's own map is one of the map templates, which
+         a point-of-interest app must ask the car for. -->
+    <uses-permission android:name="androidx.car.app.MAP_TEMPLATES" />
+
+    <application>
+        <!-- The oldest car host the screens work with: the long message the
+             notices use, and the car's limits on a list, arrived at level 2. -->
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="2" />
+    </application>
+</manifest>

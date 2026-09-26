@@ -46,6 +46,7 @@ const root = path.resolve(here, '..');
 const web = 'web/public';
 const res = 'android/app/src/main/res';
 const wear = 'android/wear/src/main/res';
+const car = 'android/automotive/src/main/res';
 
 const tokens = JSON.parse(await readFile(path.join(here, 'tokens.json'), 'utf8'));
 
@@ -344,6 +345,11 @@ const FILES = [
     [`${wear}/values/launcher.xml`, () => launcherColours(false)],
     // The complication's mark, on any watch face, in the face's own colour.
     [`${wear}/drawable/complication_bars.xml`, () => launcherLayer(true, 24, 22)],
+    // And the car's own app, on the car's launcher.
+    [`${car}/mipmap-anydpi/ic_launcher.xml`, launcher],
+    [`${car}/drawable/launcher_bars.xml`, () => launcherLayer(false)],
+    [`${car}/drawable/launcher_bars_monochrome.xml`, () => launcherLayer(true)],
+    [`${car}/values/launcher.xml`, () => launcherColours(false)],
 ];
 
 const digest = (body) => createHash('sha256').update(body).digest('hex').slice(0, 12);

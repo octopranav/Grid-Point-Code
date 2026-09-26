@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="car_title">Grid Point Code</string>
+    <string name="car_here">Where am I</string>
+    <string name="car_allow">Allow location to find where the car is.</string>
+    <string name="car_finding">Finding where the car is…</string>
+    <string name="car_location_off_car">Location is off. Switch it on in the car\'s settings, then tap here.</string>
+    <string name="car_location_off_phone">Location is off on the phone. Switch it on there, then tap here.</string>
+    <string name="car_saved_on_phone">Saved places come from the phone app, with Android Auto.</string>
+    <string name="car_notices_short">Notices</string>
+    <string name="car_notices">Open-source notices</string>
+
+    <string name="car_open">Open</string>
+    <string name="car_search_hint">A code, a short form or coordinates</string>
+    <string name="car_search_empty">The place appears here as it is typed.</string>
+    <string name="car_needs_fix">A short form is read against where the car is, which is not known yet.</string>
+    <string name="car_area">That names an area, not one place.</string>
+    <string name="car_anchored">A short form with a place name is read in the phone app.</string>
+    <string name="car_closed">Only that system\'s owner can read its codes.</string>
+    <string name="car_unfollowed">Open that short link on a phone first.</string>
+    <string name="car_reserved">That code is reserved, and names no place.</string>
+    <string name="car_refused">Not something this app can read.</string>
+
+    <string name="car_navigate">Navigate</string>
+    <string name="car_read_aloud">Read aloud</string>
+    <string name="car_no_voice">No voice for reading aloud in this car</string>
+    <string name="car_no_navigation">No navigation app took the place.</string>
+    <string name="car_accuracy">±%1$d m</string>
+    <string name="car_accuracy_inside">Inside one cell</string>
+
+    <string name="car_north">north</string>
+    <string name="car_north_east">north-east</string>
+    <string name="car_east">east</string>
+    <string name="car_south_east">south-east</string>
+    <string name="car_south">south</string>
+    <string name="car_south_west">south-west</string>
+    <string name="car_west">west</string>
+    <string name="car_north_west">north-west</string>
+</resources>

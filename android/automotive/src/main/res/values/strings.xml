@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Grid Point Code</string>
+    <string name="notices_intro">This app is built on the work below. Each piece is used under its own licence, and each notice its licence asks to travel with it is given here in full.</string>
+    <string name="notices_apache">Libraries under the Apache License 2.0:</string>
+    <string name="notices_other">%1$s, under the %2$s licence:</string>
+</resources>

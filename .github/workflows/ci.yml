@@ -599,14 +599,25 @@ jobs:
             echo "::error::The watch app asks for the internet, which the privacy page says it has no access to."
             exit 1
           fi
+      # The car's own app, for Android Automotive, the same way, under the same
+      # promise: no internet access of its own.
+      - name: The car app builds and cannot reach the internet
+        run: |
+          ./gradlew --no-daemon :automotive:assembleDebug :automotive:bundleRelease
+          manifest=automotive/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
+          test -f "$manifest"
+          if grep -q 'android.permission.INTERNET' "$manifest"; then
+            echo "::error::The car app asks for the internet, which the privacy page says it has no access to."
+            exit 1
+          fi
       # Several licences the apps are built under require their notice to travel
       # with them. Each app's list of what its release ships is held to what it
       # really resolves, and a notice copied from one release of a library is
       # held to that release, so neither can drift out of date unnoticed. The
-      # watch's own rules, when its tile and complication show the last fix and
-      # for how long, are tested here too.
-      - name: Every library either release ships is in its notices
-        run: ./gradlew --no-daemon :app:checkNotices :wear:checkNotices :notices:testDebugUnitTest :app:testDebugUnitTest :wear:testDebugUnitTest
+      # watch's rules for its tile and complication, and the car's reading of
+      # what is typed into it, are tested here too.
+      - name: Every library each release ships is in its notices
+        run: ./gradlew --no-daemon :app:checkNotices :wear:checkNotices :automotive:checkNotices :notices:testDebugUnitTest :app:testDebugUnitTest :wear:testDebugUnitTest :car:testDebugUnitTest
 
   conformance:
     name: All four ports agree

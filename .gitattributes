@@ -119,6 +119,10 @@ android/wear/src/main/res/drawable/launcher_bars.xml                 text eol=lf
 android/wear/src/main/res/drawable/launcher_bars_monochrome.xml      text eol=lf
 android/wear/src/main/res/values/launcher.xml                        text eol=lf
 android/wear/src/main/res/drawable/complication_bars.xml             text eol=lf
+android/automotive/src/main/res/mipmap-anydpi/ic_launcher.xml        text eol=lf
+android/automotive/src/main/res/drawable/launcher_bars.xml           text eol=lf
+android/automotive/src/main/res/drawable/launcher_bars_monochrome.xml text eol=lf
+android/automotive/src/main/res/values/launcher.xml                  text eol=lf
 
 # The wrapper script is run by a POSIX shell, which reads a carriage return as
 # part of the command. The jar is a binary that CI checks against its known hash.
