@@ -64,6 +64,8 @@ import com.gridpointcode.core.view
 import com.gridpointcode.map.Basemap
 import java.io.File
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -97,6 +99,8 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     private val state = MutableStateFlow(PlaceState(selectionAt(SAMPLE, Source.SAMPLE)))
     private var listening: Job? = null
     private val names = NameIndex()
+    private val packs = PlacePacks(application)
+    private val packing = MutableStateFlow(Packs())
     private val finding = MutableStateFlow(Finding())
     private var looking: Job? = null
     private val archive = LandmarkArchive(
@@ -163,6 +167,39 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Whether the area around the current place is kept on the device. */
     val offline: StateFlow<Keeping> = keeping
+
+    /** The place-name packs: those kept, and every country's when asked for. */
+    val placePacks: StateFlow<Packs> = packing
+
+    init {
+        viewModelScope.launch(Dispatchers.IO) { packing.update { it.copy(kept = packs.kept()) } }
+    }
+
+    /** Asks for the list of every country's pack. */
+    fun listPacks() {
+        packing.update { it.copy(listing = true, note = null) }
+        viewModelScope.launch {
+            val offered = packs.offered()
+            packing.update { it.copy(listing = false, offered = offered, note = if (offered == null) Packs.Note.UNREACHABLE else null) }
+        }
+    }
+
+    /** Keeps a country's pack, whole or not at all. */
+    fun keepPack(pack: PlacePacks.Offered) {
+        packing.update { it.copy(keeping = pack.code, note = null) }
+        viewModelScope.launch {
+            val kept = packs.keep(pack)
+            val all = withContext(Dispatchers.IO) { packs.kept() }
+            packing.update { it.copy(keeping = null, kept = all, note = if (kept) null else Packs.Note.FAILED, failed = pack.name.takeUnless { kept }) }
+        }
+    }
+
+    fun forgetPack(code: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            packs.forget(code)
+            packing.update { it.copy(kept = packs.kept(), note = null) }
+        }
+    }
 
     /** The reader's saved places, most recent first. */
     val saved: StateFlow<List<SavedPlace>> = SavedShelf.saved
@@ -317,7 +354,7 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
         finding.value = Finding(query = text, status = Finding.Status.LOOKING)
         looking = viewModelScope.launch {
             val found = names.find(referenceName(town), TOWN_ROWS)
-            val places = found ?: findLocal(referenceName(town), archive.localLandmarks(), TOWN_ROWS)
+            val places = found ?: onThePhone(referenceName(town), TOWN_ROWS)
             finding.value = Finding()
             val place = townFor(town, places)
             val at = place?.let { runCatching { selectionOf(it.code, Source.CONVERTED).point }.getOrNull() }
@@ -497,7 +534,8 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
 
     /**
      * The name index's answer, or with no connection to it, the places on the
-     * device: the landmarks of the areas kept and of places already looked at.
+     * device: the countries whose names are kept, then the landmarks of the
+     * areas kept and of places already looked at.
      */
     private suspend fun lookUp(query: String): Finding {
         val places = names.find(query)
@@ -505,9 +543,22 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
             return if (places.isEmpty()) Finding(query, status = Finding.Status.MISSING)
             else Finding(query, places, Finding.Status.FOUND)
         }
-        val local = findLocal(query, archive.localLandmarks())
+        val local = onThePhone(query)
         return if (local.isEmpty()) Finding(query, status = Finding.Status.OFFLINE)
         else Finding(query, local, Finding.Status.LOCAL)
+    }
+
+    /**
+     * Names found with no connection: the kept packs first, the landmarks after,
+     * each place once. A landmark's name is unique within its region, so one a
+     * kept pack already names there is that place, written at a finer grain.
+     */
+    private suspend fun onThePhone(query: String, most: Int = 12): List<Named> {
+        val kept = packs.find(query, most)
+        val named = kept.mapTo(HashSet()) { it.name to it.region }
+        val nearby = if (kept.size >= most) emptyList()
+        else findLocal(query, archive.localLandmarks(), most).filter { (it.name to it.region) !in named }
+        return (kept + nearby).take(most)
     }
 
     /** Every change that can end listening also stops the device, so nothing runs for nobody. */
@@ -582,6 +633,21 @@ data class Keeping(
     val bytes: Long = 0,
 ) {
     enum class Note { FAILED, FORGOTTEN }
+}
+
+/** The place-name packs: kept, offered, and what is happening to them. */
+data class Packs(
+    val kept: List<PlacePacks.Kept> = emptyList(),
+    /** Every country's, once asked for; null until then, or when the list could not be reached. */
+    val offered: List<PlacePacks.Offered>? = null,
+    val listing: Boolean = false,
+    /** The country being kept, while it is. */
+    val keeping: String? = null,
+    val note: Note? = null,
+    /** The country that could not be kept, for saying which. */
+    val failed: String? = null,
+) {
+    enum class Note { UNREACHABLE, FAILED }
 }
 
 /** What the search field has turned up by name. */

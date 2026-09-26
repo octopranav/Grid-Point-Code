@@ -101,10 +101,12 @@ jobs:
       # The other direction. The archive answers "what is near this point"; this
       # answers "where is the place called this", which is the first thing
       # anybody reaches for. Built from the same dump in the same job, because
-      # the download is the expensive part and it is already paid for.
+      # the download is the expensive part and it is already paid for. The
+      # packs are the same lines a file a country, for the Android app to keep
+      # and search with no network.
       - name: Build the name index
         run: |
-          node scripts/build-names.mjs             --geonames ../geonames             --out names | tee -a ../report.txt
+          node scripts/build-names.mjs             --geonames ../geonames             --out names             --packs packs | tee -a ../report.txt
         working-directory: web
 
       - name: Pack them
@@ -139,5 +141,25 @@ jobs:
             echo 'Data from [GeoNames](https://www.geonames.org), CC BY 4.0.'
           } > notes.md
           gh release edit landmarks --notes-file notes.md
+
+          # The packs are their own release, since the app asks for them by name
+          # and one at a time. The manifest goes last, so it never names a pack
+          # that is not there yet.
+          gh release view place-packs >/dev/null 2>&1 || gh release create place-packs \
+            --title 'Place-name packs' \
+            --notes 'Built by the Landmarks workflow.'
+          gh release upload place-packs web/packs/*.txt.gz --clobber
+          gh release upload place-packs web/packs/packs.json --clobber
+          {
+            echo 'The name index a file a country, for searching with no network.'
+            echo 'Each is gzip-compressed and holds the same lines as the index, in'
+            echo 'its order; packs.json names every country, its size, and the'
+            echo 'regions the lines point into.'
+            echo
+            echo 'Built by the Landmarks workflow from a GeoNames dump.'
+            echo
+            echo 'Data from [GeoNames](https://www.geonames.org), CC BY 4.0.'
+          } > packs-notes.md
+          gh release edit place-packs --notes-file packs-notes.md
 
           cat report.txt >> "$GITHUB_STEP_SUMMARY"
