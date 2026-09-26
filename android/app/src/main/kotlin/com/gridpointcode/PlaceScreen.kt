@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextAlign
 import com.gridpointcode.core.SavedOrder
 import com.gridpointcode.core.savedRows
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.rotate
@@ -153,6 +154,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -187,6 +189,10 @@ import com.gridpointcode.core.PAD
 import com.gridpointcode.core.PlaceView
 import com.gridpointcode.core.Problem
 import com.gridpointcode.core.Source
+import androidx.compose.foundation.layout.ColumnScope
+import com.gridpointcode.core.Round
+import com.gridpointcode.core.roundOf
+import com.gridpointcode.core.addressOf
 import java.util.Locale
 
 /** Wider than this, the panel sits beside the map instead of over it. */
@@ -1268,6 +1274,9 @@ private fun SavedLines(place: SavedPlace) {
 
 /** Every saved place, most recent first. Opening one goes there with its directions. */
 @OptIn(ExperimentalMaterial3Api::class)
+/** What the saved page shows: the list, stops being chosen for a round, or the round. */
+private enum class SavedMode { LIST, CHOOSING, ROUND }
+
 @Composable
 private fun SavedPage(
     saved: List<SavedPlace>,
@@ -1275,8 +1284,8 @@ private fun SavedPage(
     fromDevice: Boolean,
     onOpen: (SavedPlace) -> Unit,
 ) {
-    var order by rememberSaveable { mutableStateOf(SavedOrder.NEAREST) }
-    val rows = remember(saved, from, order) { savedRows(saved, from, order) }
+    var mode by rememberSaveable { mutableStateOf(SavedMode.LIST) }
+    var chosen by rememberSaveable { mutableStateOf(listOf<String>()) }
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -1284,56 +1293,202 @@ private fun SavedPage(
                 .padding(horizontal = Space.step3, vertical = Space.step3),
             verticalArrangement = Arrangement.spacedBy(Space.step2),
         ) {
-            Text(stringResource(R.string.tab_saved), style = MaterialTheme.typography.displaySmall)
-            Quiet(stringResource(R.string.saved_kept))
-            if (saved.isEmpty()) Quiet(stringResource(R.string.saved_empty))
-            // The order only means something when there is a point to measure from.
-            if (saved.isNotEmpty() && from != null) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.step1)) {
-                    FilterChip(
-                        selected = order == SavedOrder.NEAREST,
-                        onClick = { order = SavedOrder.NEAREST },
-                        label = { Text(stringResource(R.string.saved_nearest)) },
-                    )
-                    FilterChip(
-                        selected = order == SavedOrder.RECENT,
-                        onClick = { order = SavedOrder.RECENT },
-                        label = { Text(stringResource(R.string.saved_recent)) },
-                    )
-                }
-                Quiet(
-                    pluralStringResource(R.plurals.saved_count, saved.size, saved.size) + " \u00b7 " +
-                        stringResource(if (fromDevice) R.string.saved_from_you else R.string.saved_from_place),
+            when (mode) {
+                SavedMode.LIST -> SavedList(saved, from, fromDevice, onOpen, onRound = {
+                    chosen = emptyList()
+                    mode = SavedMode.CHOOSING
+                })
+                SavedMode.CHOOSING -> ChoosingStops(
+                    saved = saved,
+                    chosen = chosen,
+                    onChosen = { chosen = it },
+                    onOrder = { mode = SavedMode.ROUND },
+                    onCancel = { mode = SavedMode.LIST },
                 )
-            }
-            LazyColumn(Modifier.weight(1f)) {
-                items(rows, key = { it.place.code }) { row ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(role = Role.Button) { onOpen(row.place) }
-                            .padding(vertical = Space.step2),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Space.step2),
-                    ) {
-                        val metres = row.metres
-                        val octant = row.octant
-                        // In the same cell a direction means nothing: the place is here. A
-                        // cell away is the next door, and gets its distance and its way.
-                        val here = metres != null && metres < SAME_PLACE_METRES
-                        row.heading?.takeUnless { here }?.let { Toward(it) }
-                        Box(Modifier.weight(1f)) { SavedLines(row.place) }
-                        when {
-                            here -> Text(stringResource(R.string.saved_here), style = CodeStyle)
-                            metres != null && octant != null -> Away(metres, octant)
-                        }
-                    }
-                    HorizontalDivider(color = LocalGpcColors.current.rule)
-                }
+                SavedMode.ROUND -> WalkingOrder(
+                    round = remember(saved, chosen, from) { roundOf(saved.filter { it.code in chosen }, from) },
+                    fromDevice = fromDevice,
+                    started = from != null,
+                    onOpen = onOpen,
+                    onDone = { mode = SavedMode.LIST },
+                )
             }
         }
     }
 }
+
+@Composable
+private fun ColumnScope.SavedList(
+    saved: List<SavedPlace>,
+    from: Point?,
+    fromDevice: Boolean,
+    onOpen: (SavedPlace) -> Unit,
+    onRound: () -> Unit,
+) {
+    var order by rememberSaveable { mutableStateOf(SavedOrder.NEAREST) }
+    val rows = remember(saved, from, order) { savedRows(saved, from, order) }
+    Text(stringResource(R.string.tab_saved), style = MaterialTheme.typography.displaySmall)
+    Quiet(stringResource(R.string.saved_kept))
+    if (saved.isEmpty()) Quiet(stringResource(R.string.saved_empty))
+    // The order only means something when there is a point to measure from.
+    if (saved.isNotEmpty() && from != null) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.step1)) {
+            FilterChip(
+                selected = order == SavedOrder.NEAREST,
+                onClick = { order = SavedOrder.NEAREST },
+                label = { Text(stringResource(R.string.saved_nearest)) },
+            )
+            FilterChip(
+                selected = order == SavedOrder.RECENT,
+                onClick = { order = SavedOrder.RECENT },
+                label = { Text(stringResource(R.string.saved_recent)) },
+            )
+        }
+        Quiet(
+            pluralStringResource(R.plurals.saved_count, saved.size, saved.size) + " \u00b7 " +
+                stringResource(if (fromDevice) R.string.saved_from_you else R.string.saved_from_place),
+        )
+    }
+    // A round needs two stops to put in an order.
+    if (saved.size >= 2) {
+        OutlinedButton(onClick = onRound, shape = ButtonShape) { Text(stringResource(R.string.round_start)) }
+    }
+    LazyColumn(Modifier.weight(1f)) {
+        items(rows, key = { it.place.code }) { row ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button) { onOpen(row.place) }
+                    .padding(vertical = Space.step2),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Space.step2),
+            ) {
+                val metres = row.metres
+                val octant = row.octant
+                // In the same cell a direction means nothing: the place is here. A
+                // cell away is the next door, and gets its distance and its way.
+                val here = metres != null && metres < SAME_PLACE_METRES
+                row.heading?.takeUnless { here }?.let { Toward(it) }
+                Box(Modifier.weight(1f)) { SavedLines(row.place) }
+                when {
+                    here -> Text(stringResource(R.string.saved_here), style = CodeStyle)
+                    metres != null && octant != null -> Away(metres, octant)
+                }
+            }
+            HorizontalDivider(color = LocalGpcColors.current.rule)
+        }
+    }
+}
+
+/** The saved places with a box each, to choose the stops of a round. */
+@Composable
+private fun ColumnScope.ChoosingStops(
+    saved: List<SavedPlace>,
+    chosen: List<String>,
+    onChosen: (List<String>) -> Unit,
+    onOrder: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    Text(stringResource(R.string.round_title), style = MaterialTheme.typography.displaySmall)
+    Quiet(stringResource(R.string.round_choose))
+    LazyColumn(Modifier.weight(1f)) {
+        items(saved, key = { it.code }) { place ->
+            val picked = place.code in chosen
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .toggleable(value = picked, role = Role.Checkbox) { onChosen(if (it) chosen + place.code else chosen - place.code) }
+                    .padding(vertical = Space.step1),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Space.step2),
+            ) {
+                Checkbox(checked = picked, onCheckedChange = null)
+                Box(Modifier.weight(1f)) { SavedLines(place) }
+            }
+            HorizontalDivider(color = LocalGpcColors.current.rule)
+        }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(Space.step2), verticalAlignment = Alignment.CenterVertically) {
+        Button(onClick = onOrder, enabled = chosen.size >= 2, shape = ButtonShape) {
+            Text(pluralStringResource(R.plurals.round_order, chosen.size, chosen.size))
+        }
+        TextButton(onClick = onCancel) { Text(stringResource(R.string.round_cancel)) }
+    }
+}
+
+/**
+ * The chosen stops in the order to walk them, each with its leg from the one
+ * before, the whole in straight lines, and the list to share in that order.
+ */
+@Composable
+private fun ColumnScope.WalkingOrder(
+    round: Round,
+    fromDevice: Boolean,
+    started: Boolean,
+    onOpen: (SavedPlace) -> Unit,
+    onDone: () -> Unit,
+) {
+    val context = LocalContext.current
+    val total = distance(round.metres)
+    val count = round.stops.size
+    val heading = pluralStringResource(R.plurals.round_summary, count, count, total)
+    Text(stringResource(R.string.round_title), style = MaterialTheme.typography.displaySmall)
+    Quiet(heading)
+    Quiet(
+        stringResource(
+            when {
+                !started -> R.string.round_from_first
+                fromDevice -> R.string.round_from_you
+                else -> R.string.round_from_place
+            },
+        ),
+    )
+    LazyColumn(Modifier.weight(1f)) {
+        items(round.stops, key = { it.place.code }) { stop ->
+            val number = round.stops.indexOf(stop) + 1
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button) { onOpen(stop.place) }
+                    .padding(vertical = Space.step2),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Space.step2),
+            ) {
+                StopNumber(number)
+                Box(Modifier.weight(1f)) { SavedLines(stop.place) }
+                // The first stop of a round with no start is where it starts.
+                if (started || number > 1) Text(distance(stop.leg), style = CodeStyle)
+            }
+            HorizontalDivider(color = LocalGpcColors.current.rule)
+        }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(Space.step2), verticalAlignment = Alignment.CenterVertically) {
+        Button(onClick = { share(context, roundText(heading, round)) }, shape = ButtonShape) {
+            Text(stringResource(R.string.round_share))
+        }
+        TextButton(onClick = onDone) { Text(stringResource(R.string.round_done)) }
+    }
+}
+
+/** A stop's place in the round, in the theme's own colour. */
+@Composable
+private fun StopNumber(number: Int) {
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .background(MaterialTheme.colorScheme.primary, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(number.toString(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
+    }
+}
+
+/** The round as text to send: its summary, then a numbered line a stop, each with its link. */
+private fun roundText(heading: String, round: Round): String =
+    (listOf(heading) + round.stops.mapIndexed { index, stop ->
+        val name = stop.place.label.ifEmpty { formatted(stop.place.code) }
+        "${index + 1}. $name ${addressOf(stop.place.code, stop.place.note)}"
+    }).joinToString("\n")
 
 /** The three tabs, as the canvas names them. */
 private enum class Tab { MAP, SAVED, SETTINGS }
