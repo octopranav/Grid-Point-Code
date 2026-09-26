@@ -24,7 +24,7 @@ const REPO = 'https://github.com/octopranav/Grid-Point-Code';
                 your device does on its own. What does leave your device is listed below,
                 with who receives it, and nothing else does.
             </p>
-            <p class="note">In effect from 25 September 2026.</p>
+            <p class="note">In effect from 26 September 2026.</p>
 
             <h2 id="website">The website</h2>
 
@@ -81,10 +81,10 @@ const REPO = 'https://github.com/octopranav/Grid-Point-Code';
 
             <h3>Your location</h3>
             <p>
-                Read only when you press the button to find where you are, or open the emergency
-                card, and only while the app is open, never in the background. It comes from your
-                device's own location service, and the app sends it nowhere: the code is worked out
-                on the device.
+                Read only when you press the button to find where you are, open the emergency card,
+                or have the app's screens on a car's display, and only while the app is open or on
+                that display, never in the background. It comes from your device's own location
+                service, and the app sends it nowhere: the code is worked out on the device.
             </p>
 
             <h3>What the app sends, and to whom</h3>
@@ -103,6 +103,11 @@ const REPO = 'https://github.com/octopranav/Grid-Point-Code';
                     <strong>Google Play services</strong>, only when a watch paired with your phone
                     has the watch app, receives your saved places, with their names and
                     directions, to carry them to the watch.
+                </li>
+                <li>
+                    <strong>Android Auto</strong>, only while the app's screens are on a car's
+                    display, receives what those screens show, as <a href="#car">the car</a> sets
+                    out.
                 </li>
             </ul>
             <p>
@@ -152,6 +157,25 @@ const REPO = 'https://github.com/octopranav/Grid-Point-Code';
                 The watch keeps its copy, and the last code it found, in the app's own storage,
                 left out of backups, since the phone's list is the one kept. Uninstalling the watch
                 app removes both.
+            </p>
+
+            <h3 id="car">The car</h3>
+            <p>
+                On a car's display through Android Auto, the phone app shows where the car is,
+                your saved places nearest first on the car's own map, and one place at a time. It
+                asks the phone where it is only while those screens show, and works the code out on
+                the phone. Android Auto draws the screens, so it receives what they show: where the
+                car is and its code, and your saved places' names, codes, directions and where they
+                are, to put them on its map, under the{' '}
+                <a href="https://policies.google.com/privacy" rel="noreferrer">Google privacy policy</a>.
+            </p>
+            <p>
+                The Android Automotive app runs in the car itself, with no phone. It asks the car
+                where it is only while the app is on the car's screen, has no internet access of its
+                own, and keeps nothing; the car's system draws its screens as Android Auto does.
+                Navigate, in either, hands the place's coordinates to the navigation app you use,
+                under that app's own policy, and reading aloud uses the phone's or the car's speech
+                engine.
             </p>
 
             <h2 id="changes">Changes and questions</h2>

@@ -49,6 +49,8 @@ private class Notices(
     val typefaces: List<Block>,
     val apache: List<String>,
     val apacheNotices: List<Block>,
+    val mit: List<String>,
+    val mitNotices: List<Block>,
     val play: List<String>,
     val playNotices: List<Block>,
 )
@@ -62,6 +64,11 @@ private fun readNotices(context: Context): Notices? {
         typefaces = (blocks("bitter-OFL.txt") ?: return null) + Block.Rule + (blocks("ibm-plex-OFL.txt") ?: return null),
         apache = components.filter { it.licence == "Apache-2.0" }.map { it.module },
         apacheNotices = (blocks("okhttp-public-suffix-list.txt") ?: return null) + Block.Rule + (blocks("apache-2.0.txt") ?: return null),
+        mit = components.filter { it.licence == "MIT" }.map { it.module },
+        mitNotices = components.filter { it.licence == "MIT" }.mapNotNull { it.notice }.distinct()
+            .map { blocks(it) ?: return null }
+            .reduceOrNull { all, next -> all + Block.Rule + next }
+            .orEmpty(),
         play = components.filter { it.licence == "Android-SDK-License" }.map { it.module },
         playNotices = blocks("play-services.txt") ?: return null,
     )
@@ -117,6 +124,9 @@ fun NoticesPage(onClose: () -> Unit) {
                 item { Title(R.string.notices_apache) }
                 item { Text(shown.apache.joinToString("\n"), style = CodeStyle.copy(fontSize = MaterialTheme.typography.bodySmall.fontSize)) }
                 blocks(shown.apacheNotices)
+                item { Title(R.string.notices_mit) }
+                item { Text(shown.mit.joinToString("\n"), style = CodeStyle.copy(fontSize = MaterialTheme.typography.bodySmall.fontSize)) }
+                blocks(shown.mitNotices)
                 item { Title(R.string.notices_play) }
                 item { Text(stringResource(R.string.notices_play_body), style = MaterialTheme.typography.bodySmall) }
                 item { Text(shown.play.joinToString("\n"), style = CodeStyle.copy(fontSize = MaterialTheme.typography.bodySmall.fontSize)) }

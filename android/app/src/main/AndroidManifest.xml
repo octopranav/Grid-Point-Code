@@ -85,5 +85,19 @@
                 <data android:scheme="wear" android:host="*" android:path="/gpc_watch" />
             </intent-filter>
         </service>
+
+        <!-- Android Auto: the car screens, as a point-of-interest app on the car's
+             own map. Only the car may bind it; the service checks which. -->
+        <service
+            android:name=".PhoneCarService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.POI" />
+            </intent-filter>
+        </service>
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
     </application>
 </manifest>

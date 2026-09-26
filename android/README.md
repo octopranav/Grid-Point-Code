@@ -1,9 +1,9 @@
 # Grid Point Code for Android
 
 The application for phones, tablets, foldables and Android on the desktop, a
-companion for Wear OS, and later for cars and headsets. One APK for the large
-screens, laid out by the size of the window rather than the kind of device, and
-one for the watch.
+companion for Wear OS, screens for the car, and later for headsets. One APK for
+the large screens, laid out by the size of the window rather than the kind of
+device, one for the watch, and one for a car running Android Automotive.
 
 What is built so far is the place: a map with the cell drawn on it, the panel
 that says everything about it, and a button that finds where the device is; and
@@ -18,9 +18,11 @@ and correction is arithmetic on the device.
 | [`core`](core) | Plain Kotlin on the JVM, no Android. Wraps the published package and adds only what the website's own `lib/` adds: the written forms, the read-aloud line in the words of seven languages, links with directions, one reader for every kind of input, the nudge pad, cell sizes, the accuracy rule, the rules for what survives a move, reading the website's name index, which landmarks can anchor a short form, saved places, reading locations written in other systems, the emergency card, and areas |
 | [`designsystem`](designsystem) | The theme, the type scale, the bundled typefaces, the shapes and the ten-cell mark, built from the files [`design/build-tokens.mjs`](../design/build-tokens.mjs) generates |
 | [`map`](map) | MapLibre Native on the website's tile provider, its five styles, the cell drawn in brass with its eight neighbours faint around it, and a tap to place a point |
-| [`notices`](notices) | The notices both apps ship, the Apache License and the Play services notices, and reading them: an app's list of libraries, and a notice laid out in blocks a screen can show |
+| [`notices`](notices) | The notices more than one app ships, the Apache License, the Play services notices and the MIT notice the car's libraries bring, and reading them: an app's list of libraries, and a notice laid out in blocks a screen can show |
+| [`car`](car) | The car's screens, one set for Android Auto and Android Automotive: where the car is, the saved places on the car's own map, one place with Navigate and Read aloud, and going to a typed code |
 | [`app`](app) | The place screen, the view model that holds the place, read aloud, fetching the name index and the landmark archive, and the ways a place arrives from another app |
 | [`wear`](wear) | The Wear OS app: where the watch is, the saved places nearest first, and the way to one, with the saved places kept in step with the phone's through the Wear Data Layer; its tile, its complication and its notices |
+| [`automotive`](automotive) | The Android Automotive app: the car's screens, run by the car itself with no phone, and their notices |
 
 ## What it does today
 
@@ -143,10 +145,29 @@ and correction is arithmetic on the device.
 - Works with no phone. The phone only brings the saved places, and takes back
   the ones saved on the watch, whenever the two are in reach.
 
+### In a car
+
+- On Android Auto, the phone app's screens on the car's display: where the car
+  is, then the saved places nearest first, each numbered on the car's own map
+  with its distance and code.
+- One place at a time: its code, how to say it, how far and which way with the
+  directions to its door, Navigate, which hands it to the driver's own
+  navigation app, and Read aloud, which lowers whatever is playing while it
+  speaks.
+- Goes to a code typed with the car's keyboard, which the car offers only when
+  parked: a code, a short form read against where the car is, coordinates or a
+  link, read as the phone reads them.
+- On a car running Android Automotive, the same screens from an app of its own,
+  with no phone, so no saved places: where the car is, going to a code, and the
+  open-source notices.
+- Asks where the car is only while its screens show, says when location is
+  switched off and where to switch it on, and asks for the permission from the
+  car's screen.
+
 ## Building
 
 ```
-./gradlew :core:test :app:assembleDebug :wear:assembleDebug
+./gradlew :core:test :app:assembleDebug :wear:assembleDebug :automotive:assembleDebug
 ```
 
 Needs JDK 17 or later and the Android SDK with platform 37. Continuous
@@ -199,6 +220,14 @@ phone downloads about 16 MB.
 The watch's bundle, about 6 MB, signed by the same four values. It has the
 phone's application ID, `com.gridpointcode`, and must have its key: the Data
 Layer carries items only between apps that share both.
+
+```
+./gradlew :automotive:bundleRelease
+```
+
+The car's bundle, under 1 MB, signed by the same four values, with the same
+application ID, so the store lists all three under one name. Android Auto needs
+no bundle of its own: it is the phone app's.
 
 ## Decisions that shape the code
 
@@ -491,13 +520,33 @@ page's own ground in either theme, so the icon on it is not a flash of another
 colour. For the store listing, the site's `icon-512.png` is already the 512
 pixel square the store asks for.
 
+**The car draws the screens; the app describes them.** Android Auto and Android
+Automotive both take templates from the Car App Library and draw them in the
+car's own style, so `car` holds one set of screens and each app says only what
+its car may have: `PhoneCarService` hands over the phone's saved places and the
+listener's language, and `CarService` in `automotive` hands over none, since a
+car with no phone cannot reach them. The places are a point-of-interest list on
+the car's own map, which holds only rows with a distance: so it is shown once
+there are saved places and a fix to measure them from, and until then, and in a
+car running Android Automotive, the same rows are a list. A row the map refuses
+is not reported as such: the car shows its placeholder for a missing maps app
+instead, which is how the rule was found. The car draws a distance on a line of
+its own and drops whatever follows it on that line, so a place's code and a
+direction each have their own line. What is typed is read by the phone's own
+`PlaceState.opened`, and a short form waits for a fix rather than being read
+against anywhere else. A release answers only the car hosts in the library's
+own list; a debug build answers any, for a test head unit. The oldest car host
+supported is level 2, for the long message the notices use; a header replaces
+a pane's title at level 7, and is used where the car has it.
+
 **Three SDK levels, three meanings.** `compileSdk` 37 because current AndroidX
 libraries compile against it. `targetSdk` 36 for runtime behaviour. `minSdk` 26,
 which covers the streaming calls in the library, which need 24. The watch app's
-`minSdk` is 30, Wear OS 3, the first release built on Android 11.
+`minSdk` is 30, Wear OS 3, the first release built on Android 11, and the car
+app's is 29, the oldest release the car's template host runs on.
 
 ## Not here yet
 
 Verified links (which need the signing
-fingerprint published in `/.well-known/assetlinks.json`), and the car and
-headset modules.
+fingerprint published in `/.well-known/assetlinks.json`), and the headset
+module.

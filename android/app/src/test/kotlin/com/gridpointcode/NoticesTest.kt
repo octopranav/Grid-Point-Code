@@ -19,7 +19,7 @@ class NoticesTest {
     fun everyLibraryHasALicenceAndEveryNoticeItNamesShips() {
         val components = componentsIn(File(licences, "components.txt").readText())
         assertTrue(components.size > 100, "the release ships over a hundred libraries")
-        assertTrue(components.all { it.licence in setOf("Apache-2.0", "BSD-2-Clause", "Android-SDK-License") })
+        assertTrue(components.all { it.licence in setOf("Apache-2.0", "BSD-2-Clause", "MIT", "Android-SDK-License") })
         for (component in components) {
             component.notice?.let { notice -> assertTrue(shipped.any { File(it, notice).exists() }, "${component.module} names $notice") }
         }

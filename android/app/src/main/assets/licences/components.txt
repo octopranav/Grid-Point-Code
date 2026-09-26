@@ -7,8 +7,9 @@
 # notice was copied from, and the task fails when the build resolves another.
 # The Apache License 2.0 itself is apache-2.0.txt. Google Play services is under
 # the Android Software Development Kit License, developer.android.com/studio/terms,
-# and play-services.txt holds the notices its libraries carry. Those two are in the
-# notices module, which the phone shares with the watch.
+# and play-services.txt holds the notices its libraries carry. Those two, and
+# checker-qual-MIT.txt for the library under the MIT licence the car screens bring,
+# are in the notices module, which the phone shares with the watch and the car.
 
 androidx.activity:activity  Apache-2.0
 androidx.activity:activity-compose  Apache-2.0
@@ -19,6 +20,8 @@ androidx.annotation:annotation-jvm  Apache-2.0
 androidx.arch.core:core-common  Apache-2.0
 androidx.arch.core:core-runtime  Apache-2.0
 androidx.autofill:autofill  Apache-2.0
+androidx.car.app:app  Apache-2.0
+androidx.car.app:app-projected  Apache-2.0
 androidx.collection:collection  Apache-2.0
 androidx.collection:collection-jvm  Apache-2.0
 androidx.collection:collection-ktx  Apache-2.0
@@ -87,6 +90,7 @@ androidx.lifecycle:lifecycle-viewmodel-ktx  Apache-2.0
 androidx.lifecycle:lifecycle-viewmodel-savedstate  Apache-2.0
 androidx.lifecycle:lifecycle-viewmodel-savedstate-android  Apache-2.0
 androidx.loader:loader  Apache-2.0
+androidx.media:media  Apache-2.0
 androidx.navigationevent:navigationevent  Apache-2.0
 androidx.navigationevent:navigationevent-android  Apache-2.0
 androidx.navigationevent:navigationevent-compose  Apache-2.0
@@ -109,13 +113,19 @@ com.google.android.gms:play-services-base  Android-SDK-License  play-services.tx
 com.google.android.gms:play-services-basement  Android-SDK-License  play-services.txt@18.9.0
 com.google.android.gms:play-services-tasks  Android-SDK-License  play-services.txt@18.2.0
 com.google.android.gms:play-services-wearable  Android-SDK-License  play-services.txt@20.0.1
+com.google.code.findbugs:jsr305  Apache-2.0
 com.google.code.gson:gson  Apache-2.0
+com.google.errorprone:error_prone_annotations  Apache-2.0
+com.google.guava:failureaccess  Apache-2.0
+com.google.guava:guava  Apache-2.0
 com.google.guava:listenablefuture  Apache-2.0
+com.google.j2objc:j2objc-annotations  Apache-2.0
 com.google.zxing:core  Apache-2.0
 com.jakewharton.timber:timber  Apache-2.0
 com.squareup.okhttp3:okhttp  Apache-2.0  okhttp-public-suffix-list.txt
 com.squareup.okio:okio  Apache-2.0
 com.squareup.okio:okio-jvm  Apache-2.0
+org.checkerframework:checker-qual  MIT  checker-qual-MIT.txt@3.12.0
 org.jetbrains.kotlin:kotlin-stdlib  Apache-2.0
 org.jetbrains.kotlin:kotlin-stdlib-common  Apache-2.0
 org.jetbrains.kotlin:kotlin-stdlib-jdk7  Apache-2.0
