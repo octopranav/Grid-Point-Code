@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Grid Point Code</string>
+    <string name="here">Here</string>
+    <string name="finding">Finding where you are…</string>
+    <string name="allow">Allow location</string>
+    <string name="allow_note">The watch finds where you are only while this is open.</string>
+    <string name="accuracy">±%1$d m</string>
+    <string name="accuracy_inside">Inside one cell</string>
+    <string name="read_aloud">Read aloud</string>
+    <string name="save">Save</string>
+    <string name="saved_here">Saved</string>
+    <string name="saved_title">Saved</string>
+    <string name="saved_none">Places you save on your phone, or here, appear in this list.</string>
+    <string name="saved_open">Saved places</string>
+    <string name="speak">Speak</string>
+    <string name="no_fix">Where you are is needed to measure the way.</string>
+    <string name="no_voice">No voice for reading aloud on this watch</string>
+    <string name="toward">%1$s, %2$s away</string>
+</resources>

@@ -24,7 +24,7 @@ const REPO = 'https://github.com/octopranav/Grid-Point-Code';
                 your device does on its own. What does leave your device is listed below,
                 with who receives it, and nothing else does.
             </p>
-            <p class="note">In effect from 24 September 2026.</p>
+            <p class="note">In effect from 25 September 2026.</p>
 
             <h2 id="website">The website</h2>
 
@@ -73,8 +73,10 @@ const REPO = 'https://github.com/octopranav/Grid-Point-Code';
             <h2 id="app">The Android app</h2>
 
             <p>
-                No account, no analytics, no crash reports, no advertising identifier, and no
-                other company's code that reports anything.
+                No account, no analytics, no crash reports and no advertising identifier. The app
+                does call on Google Play services, where the phone has it: to ask whether a watch
+                paired with the phone has the app, and to carry saved places to one that does, as{' '}
+                <a href="#watch">the watch</a> sets out.
             </p>
 
             <h3>Your location</h3>
@@ -97,6 +99,11 @@ const REPO = 'https://github.com/octopranav/Grid-Point-Code';
                     the name index was read; when you look up landmarks, which area's file, about
                     200 km across.
                 </li>
+                <li>
+                    <strong>Google Play services</strong>, only when a watch paired with your phone
+                    has the watch app, receives your saved places, with their names and
+                    directions, to carry them to the watch.
+                </li>
             </ul>
             <p>
                 Nothing else is sent. A code, a pair of coordinates or a location written in
@@ -110,7 +117,8 @@ const REPO = 'https://github.com/octopranav/Grid-Point-Code';
                 Android's device backup includes them if you have backup turned on, so a new phone
                 has them. The landmark areas you keep for use offline, and the map tiles and
                 landmarks already seen, stay on the device and are left out of backups.
-                Uninstalling the app removes all of it.
+                Uninstalling the app removes all of it. A watch with the app keeps a copy of the
+                saved places, as below.
             </p>
 
             <h3>Sharing and reading aloud</h3>
@@ -119,6 +127,28 @@ const REPO = 'https://github.com/octopranav/Grid-Point-Code';
                 choose. Reading aloud uses your device's speech engine. Some engines send the text
                 to their provider to make the voice; that is up to the engine you use and its own
                 policy.
+            </p>
+
+            <h3 id="watch">The watch</h3>
+            <p>
+                The Wear OS app works out where the watch is on the watch, only while the app is
+                open, and sends it nowhere. It has no internet access of its own, and reads aloud
+                with the watch's own speech engine.
+            </p>
+            <p>
+                If a watch paired with your phone has the app, your saved places, with their names
+                and directions, go between the phone and the watch through the Wear Data Layer,
+                which is part of Google Play services on both, and a place saved on the watch goes
+                to the phone the same way. Near each other they go directly; when the two are apart
+                and both online, Google Play services can carry them through Google's servers,
+                under the{' '}
+                <a href="https://policies.google.com/privacy" rel="noreferrer">Google privacy policy</a>.
+                With no watch that has the app, the phone does not hand its list to the Data Layer
+                at all.
+            </p>
+            <p>
+                The watch keeps its copy in the app's own storage, left out of backups, since the
+                phone's is the one kept. Uninstalling the watch app removes it.
             </p>
 
             <h2 id="changes">Changes and questions</h2>

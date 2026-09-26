@@ -587,6 +587,18 @@ jobs:
       # in the repository or in CI.
       - name: The release bundle shrinks and builds
         run: ./gradlew --no-daemon :app:bundleRelease
+      # The watch app, debug and release alike. The privacy page says it has no
+      # internet access of its own, and a library can bring the permission with
+      # it, so what the release really asks for is read from its merged manifest.
+      - name: The watch app builds and cannot reach the internet
+        run: |
+          ./gradlew --no-daemon :wear:assembleDebug :wear:bundleRelease
+          manifest=wear/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
+          test -f "$manifest"
+          if grep -q 'android.permission.INTERNET' "$manifest"; then
+            echo "::error::The watch app asks for the internet, which the privacy page says it has no access to."
+            exit 1
+          fi
       # Several licences the app is built under require their notice to travel
       # with it. The list of what the release ships is held to what it really
       # resolves, and a notice copied from one release of a library is held to

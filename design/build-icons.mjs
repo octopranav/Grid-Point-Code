@@ -45,6 +45,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const web = 'web/public';
 const res = 'android/app/src/main/res';
+const wear = 'android/wear/src/main/res';
 
 const tokens = JSON.parse(await readFile(path.join(here, 'tokens.json'), 'utf8'));
 
@@ -335,6 +336,11 @@ const FILES = [
     [`${res}/drawable/launcher_bars_monochrome.xml`, () => launcherLayer(true)],
     [`${res}/values/launcher.xml`, () => launcherColours(false)],
     [`${res}/values-night/launcher.xml`, () => launcherColours(true)],
+    // The watch app is the same app on the store, with the same icon.
+    [`${wear}/mipmap-anydpi/ic_launcher.xml`, launcher],
+    [`${wear}/drawable/launcher_bars.xml`, () => launcherLayer(false)],
+    [`${wear}/drawable/launcher_bars_monochrome.xml`, () => launcherLayer(true)],
+    [`${wear}/values/launcher.xml`, () => launcherColours(false)],
 ];
 
 const digest = (body) => createHash('sha256').update(body).digest('hex').slice(0, 12);

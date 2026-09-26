@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What this app says it is to the Data Layer: the phone sends its saved places
+     only when a watch says this. The name is WATCH_CAPABILITY in the core module. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@array/android_wear_capabilities">
+    <string-array name="android_wear_capabilities" translatable="false">
+        <item>gpc_watch</item>
+    </string-array>
+</resources>
