@@ -106,11 +106,28 @@ jobs:
       # and search with no network.
       - name: Build the name index
         run: |
-          node scripts/build-names.mjs             --geonames ../geonames             --out names             --packs packs | tee -a ../report.txt
+          node scripts/build-names.mjs \
+            --geonames ../geonames \
+            --out names \
+            --packs packs | tee -a ../report.txt
         working-directory: web
 
+      # Every pack the list names has to be a file the upload below will find,
+      # or the app offers a country it cannot fetch. A glob passes over a name
+      # that begins with a dot, and a pack for places with no country was once
+      # called `.txt.gz`. Checked before anything is published.
       - name: Pack them
         run: |
+          node -e '
+            const fs = require("fs");
+            const list = JSON.parse(fs.readFileSync("web/packs/packs.json", "utf8"));
+            const missing = Object.keys(list.countries)
+              .filter((cc) => !/^[A-Z]{2}$/.test(cc) || !fs.existsSync(`web/packs/${cc}.txt.gz`));
+            if (missing.length) {
+              console.log(`::error::packs.json names packs the upload would not find: ${JSON.stringify(missing)}`);
+              process.exit(1);
+            }
+          '
           tar -czf landmarks.tar.gz -C web/landmarks .
           tar -czf names.tar.gz -C web/names .
           ls -l landmarks.tar.gz names.tar.gz

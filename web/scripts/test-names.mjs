@@ -125,6 +125,13 @@ const PLACES = [
         kind: 'P', code: 'PPL', country: 'US', admin: 'OH', people: 1500,
     },
 
+    // A shoal GeoNames gives no country: in the index, which the site searches,
+    // and in no pack, since there is no country for the app to keep it under.
+    {
+        id: 15, name: 'Middle Shoal', latitude: 15.2, longitude: 117.7,
+        kind: 'T', code: 'SHOL', country: '', admin: '', people: 0,
+    },
+
     // One name, longer than the stride: the city first, then enough villages,
     // each in a district of its own so none is collapsed, that a mark lands
     // among them.
@@ -329,8 +336,12 @@ try {
         }
         inPacks += lines.length;
     }
-    if (inPacks !== places.length) {
-        complain(`${inPacks} lines across the packs, ${places.length} in the index`);
+    const stateless = places.filter((place) => place.region === '');
+    if (stateless.length !== 1 || stateless[0].name !== 'Middle Shoal') {
+        complain(`${stateless.length} places with no country in the index, expected the shoal`);
+    }
+    if (inPacks !== places.length - stateless.length) {
+        complain(`${inPacks} lines across the packs, ${places.length - stateless.length} in the index with a country`);
     }
     const canada = gunzipSync(await readFile(path.join(packs, 'CA.txt.gz'))).toString('utf8').split('\n');
     if (manifest.regions[Number(canada[0]?.split(TAB)[4])] !== 'Ontario, Canada') {

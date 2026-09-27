@@ -52,7 +52,11 @@
 // `packs.json` beside them naming every country, its size and the table of
 // regions the lines point into. The Android app keeps the ones a reader asks
 // for and searches them on the phone. They are the index's own lines rather
-// than a second format, so the reader that searches one searches the other.
+// than a second format, so the reader that searches one searches the other. A
+// place GeoNames gives no country, a few hundred shoals and reefs in no state's
+// waters, stays in the index but is in no pack: there is no country to keep it
+// under, and a pack named for none would be a file called `.txt.gz`, which the
+// workflow's glob never uploads.
 
 import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
@@ -303,8 +307,8 @@ export async function build({ geonames, out, dumps, packs }) {
             if (!output.write(row + '\n')) {
                 await new Promise((drained) => output.once('drain', drained));
             }
-            if (raw) {
-                const cc = regionCountries[Number(parts[4])];
+            const cc = regionCountries[Number(parts[4])];
+            if (raw && /^[A-Z]{2}$/.test(cc)) {
                 let pack = packWriters.get(cc);
                 if (!pack) {
                     pack = createWriteStream(path.join(raw, `${cc}.txt`), 'utf8');
