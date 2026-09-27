@@ -21,7 +21,7 @@ class PacksTest {
     )
 
     /** A file of [lines] with its table built as the app builds a kept pack's. */
-    private fun source(lines: List<String>, stride: Int = 2): NameSource {
+    private fun source(lines: List<String>, stride: Int = 2, regions: List<String> = this.regions): NameSource {
         val marks = NameMarks(stride)
         lines.forEach(marks::add)
         val bytes = lines.joinToString("") { it + "\n" }.toByteArray(Charsets.UTF_8)
@@ -61,6 +61,23 @@ class PacksTest {
         }
         assertContentEquals(expected.toLongArray(), table.starts)
         assertEquals(lines.size, marks.lines)
+    }
+
+    @Test
+    fun aKeptPackHoldsOnlyTheRegionsItsLinesPointInto() {
+        val marks = NameMarks()
+        pack("Ireland").forEach(marks::add)
+        assertEquals(setOf(3), marks.regionsUsed)
+        val kept = regionsFrom(marks.regionsUsed.associateWith { regions[it] })
+        assertEquals(listOf("", "", "", "Munster, Ireland"), kept, "the index's numbers kept, the others blank")
+        for (query in listOf("tra", "tor", "tralee")) {
+            assertEquals(
+                findNamedAcross(query, listOf(source(pack("Ireland")))),
+                findNamedAcross(query, listOf(source(pack("Ireland"), regions = kept))),
+                query,
+            )
+        }
+        assertEquals(emptyList(), regionsFrom(emptyMap()))
     }
 
     @Test

@@ -308,7 +308,9 @@ uses more than half of it; the whole index gzipped is 120 MB. On the phone a
 pack is unzipped as it arrives and gets the same table of every 512th line the
 site's file has, so a keystroke reads one block of one file, and the kept packs
 are searched together and merged into the order the site's file has, by the
-same code. A pack counts as kept only when its lines and bytes are what the list
+same code. Of the index's table of four thousand regions, a hundred kilobytes
+that is more than many a country's names, a pack keeps only those its lines
+point into, under the index's own numbers, so its lines are read unchanged. A pack counts as kept only when its lines and bytes are what the list
 says; one cut short is thrown away. A landmark already seen whose name and
 region a kept pack also gives is that place, since the archive keeps only names
 unique within their region, and is shown once, as the pack writes it.
