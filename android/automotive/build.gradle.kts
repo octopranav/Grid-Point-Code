@@ -25,7 +25,7 @@ android {
         applicationId = "com.gridpointcode"
         // The car's app host, which draws the templates, runs on Android 10 and later.
         minSdk = 29
-        targetSdk = 36
+        targetSdk = 37
         // Every artifact of one listing needs its own version code: the car's
         // are the phone's plus two thousand.
         versionCode = 2001
