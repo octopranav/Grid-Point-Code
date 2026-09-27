@@ -23,7 +23,10 @@ coroutines = "1.9.0"
 gridpointcode = { module = "ca.pranavpatel.algo:gridpointcode", version.ref = "gridpointcode" }
 
 # The basemap. The same renderer family as the website, drawing the same styles.
-maplibre = { module = "org.maplibre.gl:android-sdk", version.ref = "maplibre" }
+# Drawn with OpenGL ES, MapLibre's opt-in package since its default became
+# Vulkan in 13.0: the Vulkan one stops the app where it finds no GPU it can use,
+# with nothing to fall back on, and OpenGL ES is on every phone the app runs on.
+maplibre = { module = "org.maplibre.gl:android-sdk-opengl", version.ref = "maplibre" }
 
 # The QR code for a place's link: the standard encoder, of which the release keeps only the encoding.
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }

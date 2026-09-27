@@ -137,7 +137,7 @@ org.jetbrains.kotlinx:kotlinx-serialization-core  Apache-2.0
 org.jetbrains.kotlinx:kotlinx-serialization-core-jvm  Apache-2.0
 org.jetbrains:annotations  Apache-2.0
 org.jspecify:jspecify  Apache-2.0
-org.maplibre.gl:android-sdk  BSD-2-Clause  maplibre-native-android.md@13.6.1
+org.maplibre.gl:android-sdk-opengl  BSD-2-Clause  maplibre-native-android.md@13.6.1
 org.maplibre.gl:android-sdk-geojson  Apache-2.0
 org.maplibre.gl:android-sdk-turf  Apache-2.0
 org.maplibre.gl:maplibre-android-gestures  BSD-2-Clause  maplibre-gestures-android.md@0.0.4

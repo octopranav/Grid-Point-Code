@@ -230,9 +230,9 @@ Without all four the bundle is built unsigned. With the store signing the app
 for users, this key only proves an upload came from its owner, and a lost one
 can be replaced.
 
-The bundle is about 23 MB, of which the map library's native code for four
+The bundle is about 21 MB, of which the map library's native code for four
 processor families is most. The store hands each device only its own, so a
-phone downloads about 16 MB.
+phone downloads about 14 MB.
 
 ```
 ./gradlew :wear:bundleRelease
@@ -505,6 +505,13 @@ names, and Google Play services for a watch that has the app, and nothing else; 
 [`/privacy`](https://gridpointcode.com/privacy) from the end of the panel, as
 the store requires of an app that reads the device's location. A change that
 sends something new somewhere new changes that page in the same pull request.
+
+**The map is drawn with OpenGL ES, not Vulkan.** MapLibre's default package
+became Vulkan in 13.0, with OpenGL ES the opt-in `android-sdk-opengl`. The
+Vulkan one stops the app on a phone with no GPU it can use, with nothing to
+fall back on: on the Android 17 emulator it found none and the app closed as it
+opened. OpenGL ES is on every phone back to the minimum, the notices are the
+same, and a map of a few thousand shapes has no need of Vulkan's speed.
 
 **The map is not downloaded, only kept as it is drawn.** An area's map at full
 detail is about 17,000 tiles, 50 to 150 MB, which a phone could hold. But the
