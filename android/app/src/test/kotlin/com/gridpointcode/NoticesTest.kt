@@ -24,8 +24,8 @@ class NoticesTest {
             component.notice?.let { notice -> assertTrue(shipped.any { File(it, notice).exists() }, "${component.module} names $notice") }
         }
         assertEquals(
-            Component("org.maplibre.gl:android-sdk", "BSD-2-Clause", "maplibre-native-android.md"),
-            components.first { it.module == "org.maplibre.gl:android-sdk" },
+            Component("org.maplibre.gl:android-sdk-opengl", "BSD-2-Clause", "maplibre-native-android.md"),
+            components.first { it.module == "org.maplibre.gl:android-sdk-opengl" },
         )
     }
 
