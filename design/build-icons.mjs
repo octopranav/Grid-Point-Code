@@ -314,16 +314,19 @@ function launcher() {
  * ground follows the theme, because it is what Android paints while the app is
  * starting, and on Android 12 and later the icon is shown on it. Anything but
  * the page's own ground is a flash of the wrong colour before the first frame,
- * the same reason the web manifest's background colour is the ground.
+ * the same reason the web manifest's background colour is the ground. The watch
+ * and the car set no theme of their own for a window to take it from, so they
+ * are given the icon's ground alone.
  */
-function launcherColours(dark) {
+function launcherColours(dark, window = true) {
     const lines = [
         '<?xml version="1.0" encoding="utf-8"?>',
         '<!-- Generated from design/tokens.json by design/build-icons.mjs. Do not edit by hand. -->',
         '<resources>',
     ];
     if (!dark) lines.push(`    <color name="launcher_ground">${ground}</color>`);
-    lines.push(`    <color name="window_ground">${dark ? night : ground}</color>`, '</resources>', '');
+    if (window) lines.push(`    <color name="window_ground">${dark ? night : ground}</color>`);
+    lines.push('</resources>', '');
     return Buffer.from(lines.join('\n'), 'utf8');
 }
 
@@ -342,14 +345,14 @@ const FILES = [
     [`${wear}/mipmap-anydpi/ic_launcher.xml`, launcher],
     [`${wear}/drawable/launcher_bars.xml`, () => launcherLayer(false)],
     [`${wear}/drawable/launcher_bars_monochrome.xml`, () => launcherLayer(true)],
-    [`${wear}/values/launcher.xml`, () => launcherColours(false)],
+    [`${wear}/values/launcher.xml`, () => launcherColours(false, false)],
     // The complication's mark, on any watch face, in the face's own colour.
     [`${wear}/drawable/complication_bars.xml`, () => launcherLayer(true, 24, 22)],
     // And the car's own app, on the car's launcher.
     [`${car}/mipmap-anydpi/ic_launcher.xml`, launcher],
     [`${car}/drawable/launcher_bars.xml`, () => launcherLayer(false)],
     [`${car}/drawable/launcher_bars_monochrome.xml`, () => launcherLayer(true)],
-    [`${car}/values/launcher.xml`, () => launcherColours(false)],
+    [`${car}/values/launcher.xml`, () => launcherColours(false, false)],
 ];
 
 const digest = (body) => createHash('sha256').update(body).digest('hex').slice(0, 12);

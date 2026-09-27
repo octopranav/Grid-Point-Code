@@ -54,9 +54,18 @@ android {
         }
     }
 
+    lint {
+        // Backup is off: releases before Android 12 read that from allowBackup,
+        // and the extraction rules keep it off from Android 12 on. Lint would
+        // have the older backup rules too, which a release with backup off
+        // never reads.
+        disable += "DataExtractionRules"
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
             signingConfig = signingConfigs.findByName("upload")
         }

@@ -12,6 +12,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.gridpointcode.core.Locating
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -142,6 +143,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import com.gridpointcode.core.selectionAt
 import com.gridpointcode.map.PlaceMap
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -232,7 +235,9 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
     val savedPoints = remember(saved) {
         saved.mapNotNull { place -> runCatching { selectionOf(place.code, Source.SAVED).point }.getOrNull() }
     }
-    val wide = LocalConfiguration.current.screenWidthDp >= WIDE_DP
+    // Measured on the window the app is given, as the canvas's breakpoint is: in
+    // a desktop window or beside another app, its own width, not the screen's.
+    val wide = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() } >= WIDE_DP.dp
     // The keyboard: what has it, where Ctrl+K sends it, and where it goes back to.
     val typing = remember { Typing() }
     val screen = remember { FocusRequester() }
@@ -754,7 +759,7 @@ private fun Zoom(control: MapControl) {
 
 /** A page of the site, in the reader's browser. */
 private fun open(context: Context, address: String) {
-    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(address))) }
+    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, address.toUri())) }
 }
 
 /**

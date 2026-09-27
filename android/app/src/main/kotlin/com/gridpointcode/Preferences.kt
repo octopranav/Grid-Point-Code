@@ -1,6 +1,7 @@
 package com.gridpointcode
 
 import android.content.Context
+import androidx.core.content.edit
 import com.gridpointcode.core.Spelling
 import com.gridpointcode.core.spellingFor
 import com.gridpointcode.core.spellingTagged
@@ -26,7 +27,7 @@ class Preferences(context: Context) {
             ?: Basemap.AUTO
 
     fun remember(basemap: Basemap) {
-        store.edit().putString(BASEMAP, basemap.name).apply()
+        store.edit { putString(BASEMAP, basemap.name) }
     }
 
     /**
@@ -37,14 +38,14 @@ class Preferences(context: Context) {
         store.getString(LISTENER, null)?.let(::spellingTagged) ?: spellingFor(Locale.getDefault())
 
     fun remember(listener: Spelling) {
-        store.edit().putString(LISTENER, listener.tag).apply()
+        store.edit { putString(LISTENER, listener.tag) }
     }
 
     /** The panel's sections the reader folded away; none, until they fold one. */
     fun folded(): Set<String> = store.getStringSet(FOLDED, null)?.toSet() ?: emptySet()
 
     fun remember(folded: Set<String>) {
-        store.edit().putStringSet(FOLDED, folded).apply()
+        store.edit { putStringSet(FOLDED, folded) }
     }
 
     private companion object {

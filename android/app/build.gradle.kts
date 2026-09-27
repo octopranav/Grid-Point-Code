@@ -63,8 +63,11 @@ android {
         release {
             // Shrunk and optimised. No rules of the app's own are needed: the
             // JSON it reads is parsed by hand with the platform's org.json, and
-            // the map library brings its own.
+            // the map library brings its own. Resources nothing reaches are
+            // dropped too; nothing is looked up by name, and the notices are
+            // assets, which are never shrunk.
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
             signingConfig = signingConfigs.findByName("upload")
         }

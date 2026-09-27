@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Grid Point Code</string>
     <string name="process_text">Open in Grid Point Code</string>
 
@@ -68,7 +68,6 @@
     <string name="problem_unplaced_unreachable">Reading the Plus Code %1$s needs a connection to find %2$s.</string>
     <string name="save_place">Save this place</string>
     <string name="saved_edit">Saved place</string>
-    <string name="saved_title">Saved places</string>
     <string name="saved_kept">Kept on this phone, and on your watch if it has the app.</string>
     <string name="saved_nearest">Nearest first</string>
     <string name="saved_here">Here</string>
@@ -149,7 +148,6 @@
     <string name="anchor_show_all">Show all %1$d</string>
     <string name="distance_metres">%1$d m</string>
     <string name="distance_kilometres">%1$.1f km</string>
-    <string name="copied">Copied</string>
 
     <string name="nudge_title">Nudge one cell</string>
     <string name="nudge_here">Here</string>
@@ -182,9 +180,11 @@
     <string name="doubt_away">%1$s %2$s of %3$s</string>
     <string name="doubt_at_you">Where you are</string>
     <string name="doubt_at_place">At the place you had</string>
-    <string name="doubt_replaced">character %1$d was %2$s</string>
-    <string name="doubt_swapped">characters %1$d and %2$d were swapped</string>
-    <string name="doubt_checked">Checked the %1$d codes one slip away, a character changed or two swapped, and kept those near %2$s.</string>
+    <!-- Not counts: a character's place in the code, one to ten, and the number
+         of codes one slip away, which is never fewer than two hundred. -->
+    <string name="doubt_replaced" tools:ignore="PluralsCandidate">character %1$d was %2$s</string>
+    <string name="doubt_swapped" tools:ignore="PluralsCandidate">characters %1$d and %2$d were swapped</string>
+    <string name="doubt_checked" tools:ignore="PluralsCandidate">Checked the %1$d codes one slip away, a character changed or two swapped, and kept those near %2$s.</string>
     <string name="doubt_keep">Keep %1$s</string>
     <string name="dir_n">north</string>
     <string name="dir_ne">north-east</string>

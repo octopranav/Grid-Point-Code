@@ -1,5 +1,6 @@
 package com.gridpointcode.map
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -195,8 +196,11 @@ fun PlaceMap(
             addOnSourceChangedListener { credit = style?.let(::declaredBy) }
             // A mouse's second button asks for the menu, and the press is kept
             // from the map, which would otherwise take it for a tap and move
-            // the place before the menu opened.
+            // the place before the menu opened. It is not a click, so there is
+            // no performClick to call: every other touch goes on to the map,
+            // which handles its own, and a long press opens the same menu.
             var secondary = false
+            @SuppressLint("ClickableViewAccessibility")
             setOnTouchListener { _, event ->
                 if (event.actionMasked == MotionEvent.ACTION_DOWN) {
                     secondary = menu != null && event.isFromSource(InputDevice.SOURCE_MOUSE) &&

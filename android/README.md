@@ -209,7 +209,8 @@ places:
 ./gradlew :app:bundleRelease
 ```
 
-The bundle the store takes, shrunk and optimised by R8. CI builds it on every
+The bundle the store takes, shrunk and optimised by R8, with the resources
+nothing reaches removed as well. CI builds it on every
 pull request, unsigned, because a class removed that something still needed
 breaks only the release. It needs no shrinking rules of its own: the JSON the
 app reads is parsed with the platform's `org.json`, and the map library brings
@@ -237,7 +238,7 @@ phone downloads about 16 MB.
 ./gradlew :wear:bundleRelease
 ```
 
-The watch's bundle, about 6 MB, signed by the same four values. It has the
+The watch's bundle, about 4.5 MB, signed by the same four values. It has the
 phone's application ID, `com.gridpointcode`, and must have its key: the Data
 Layer carries items only between apps that share both.
 
@@ -553,6 +554,13 @@ download. [`audit/fonts.py`](../audit/fonts.py) pins each to the hash of its
 upstream file. Bitter and Plex Sans are variable fonts, and each weight is set on
 the weight axis explicitly: asked only for a weight, Compose draws Bitter in its
 default master, its thinnest.
+
+The watch sets only codes in the site's type and draws the rest in the watch's
+own, so its release carries Plex Mono alone. The code's style lives in a file
+of its own in `designsystem`, apart from the theme; were it in the theme's file,
+the file's initialiser would keep Bitter and Plex Sans in the watch's release
+for the sake of the one face, about 0.9 MB of the 6 MB it was. The watch's
+notices credit Plex alone, so CI fails if either face comes back.
 
 **The icon is the site's, drawn by the same script.** Four bars at levels 1,
 4, 7 and 10, the ten-cell mark reduced to its ramp, as the site's favicon and

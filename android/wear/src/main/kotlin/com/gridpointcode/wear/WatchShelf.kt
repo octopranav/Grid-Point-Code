@@ -2,6 +2,7 @@ package com.gridpointcode.wear
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
@@ -56,7 +57,7 @@ class WatchShelf(context: Context) {
     /** The phone's list as the Data Layer holds it now, if the phone has written one. */
     suspend fun refresh() = withContext(Dispatchers.IO) {
         runCatching {
-            val items = Tasks.await(data.getDataItems(Uri.parse("wear://*$SAVED_PATH")))
+            val items = Tasks.await(data.getDataItems("wear://*$SAVED_PATH".toUri()))
             val text = try {
                 items.firstOrNull()?.let(::textOf)
             } finally {
@@ -111,7 +112,7 @@ class WatchShelf(context: Context) {
 
     /** The places saved here whose items are still in the Data Layer, each with its item. */
     private fun waiting(): List<Pair<SavedPlace, Uri>> = runCatching {
-        val items = Tasks.await(data.getDataItems(Uri.parse("wear://*$FROM_WATCH_PATH/"), DataClient.FILTER_PREFIX))
+        val items = Tasks.await(data.getDataItems("wear://*$FROM_WATCH_PATH/".toUri(), DataClient.FILTER_PREFIX))
         try {
             items.flatMap { item -> decodeSaved(textOf(item).orEmpty()).map { it to item.uri } }
         } finally {

@@ -15,7 +15,6 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.em
 
 /**
  * The colours Material has no role for.
@@ -76,8 +75,9 @@ val LocalGpcColors = staticCompositionLocalOf { LightGpc }
  * Plex Sans come as variable fonts, one file for every weight, so each weight
  * the scale uses is asked of the weight axis by name; a variable font asked for
  * nothing is its default master, which for Bitter is its thinnest. Plex Mono
- * comes as three plain files. A character a face does not have, in a place name
- * written in another script, is drawn in the system's own face for it.
+ * comes as three plain files, kept with the code's style in `Code.kt`. A
+ * character a face does not have, in a place name written in another script, is
+ * drawn in the system's own face for it.
  */
 private val Display = FontFamily(axis(R.font.bitter, 600))
 
@@ -85,12 +85,6 @@ private val Body = FontFamily(
     axis(R.font.ibm_plex_sans, 400),
     axis(R.font.ibm_plex_sans, 500),
     axis(R.font.ibm_plex_sans, 600),
-)
-
-private val Mono = FontFamily(
-    Font(R.font.ibm_plex_mono_regular, FontWeight.Normal),
-    Font(R.font.ibm_plex_mono_medium, FontWeight.Medium),
-    Font(R.font.ibm_plex_mono_semibold, FontWeight.SemiBold),
 )
 
 /** One weight of a variable font, set on its weight axis. */
@@ -108,12 +102,6 @@ private fun Face.style(): TextStyle = TextStyle(
     fontSize = size,
     lineHeight = lineHeight,
     fontWeight = FontWeight(weight),
-)
-
-/** The style a code is set in: monospaced, tabular, and tracked so ten characters never touch. */
-val CodeStyle: TextStyle = TypeScale.code.style().copy(
-    letterSpacing = CODE_TRACKING_EM.em,
-    fontFeatureSettings = "tnum",
 )
 
 private val GpcTypography = Typography(
