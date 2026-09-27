@@ -26,7 +26,7 @@ android {
         applicationId = "com.gridpointcode"
         // Wear OS 3, where watches with Google's services start.
         minSdk = 30
-        targetSdk = 36
+        targetSdk = 37
         // Every artifact of one listing needs its own version code: the watch's
         // are the phone's plus a thousand.
         versionCode = 1001

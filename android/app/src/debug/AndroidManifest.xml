@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Debug builds only, pointed at a local copy with -Pgpc.styles or
+         -Pgpc.packs: 10.0.2.2 is a local address, which from Android 17 an app
+         reaches only with this, granted by hand with adb (see the README).
+         Release builds reach public hosts alone and never ask for it. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+
     <!-- Debug builds only. See res/xml/network_security_config.xml. -->
     <application android:networkSecurityConfig="@xml/network_security_config" />
 </manifest>
