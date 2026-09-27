@@ -193,7 +193,14 @@ that cannot reach the tile host, point a debug build at it:
 ```
 
 `10.0.2.2` is the emulator's name for the machine it runs on. Debug builds allow
-plain HTTP to that one address and nowhere else; release builds allow none.
+plain HTTP to that one address and nowhere else; release builds allow none. It
+is a local address, which from Android 17 an app reaches only with the local
+network permission. A debug build declares it and asks for nothing, so grant it
+once after installing:
+
+```
+adb shell pm grant com.gridpointcode android.permission.ACCESS_LOCAL_NETWORK
+```
 
 The place-name packs can be pointed at a local copy the same way, for instance
 one written by `node web/scripts/build-names.mjs --packs <dir>` from a few
@@ -602,7 +609,9 @@ supported is level 2, for the long message the notices use; a header replaces
 a pane's title at level 7, and is used where the car has it.
 
 **Three SDK levels, three meanings.** `compileSdk` 37 because current AndroidX
-libraries compile against it. `targetSdk` 36 for runtime behaviour. `minSdk` 26,
+libraries compile against it. `targetSdk` 37, Android 17, for runtime
+behaviour: of the changes that come with it, only the local network permission
+reaches the app, and only a debug build pointed at a local copy. `minSdk` 26,
 which covers the streaming calls in the library, which need 24. The watch app's
 `minSdk` is 30, Wear OS 3, the first release built on Android 11, and the car
 app's is 29, the oldest release the car's template host runs on.
