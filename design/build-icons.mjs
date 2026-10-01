@@ -47,6 +47,7 @@ const web = 'web/public';
 const res = 'android/app/src/main/res';
 const wear = 'android/wear/src/main/res';
 const car = 'android/automotive/src/main/res';
+const play = 'android/play';
 
 const tokens = JSON.parse(await readFile(path.join(here, 'tokens.json'), 'utf8'));
 
@@ -166,6 +167,62 @@ function png(size, shape = MASKED) {
     header[10] = 0;         // deflate
     header[11] = 0;         // adaptive filtering
     header[12] = 0;         // no interlace
+
+    return Buffer.concat([
+        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        chunk('IHDR', header),
+        chunk('IDAT', deflateSync(raw, { level: 9 })),
+        chunk('IEND', Buffer.alloc(0)),
+    ]);
+}
+
+/**
+ * The feature graphic across the top of the app's Play listing: the four bars on
+ * the page's ground, 1024 by 500, sized against the height as the masked icon is
+ * against its side. Written as plain truecolour, because Play refuses one with
+ * an alpha channel. No words: Play sets the app's name beside it, and a picture
+ * of text is the first thing to look wrong in another language's listing.
+ */
+function feature(width = 1024, height = 500, shape = MASKED) {
+    const [gr, gg, gb] = channels(ground);
+    const row = width * 3 + 1;
+    const raw = Buffer.alloc(row * height);
+    for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+            const at = y * row + 1 + x * 3;
+            raw[at] = gr;
+            raw[at + 1] = gg;
+            raw[at + 2] = gb;
+        }
+    }
+
+    const gap = shape.gap * height;
+    const bar = (shape.band * height - gap * 3) / 4;
+    const tall = shape.tall * height;
+    const top = Math.round((height - tall) / 2);
+    const left = (width - shape.band * height) / 2;
+    tints.forEach((tint, index) => {
+        const [r, g, b] = channels(tint);
+        const from = Math.round(left + index * (bar + gap));
+        const to = Math.round(from + bar);
+        for (let y = top; y < top + tall; y += 1) {
+            for (let x = from; x < to; x += 1) {
+                const at = y * row + 1 + x * 3;
+                raw[at] = r;
+                raw[at + 1] = g;
+                raw[at + 2] = b;
+            }
+        }
+    });
+
+    const header = Buffer.alloc(13);
+    header.writeUInt32BE(width, 0);
+    header.writeUInt32BE(height, 4);
+    header[8] = 8;          // bits per channel
+    header[9] = 2;          // truecolour, no alpha
+    header[10] = 0;
+    header[11] = 0;
+    header[12] = 0;
 
     return Buffer.concat([
         Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
@@ -353,6 +410,8 @@ const FILES = [
     [`${car}/drawable/launcher_bars.xml`, () => launcherLayer(false)],
     [`${car}/drawable/launcher_bars_monochrome.xml`, () => launcherLayer(true)],
     [`${car}/values/launcher.xml`, () => launcherColours(false, false)],
+    // The feature graphic for the app's listing on Google Play, kept with PLAY.md.
+    [`${play}/feature-graphic.png`, () => feature()],
 ];
 
 const digest = (body) => createHash('sha256').update(body).digest('hex').slice(0, 12);
