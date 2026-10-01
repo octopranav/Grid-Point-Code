@@ -14,7 +14,12 @@ changes that page in the same pull request; it changes the
 - [ ] **The developer account.** A personal account created after 13 November
   2023 must run a closed test with at least 12 testers, opted in for 14 days in
   a row, before it can apply for production access. The rule names personal
-  accounts only.
+  accounts only. Google's help says "after" that day while the rule began on
+  it, so an account registered on the 13th itself cannot be placed by its date,
+  and an account is created when its registration completes, which can be later
+  than the fee was paid. Play Console settles it: if the app's dashboard asks
+  for a closed test before production access can be applied for, the rule
+  applies.
 - [ ] **Create the app** as Grid Point Code, an app, free. The application ID is
   `com.gridpointcode` and is permanent once the first bundle is uploaded. The
   default listing language is English (United Kingdom), which is the spelling
@@ -36,7 +41,8 @@ changes that page in the same pull request; it changes the
 - [ ] **The place-name packs** are live as the `place-packs` release. They are
   published by the Landmarks workflow, run by hand.
 - [ ] **Store listing, graphics and screenshots**, as [below](#store-listing).
-  The icon and the feature graphic are made; the screenshots are taken by hand.
+  The icon, the feature graphic and the screenshots are made; three more tablet
+  screenshots are wanted for the listing to count for tablets.
 - [ ] **App content**: the privacy policy, ads, app access, content rating,
   target audience and Data safety, as [below](#app-content).
 - [ ] **Form factors.** The watch and the car are opted in separately, under
@@ -117,19 +123,25 @@ address the site is run from.
 | --- | --- | --- |
 | App icon | 512 by 512, 32-bit PNG, at most 1,024 KB | [`web/public/icon-512.png`](../web/public/icon-512.png): a full, opaque square from `design/build-icons.mjs` |
 | Feature graphic | 1024 by 500, JPEG or 24-bit PNG with no alpha | [`play/feature-graphic.png`](play/feature-graphic.png): the same four bars on the same ground, from the same script, with no words |
-| Phone screenshots | 2 to 8; the long side at most twice the short | 1080 by 1920 or larger at 9:16, four or more to be eligible for promotion |
-| Tablet screenshots | 4 or more, 1080 to 7680 pixels, 16:9 or 9:16 | the wide layout, map and panel side by side |
-| Wear OS screenshots | at least 384 by 384, square | the emulator's 454 by 454 |
+| Phone screenshots | 2 to 8; the long side at most twice the short; four at 9:16 and 1080 or more to be eligible for promotion | six in [`play/screenshots/phone`](play/screenshots/phone), 1080 by 1920: a place on the map, search by name, the short form anchored to a landmark, saved places, the emergency card and the QR code |
+| Tablet screenshots | 4 or more to be shown for tablets, 1080 to 7680 pixels, 16:9 or 9:16 | one in [`play/screenshots/tablet`](play/screenshots/tablet), 1920 by 1080, the wide layout; three more are wanted before the listing counts for tablets |
+| Wear OS screenshots | at least 384 by 384, square | four in [`play/screenshots/wear`](play/screenshots/wear), 454 by 454: the code where the watch is, saved places, walking to one, and the tile |
 
-A phone that draws at 1080 by 2400, as many do, is more than twice as long as it
-is wide, and its screenshots are refused. Capture at 9:16 instead:
+All are 24-bit PNG with no alpha, as Play asks. A phone that draws at 1080 by
+2400, as many do, is more than twice as long as it is wide, and its screenshots
+are refused, so these were taken with the screen set to 9:16, and the tablet's
+with a 16:9 screen at a tablet's density:
 
 ```
 adb shell wm size 1080x1920
+adb shell wm size 1920x1080
+adb shell wm density 240
 ```
 
-and `adb shell wm size reset` afterwards. Screenshots show the app as a reader
-sees it; a code over a place with no map behind it is a poor first picture.
+with `adb shell wm size reset` and `adb shell wm density reset` afterwards. The
+status bar is Android's demo mode, so the clock reads 9:30 and nothing waits in
+the notification shade. The places are real ones in Toronto, saved through the
+app's own Save, and the fix the emulator was given is Union Station's.
 
 ## App content
 
