@@ -508,6 +508,16 @@ have taken the saved places down with it. The backup rules in `res/xml` exclude
 it; what a backup takes is the saved places and the two settings, a few
 kilobytes.
 
+**A link opens the app only when the site says so.** The filter for
+`https://gridpointcode.com/play` asks Android to verify it, and Android asks the
+site, which answers at `/.well-known/assetlinks.json` with the app's package
+name and its signing key. Until that names the key, a link does what it does
+today: from Android 12 it opens in the browser unless the reader turns on the
+app's links in its settings, and before that it asks. Both ends are held together by
+[`audit/assetlinks.py`](../audit/assetlinks.py) in CI, because either one wrong
+fails without a sound: the link opens in the browser, and the device keeps that
+answer until the app is installed again.
+
 **What the app sends is on the site's privacy page.** Three hosts, the tile
 provider, this site's own files and GitHub's release downloads for a country's
 names, and Google Play services for a watch that has the app, and nothing else; the app links to
@@ -620,6 +630,28 @@ app's is 29, the oldest release the car's template host runs on.
 
 ## Not here yet
 
-Verified links (which need the signing
-fingerprint published in `/.well-known/assetlinks.json`), and the headset
-module.
+The headset module, which waits for Jetpack XR to be stable.
+
+Verified links are built and wait only for the key: the app signing key Google
+holds once the app is created in Play Console, under Setup, App signing. Its
+SHA-256 fingerprint goes into
+[`web/public/.well-known/assetlinks.json`](../web/public/.well-known/assetlinks.json),
+which is an empty list until then:
+
+```json
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.gridpointcode",
+      "sha256_cert_fingerprints": ["14:6D:E9:..."]
+    }
+  }
+]
+```
+
+A release signed with the upload key and installed by hand verifies too if that
+key's fingerprint is added beside it. Once the site has deployed, a fresh
+install verifies, and `adb shell pm get-app-links com.gridpointcode` says
+`verified` for `gridpointcode.com`.

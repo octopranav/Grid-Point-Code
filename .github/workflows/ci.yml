@@ -471,6 +471,13 @@ jobs:
       - name: Everything built into the site reaches the server
         run: python audit/publishes.py
 
+      # A link opens the app without asking only when the manifest asks and the
+      # site's /.well-known/assetlinks.json names the app and its key exactly.
+      # Wrong at either end, the link just opens in the browser, so both ends
+      # are read here.
+      - name: The site vouches for the app as Android checks it
+        run: python audit/assetlinks.py
+
       # Both typefaces' licences reserve the font's name, so the app ships the
       # designers' files unmodified. A font saved again by a tool, or subset to
       # save space, renders the same and breaks the licence silently.

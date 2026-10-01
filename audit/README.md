@@ -9,6 +9,7 @@ CI, and it exists because these are the failures reading cannot catch.
 | [`examples.py`](examples.py) | A documented example that no longer runs, or that claims a value the API does not return |
 | [`deploys.py`](deploys.py) | A file the site renders from outside `web/` that no longer triggers a deployment |
 | [`publishes.py`](publishes.py) | A path beginning with a dot that is built into the site and then left out of the artifact that reaches the server |
+| [`assetlinks.py`](assetlinks.py) | A statement on the site about the Android app that Android would not accept: another package name, a fingerprint not written as Android compares it, the wrong relation, or a manifest that never asks to be verified |
 | [`fonts.py`](fonts.py) | A typeface in the Android app that is not byte for byte the designers' file it came from, which under its reserved font name it has to be, or one shipped without its licence |
 | the tests beside them | Any of the above quietly passing everything |
 
@@ -17,6 +18,7 @@ python audit/markdown.py
 python audit/examples.py
 python audit/deploys.py
 python audit/publishes.py
+python audit/assetlinks.py
 python audit/fonts.py
 python -m unittest discover --start-directory audit --top-level-directory audit
 ```
@@ -107,6 +109,24 @@ The check reads the step as text rather than parsing the workflow, so it needs
 nothing installed, and it prints the paths that would be dropped today along
 with the failure, because a list of real paths is what makes the message
 believable.
+
+## What `assetlinks.py` requires
+
+A link to the site opens the Android app without asking only once Android has
+checked both ends: the manifest's filter for `https://gridpointcode.com` sets
+`android:autoVerify="true"`, and the site answers at
+`/.well-known/assetlinks.json` with the app's package name and the SHA-256
+fingerprint of the key it is signed with. Wrong at either end, nothing fails:
+the link opens in the browser, and the device keeps that answer until the app
+is installed again.
+
+So the published file is held to the build. Every statement grants exactly
+`delegate_permission/common.handle_all_urls`, to an `android_app` whose package
+name is the build's `applicationId`, with at least one fingerprint, each written
+as Android compares it: 32 pairs of upper-case hex joined by colons. A lower-case
+fingerprint, one without colons, a SHA-1 pasted in its place and the same one
+twice are each refused. An empty list passes and says so, because that is what
+the site publishes until the app has a signing key.
 
 ## Still to build
 

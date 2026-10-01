@@ -46,10 +46,11 @@
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
 
-            <!-- A place on the site opens here. Verification waits for the
-                 signing fingerprint in /.well-known/assetlinks.json, which the
-                 site's deploy can now carry. -->
-            <intent-filter>
+            <!-- A place on the site opens here, without asking once Android has
+                 checked the site's /.well-known/assetlinks.json against the key
+                 the app is signed with. Until that file names the key, links do
+                 what they do today; audit/assetlinks.py holds the two ends. -->
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
