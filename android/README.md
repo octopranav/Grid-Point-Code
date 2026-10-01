@@ -257,6 +257,10 @@ The car's bundle, under 1 MB, signed by the same four values, with the same
 application ID, so the store lists all three under one name. Android Auto needs
 no bundle of its own: it is the phone app's.
 
+What the Play Console asks for before the first release, from the store listing
+to the Data safety answers worked out from the privacy page, is in
+[`PLAY.md`](PLAY.md), with the checklist to go through.
+
 ## Decisions that shape the code
 
 **The engine is the published package, not a port.** `core` depends on
