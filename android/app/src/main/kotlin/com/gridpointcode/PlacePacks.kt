@@ -6,6 +6,7 @@ import com.gridpointcode.core.NameSource
 import com.gridpointcode.core.NameTable
 import com.gridpointcode.core.Named
 import com.gridpointcode.core.findNamedAcross
+import com.gridpointcode.core.regionsFrom
 import java.io.File
 import java.io.RandomAccessFile
 import java.net.HttpURLConnection
@@ -79,12 +80,18 @@ class PlacePacks(context: Context, private val base: String = BuildConfig.PACKS)
                 part.delete()
                 return@withLock false
             }
-            val table = marks.table(list.getJSONArray("regions").let { regions -> List(regions.length(), regions::getString) })
+            // Only the regions this country's lines point into, by the index's
+            // own numbers: the whole table is four thousand names, a hundred
+            // kilobytes, more than many a country's names.
+            val all = list.getJSONArray("regions")
+            val regions = JSONObject()
+            marks.regionsUsed.forEach { regions.put(it.toString(), all.getString(it)) }
+            val table = marks.table(emptyList())
             val about = JSONObject()
                 .put("name", pack.name)
                 .put("built", list.optString("built"))
                 .put("bytes", table.bytes)
-                .put("regions", JSONArray(table.regions))
+                .put("regions", regions)
                 .put("keys", JSONArray(table.keys))
                 .put("starts", JSONArray(table.starts.toList()))
             File(dir, "${pack.code}.json.part").writeText(about.toString())
@@ -127,7 +134,8 @@ class PlacePacks(context: Context, private val base: String = BuildConfig.PACKS)
         val about = JSONObject(File(dir, "$code.json").readText())
         fun strings(name: String) = about.getJSONArray(name).let { array -> List(array.length(), array::getString) }
         val starts = about.getJSONArray("starts").let { array -> LongArray(array.length(), array::getLong) }
-        val table = NameTable(about.getLong("bytes"), strings("regions"), strings("keys"), starts)
+        val regions = about.getJSONObject("regions").let { kept -> regionsFrom(kept.keys().asSequence().associate { it.toInt() to kept.getString(it) }) }
+        val table = NameTable(about.getLong("bytes"), regions, strings("keys"), starts)
         val text = File(dir, "$code.txt")
         NameSource(table) { from, until ->
             runCatching {

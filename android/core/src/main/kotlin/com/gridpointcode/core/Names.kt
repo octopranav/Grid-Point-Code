@@ -150,6 +150,7 @@ const val NAME_STRIDE = 512
 class NameMarks(private val stride: Int = NAME_STRIDE) {
     private val keys = mutableListOf<String>()
     private val starts = mutableListOf<Long>()
+    private val used = sortedSetOf<Int>()
 
     var bytes = 0L
         private set
@@ -163,10 +164,26 @@ class NameMarks(private val stride: Int = NAME_STRIDE) {
         }
         bytes += line.toByteArray(Charsets.UTF_8).size + 1
         lines += 1
+        line.substringAfterLast('\t').toIntOrNull()?.let(used::add)
     }
+
+    /**
+     * The regions this file's lines point into, by number: all a kept pack
+     * needs of the index's table of four thousand, which is otherwise most of
+     * what a small country's pack would keep.
+     */
+    val regionsUsed: Set<Int> get() = used
 
     fun table(regions: List<String>): NameTable = NameTable(bytes, regions, keys.toList(), starts.toLongArray())
 }
+
+/**
+ * A table of regions made from only those a pack uses, by number, with the
+ * rest left blank. The pack's lines keep the index's own numbers, so they are
+ * read exactly as they are written.
+ */
+fun regionsFrom(used: Map<Int, String>): List<String> =
+    List((used.keys.maxOrNull() ?: -1) + 1) { used[it].orEmpty() }
 
 /**
  * Where a run of names beginning with [folded] can start: the block of the last
