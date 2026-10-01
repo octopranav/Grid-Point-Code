@@ -17,6 +17,12 @@ wearComplications = "1.3.0"
 concurrentFutures = "1.3.0"
 carApp = "1.7.0"
 coroutines = "1.9.0"
+androidxTest = "1.7.0"
+androidxTestJunit = "1.3.0"
+androidxTestOrchestrator = "1.6.1"
+androidxTestServices = "1.6.0"
+espresso = "3.7.0"
+uiautomator = "2.4.0"
 
 [libraries]
 # The format itself, installed from Maven Central like anybody else installs it.
@@ -63,6 +69,21 @@ androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtim
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+
+# Tests on a device: the app itself, driven as a reader drives it, on an emulator in CI.
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTest" }
+androidx-test-rules = { module = "androidx.test:rules", version.ref = "androidxTest" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestJunit" }
+# Each test in a fresh process with the app's data cleared, so one leaves nothing for the next.
+androidx-test-orchestrator = { module = "androidx.test:orchestrator", version.ref = "androidxTestOrchestrator" }
+androidx-test-services = { module = "androidx.test.services:test-services", version.ref = "androidxTestServices" }
+espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso" }
+espresso-intents = { module = "androidx.test.espresso:espresso-intents", version.ref = "espresso" }
+# Google's Accessibility Test Framework, which the Compose test rule runs on every action.
+espresso-accessibility = { module = "androidx.test.espresso:espresso-accessibility", version.ref = "espresso" }
+uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }
+compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }

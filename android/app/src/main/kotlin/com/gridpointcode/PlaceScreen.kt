@@ -65,12 +65,12 @@ import com.gridpointcode.core.metresBetween
 import com.gridpointcode.map.MapControl
 import com.gridpointcode.map.rememberMapControl
 import android.content.res.Configuration
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusTarget
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -388,7 +388,10 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
         Modifier
             .fillMaxSize()
             .focusRequester(screen)
-            .focusable()
+            // Holds the keyboard's focus for the shortcuts and nothing more:
+            // focusable() also offered the whole screen to accessibility
+            // services as one focusable control with nothing of its own to say.
+            .focusTarget()
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 val asked = shortcutFor(event.key.nativeKeyCode, event.isCtrlPressed, event.isAltPressed, event.isShiftPressed, event.isMetaPressed, typing.active)
