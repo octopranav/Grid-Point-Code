@@ -41,8 +41,8 @@ changes that page in the same pull request; it changes the
 - [ ] **The place-name packs** are live as the `place-packs` release. They are
   published by the Landmarks workflow, run by hand.
 - [ ] **Store listing, graphics and screenshots**, as [below](#store-listing).
-  The icon, the feature graphic and the screenshots are made; three more tablet
-  screenshots are wanted for the listing to count for tablets.
+  The icon, the feature graphic and the screenshots, phone, tablet and watch,
+  are made.
 - [ ] **App content**: the privacy policy, ads, app access, content rating,
   target audience and Data safety, as [below](#app-content).
 - [ ] **Form factors.** The watch and the car are opted in separately, under
@@ -124,7 +124,7 @@ address the site is run from.
 | App icon | 512 by 512, 32-bit PNG, at most 1,024 KB | [`web/public/icon-512.png`](../web/public/icon-512.png): a full, opaque square from `design/build-icons.mjs` |
 | Feature graphic | 1024 by 500, JPEG or 24-bit PNG with no alpha | [`play/feature-graphic.png`](play/feature-graphic.png): the same four bars on the same ground, from the same script, with no words |
 | Phone screenshots | 2 to 8; the long side at most twice the short; four at 9:16 and 1080 or more to be eligible for promotion | six in [`play/screenshots/phone`](play/screenshots/phone), 1080 by 1920: a place on the map, search by name, the short form anchored to a landmark, saved places, the emergency card and the QR code |
-| Tablet screenshots | 4 or more to be shown for tablets, 1080 to 7680 pixels, 16:9 or 9:16 | one in [`play/screenshots/tablet`](play/screenshots/tablet), 1920 by 1080, the wide layout; three more are wanted before the listing counts for tablets |
+| Tablet screenshots | 4 or more to be shown for tablets, 1080 to 7680 pixels, 16:9 or 9:16 | four in [`play/screenshots/tablet`](play/screenshots/tablet), 1920 by 1080, the wide layout: a place, search by name beside the map, the short form anchored, and the dark theme over its night basemap |
 | Wear OS screenshots | at least 384 by 384, square | four in [`play/screenshots/wear`](play/screenshots/wear), 454 by 454: the code where the watch is, saved places, walking to one, and the tile |
 
 All are 24-bit PNG with no alpha, as Play asks. A phone that draws at 1080 by

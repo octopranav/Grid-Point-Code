@@ -420,6 +420,10 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
             },
     ) {
     if (wide) {
+        // The phone's scaffold and sheet hand their contents the theme's ink; a
+        // plain row hands down nothing, and Compose's default is black, which on
+        // the dark theme's ground left every section's title unreadable.
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
         Row(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             RailTabs(tab, onTab = { tab = it })
             when (tab) {
@@ -442,6 +446,7 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
                 Tab.SAVED -> Box(Modifier.weight(1f).fillMaxHeight()) { savedPage() }
                 Tab.SETTINGS -> Box(Modifier.weight(1f).fillMaxHeight()) { settingsPage() }
             }
+        }
         }
     } else {
         Scaffold(
