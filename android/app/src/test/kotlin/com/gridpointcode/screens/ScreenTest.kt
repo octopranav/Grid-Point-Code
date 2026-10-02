@@ -26,6 +26,7 @@ import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.RoborazziRule
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import com.gridpointcode.Anchoring
+import com.gridpointcode.NoConnection
 import com.gridpointcode.PlaceScreen
 import com.gridpointcode.PlaceViewModel
 import com.gridpointcode.SavedShelf
@@ -36,9 +37,6 @@ import com.gridpointcode.core.Source
 import com.gridpointcode.core.emergencyOf
 import com.gridpointcode.core.selectionAt
 import java.io.File
-import java.net.InetAddress
-import java.net.ServerSocket
-import kotlin.concurrent.thread
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RuntimeEnvironment
@@ -83,7 +81,7 @@ abstract class ScreenTest {
 
     /** Opens the app at [fontScale], does [first] to it, and waits for it to settle. */
     protected fun open(fontScale: Float = 1f, first: PlaceViewModel.() -> Unit = {}) {
-        noConnection()
+        NoConnection.turnAwayEveryRequest()
         if (fontScale != 1f) RuntimeEnvironment.setFontScale(fontScale)
         lookedAroundToronto()
         // The saved list is the app's one list for the whole process, and
@@ -205,40 +203,6 @@ abstract class ScreenTest {
         File(seen, "manifest.json").writeText("""{"level":4,"built":"2026-09-27T16:21:39.176Z"}""")
         val shard = checkNotNull(javaClass.getResourceAsStream("/landmarks/G3RJ.json")) { "The Toronto shard is missing." }
         File(seen, "shards/G3RJ.json").writeBytes(shard.use { it.readBytes() })
-    }
-
-    /**
-     * No connection: every request goes to a proxy on this computer that turns
-     * it away at once, so what the site serves today can never change a screen.
-     * Turned away rather than sent to a closed port, which Windows takes two
-     * seconds to refuse, each time.
-     */
-    private fun noConnection() {
-        val port = TurnedAway.port
-        for (scheme in listOf("http", "https")) {
-            System.setProperty("$scheme.proxyHost", "127.0.0.1")
-            System.setProperty("$scheme.proxyPort", port.toString())
-        }
-        System.setProperty("http.nonProxyHosts", "")
-    }
-
-    /** A proxy, reachable only from this computer, that answers everything with 503. */
-    private object TurnedAway {
-        val port: Int by lazy {
-            val server = ServerSocket(0, 50, InetAddress.getLoopbackAddress())
-            thread(isDaemon = true, name = "turned-away") {
-                while (true) {
-                    val socket = runCatching { server.accept() }.getOrNull() ?: break
-                    runCatching {
-                        socket.use { it.getOutputStream().write(UNAVAILABLE) }
-                    }
-                }
-            }
-            server.localPort
-        }
-
-        private val UNAVAILABLE =
-            "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray()
     }
 
     private companion object {

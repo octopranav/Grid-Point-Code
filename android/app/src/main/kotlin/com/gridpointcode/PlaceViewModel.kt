@@ -1,10 +1,12 @@
 package com.gridpointcode
 
 import android.app.Application
+import android.os.Bundle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.gridpointcode.core.Anchor
 import com.gridpointcode.core.Compass
@@ -13,6 +15,8 @@ import com.gridpointcode.core.Landmark
 import com.gridpointcode.core.Locating
 import com.gridpointcode.core.Named
 import com.gridpointcode.core.PlaceState
+import com.gridpointcode.core.toSaved
+import com.gridpointcode.core.restoredPlace
 import com.gridpointcode.core.PlaceView
 import com.gridpointcode.core.Problem
 import com.gridpointcode.core.Reading
@@ -86,17 +90,23 @@ import kotlinx.coroutines.withTimeoutOrNull
  *
  * What a fix may do to the place, and what survives a move, are decided in
  * `:core` where they are tested. This class keeps the state across a rotation,
- * hands the screen a view derived from it in one pass, and makes sure the
- * satellites are not left running once nobody is waiting for them.
+ * and across the end of the app's process, through [handle]; hands the screen a
+ * view derived from it in one pass; and makes sure the satellites are not left
+ * running once nobody is waiting for them.
  */
-class PlaceViewModel(application: Application) : AndroidViewModel(application) {
+class PlaceViewModel(application: Application, private val handle: SavedStateHandle) : AndroidViewModel(application) {
+
+    // What was on screen when Android last ended the process, if it did.
+    private val kept: Bundle? = handle.get<Bundle>(KEPT)
 
     private val device = DeviceLocation(application)
-    private val preferences = Preferences(application)
-    private val chosen = MutableStateFlow(preferences.basemap())
-    private val listener = MutableStateFlow(preferences.listener())
-    private val foldedSections = MutableStateFlow(preferences.folded())
-    private val state = MutableStateFlow(PlaceState(selectionAt(SAMPLE, Source.SAMPLE)))
+    private val preferences = beforeTheFirstFrame { Preferences(application) }
+    private val chosen = MutableStateFlow(beforeTheFirstFrame { preferences.basemap() })
+    private val listener = MutableStateFlow(beforeTheFirstFrame { preferences.listener() })
+    private val foldedSections = MutableStateFlow(beforeTheFirstFrame { preferences.folded() })
+    private val state = MutableStateFlow(
+        kept?.let { saved -> restoredPlace { saved.getString(it) } } ?: PlaceState(selectionAt(SAMPLE, Source.SAMPLE)),
+    )
     private var listening: Job? = null
     private val names = NameIndex()
     private val packs = PlacePacks(application)
@@ -104,8 +114,8 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     private val finding = MutableStateFlow(Finding())
     private var looking: Job? = null
     private val archive = LandmarkArchive(
-        kept = KeptLandmarks(File(application.noBackupFilesDir, "kept-landmarks")),
-        seen = SeenLandmarks(File(application.cacheDir, "seen-landmarks")),
+        kept = KeptLandmarks { File(application.noBackupFilesDir, "kept-landmarks") },
+        seen = SeenLandmarks { File(application.cacheDir, "seen-landmarks") },
     )
     private val anchoring = MutableStateFlow(Anchoring())
     private val keeping = MutableStateFlow(Keeping())
@@ -113,7 +123,20 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     // frame so the bookmark on the card is right from the start. Shared with
     // the listener that takes in places saved on the watch.
     init {
-        SavedShelf.open(application)
+        beforeTheFirstFrame { SavedShelf.open(application) }
+    }
+
+    // Asked for only when the platform saves the activity's state: the place,
+    // the emergency card if it is open, and what was being typed. A reader who
+    // went to the telephone with the card open comes back to the card.
+    init {
+        handle.setSavedStateProvider(KEPT) {
+            Bundle().apply {
+                state.value.toSaved().forEach { (key, value) -> putString(key, value) }
+                putBoolean(CARD, carding.value)
+                putString(QUERY, query)
+            }
+        }
     }
 
     /** Which landmark the reader chose, by name and region, so it survives a nudge that keeps it in reach. */
@@ -156,7 +179,7 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
      * What is in the search field. Kept here rather than in the field, so that
      * choosing a place can empty it, however the place was chosen.
      */
-    var query by mutableStateOf("")
+    var query by mutableStateOf(kept?.getString(QUERY).orEmpty())
         private set
 
     /** What the search field has turned up by name. */
@@ -204,7 +227,7 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     /** The reader's saved places, most recent first. */
     val saved: StateFlow<List<SavedPlace>> = SavedShelf.saved
 
-    private val carding = MutableStateFlow(false)
+    private val carding = MutableStateFlow(kept?.getBoolean(CARD) == true)
 
     /** Whether the emergency card is up. */
     val emergency: StateFlow<Boolean> = carding
@@ -573,6 +596,11 @@ class PlaceViewModel(application: Application) : AndroidViewModel(application) {
     private companion object {
         /** The specification's own example, until the device says where it is. */
         val SAMPLE = Point(43.650006, -79.380004)
+
+        /** Where the screen is kept in the activity's saved state, and its parts besides the place. */
+        const val KEPT = "screen"
+        const val CARD = "screen.card"
+        const val QUERY = "screen.query"
 
         /** Long enough for a cold start by a window; a fix inside one cell ends it sooner. */
         const val PATIENCE_MS = 30_000L

@@ -153,6 +153,10 @@ dependencies {
     androidTestUtil(libs.androidx.test.orchestrator)
     androidTestUtil(libs.androidx.test.services)
     debugImplementation(libs.compose.ui.test.manifest)
+    // Watches every activity, view model and view the debug build throws away,
+    // and reports any still held. The device tests check after each test.
+    debugImplementation(libs.leakcanary.android)
+    androidTestImplementation(libs.leakcanary.android.instrumentation)
 }
 
 // The design's reference images live with the code, where a change that moves

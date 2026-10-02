@@ -187,6 +187,12 @@ fun PlaceMap(
     var style by remember { mutableStateOf<Style?>(null) }
     var placed by remember { mutableStateOf(false) }
     var credit by remember { mutableStateOf<String?>(null) }
+    // Over once the map is thrown away, as when the activity is made again for
+    // a turn of the phone. The map calls back when it is ready, when a style
+    // loads and when a load fails, and any of those can come after; written then,
+    // into a composition already gone, the map was held by the new screen, and
+    // with it its view and the destroyed activity, 1.5 MB for every turn.
+    val life = remember { Life() }
 
     val view = remember {
         MapLibre.getInstance(context)
@@ -196,11 +202,11 @@ fun PlaceMap(
         val options = MapLibreMapOptions.createFromAttributes(context).foregroundLoadColor(ground)
         MapView(context, options).apply {
             onCreate(null)
-            addOnDidFailLoadingMapListener { failed = true }
-            addOnDidFinishLoadingStyleListener { failed = false }
+            addOnDidFailLoadingMapListener { if (!life.over) failed = true }
+            addOnDidFinishLoadingStyleListener { if (!life.over) failed = false }
             // A source's credit arrives with its description of its tiles, a
             // moment after the style that names it.
-            addOnSourceChangedListener { credit = style?.let(::declaredBy) }
+            addOnSourceChangedListener { if (!life.over) credit = style?.let(::declaredBy) }
             // A mouse's second button asks for the menu, and the press is kept
             // from the map, which would otherwise take it for a tap and move
             // the place before the menu opened. It is not a click, so there is
@@ -225,6 +231,7 @@ fun PlaceMap(
                 kept
             }
             getMapAsync { ready ->
+                if (life.over) return@getMapAsync
                 ready.uiSettings.setRotateGesturesEnabled(false)
                 ready.uiSettings.setTiltGesturesEnabled(false)
                 // Drawn below the sheet, where nobody could see them; the
@@ -262,6 +269,11 @@ fun PlaceMap(
         lifecycle.addObserver(observer)
         onDispose {
             lifecycle.removeObserver(observer)
+            life.over = true
+            control?.map = null
+            map = null
+            style = null
+            credit = null
             view.onDestroy()
         }
     }
@@ -275,6 +287,7 @@ fun PlaceMap(
         val ready = map ?: return@LaunchedEffect
         style = null
         ready.setStyle(Style.Builder().fromUri(url)) { loaded ->
+            if (life.over) return@setStyle
             addDrawing(loaded, ink)
             style = loaded
             credit = declaredBy(loaded)
@@ -580,4 +593,9 @@ private fun follow(map: MapLibreMap, selection: Selection, inset: DoubleArray, f
         CameraUpdateFactory.newCameraPosition(CameraPosition.Builder().target(target).zoom(zoom).padding(inset).build()),
         700,
     )
+}
+
+/** Whether the map has been thrown away; read by its callbacks on the main thread. */
+private class Life {
+    var over = false
 }

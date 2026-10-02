@@ -25,6 +25,7 @@ espresso = "3.7.0"
 uiautomator = "2.4.0"
 robolectric = "4.17"
 roborazzi = "1.76.0"
+leakcanary = "2.14"
 
 [libraries]
 # The format itself, installed from Maven Central like anybody else installs it.
@@ -104,6 +105,10 @@ robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectr
 roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
 roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
 roborazzi-junit-rule = { module = "io.github.takahirom.roborazzi:roborazzi-junit-rule", version.ref = "roborazzi" }
+
+# Leak detection in debug builds, and after every device test that passes.
+leakcanary-android = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakcanary" }
+leakcanary-android-instrumentation = { module = "com.squareup.leakcanary:leakcanary-android-instrumentation", version.ref = "leakcanary" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
