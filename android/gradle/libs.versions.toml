@@ -26,6 +26,8 @@ uiautomator = "2.4.0"
 robolectric = "4.17"
 roborazzi = "1.76.0"
 leakcanary = "2.14"
+benchmark = "1.5.0"
+profileinstaller = "1.4.1"
 
 [libraries]
 # The format itself, installed from Maven Central like anybody else installs it.
@@ -110,9 +112,17 @@ roborazzi-junit-rule = { module = "io.github.takahirom.roborazzi:roborazzi-junit
 leakcanary-android = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakcanary" }
 leakcanary-android-instrumentation = { module = "com.squareup.leakcanary:leakcanary-android-instrumentation", version.ref = "leakcanary" }
 
+# Start-up, measured and made faster: the baseline profile of what a reader's
+# first moments run, compiled ahead of time on install, and the benchmarks that
+# measure start-up and frames with it and without it.
+androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
+androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "benchmark" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
+android-test = { id = "com.android.test", version.ref = "agp" }
+baselineprofile = { id = "androidx.baselineprofile", version.ref = "benchmark" }

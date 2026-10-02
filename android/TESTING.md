@@ -15,7 +15,7 @@ world, is set out at the end as a guide to work through before each release.
 | Static checks | Lint on every module, the notices, the release's merged manifests | Gradle, `gradle/notices.gradle.kts` | CI, every PR |
 | Design | Every screen against a reference image: light and dark, a small phone, a phone, a foldable and a tablet, the largest text, a longer language and right to left | `app/src/test/kotlin/com/gridpointcode/screens`, images in `app/src/test/screenshots` | CI, every PR |
 | Robustness | StrictMode and leak detection around every device test, a seeded stress run of random input, the process ended and the screen put back | `NoStrictModeViolations`, LeakCanary, `RandomInputTest`, `app/src/test/.../ProcessDeathTest.kt` | CI, every PR |
-| Performance | Start-up and frame timing, and a baseline profile so the release starts fast on a reader's phone | next | |
+| Performance | The baseline profile the release carries, and benchmarks of start-up and frames with it and without it | `benchmark`, `app/src/release/generated/baselineProfiles` | CI checks the profile reaches the release; benchmarks by hand |
 | The watch and the car | Their screens, the tile, the complication and the car's templates | next | |
 
 ## Running them
@@ -121,6 +121,43 @@ folder when the check fails.
   on the emulator "Don't keep activities" set from a shell is not seen by the
   system and the activity only stops, so a device test passes whether or not
   anything was saved.
+
+### How performance is measured
+
+- **The baseline profile.** `BaselineProfileGenerator` in the `benchmark`
+  module walks the release through a reader's first moments: the app opens on a
+  place, a code is typed, the panel is pulled up and looked through, Saved and
+  Settings are visited. What that runs is written into
+  `app/src/release/generated/baselineProfiles`, and the release carries it, so on
+  install Android compiles that code ahead of time instead of interpreting it on
+  first use; the same list lays out the release's code so a cold start reads
+  less of it. It takes about twenty minutes on the emulator, so it is generated
+  by hand after a change to what the first moments run, and committed:
+
+  ```
+  ./gradlew :app:generateBaselineProfile
+  ```
+
+  On a phone or an emulator already connected instead of the one Gradle makes,
+  add `-Pgpc.connectedDevice`. CI checks that the profile merged into the
+  release holds the app's own code, since the libraries bring profiles of their
+  own that would satisfy a check for any profile at all.
+- **The benchmarks.** `StartupBenchmark` measures a cold start to the first place
+  on the card, with the profile and without it, and the frames of scrolling the
+  panel, on the release build:
+
+  ```
+  ./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest -Pgpc.connectedDevice -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=Macrobenchmark
+  ```
+
+  On an emulator add
+  `-Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.suppressErrors=EMULATOR`,
+  and read what it says as a measure of the emulator more than of the app. On
+  the managed Pixel 7 emulator, drawing in software, a cold start took a median
+  of 1.81 s without the profile and 1.85 s with it, the same within its spread:
+  there, the drawing and the map's own start-up are the cost, not the app's code
+  waiting to be compiled. Whether the profile helps a reader is for a real
+  phone to say, a low-end one most of all; see below.
 
 ### How the device tests are written
 
@@ -274,6 +311,11 @@ The automated checks find what can be measured. These find what cannot:
 
 ### Performance on a real phone
 
+- [ ] Run the benchmarks on the low-end phone, connected with USB debugging
+  (see "How performance is measured"), and write the medians beside the
+  emulator's in this file: a cold start with the profile and without it, and the
+  panel's frames. A profile that does not make the low-end phone faster is worth
+  knowing about.
 - [ ] Cold start on the low-end phone: the map and the card appear quickly, with
   no frozen frames.
 - [ ] Scroll the saved list and the card's sections: smooth.
