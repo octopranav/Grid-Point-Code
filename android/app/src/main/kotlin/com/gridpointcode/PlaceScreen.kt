@@ -67,6 +67,10 @@ import com.gridpointcode.map.rememberMapControl
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -104,6 +108,7 @@ import com.gridpointcode.core.SINGLE_CELL_METRES
 import com.gridpointcode.core.SavedPlace
 import com.gridpointcode.core.formatted
 import com.gridpointcode.core.savedAt
+import com.gridpointcode.core.straysIn
 import com.gridpointcode.core.selectionOf
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -204,8 +209,15 @@ private const val WIDE_DP = 840
 /** The panel's width beside the map, the same as the website's side panel. */
 private const val PANE_DP = 420
 
-/** How much of the panel shows over the map before it is pulled up: the code and its actions. */
+/**
+ * How much of the panel shows over the map before it is pulled up: the code and
+ * its actions. The least it shows; with large text the card is taller, and the
+ * sheet rests high enough for all of it, actions included.
+ */
 private const val PEEK_DP = 300
+
+/** The sheet's drag handle, as Material draws it: a bar with room above and below. */
+private val HANDLE = 48.dp
 
 /** The search bar's height over the map, with its margin. */
 private const val SEARCH_DP = 96
@@ -248,9 +260,14 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
     // Kept here rather than in the panel, because the map's menu can ask to save too.
     var editing by remember { mutableStateOf(false) }
     val sheet = rememberBottomSheetScaffoldState()
+    // The card's height as last drawn, for the height the sheet rests at: the
+    // handle, the panel's top margin, the card and a hair below it. At the
+    // default text size that is just under PEEK_DP, which it leaves unchanged.
+    var head by remember { mutableStateOf(0.dp) }
+    val peek = maxOf(PEEK_DP.dp, HANDLE + Space.step2 + head + Space.step0)
     val scope = rememberCoroutineScope()
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + SEARCH_DP.dp
-    val bottom = if (wide) WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else PEEK_DP.dp
+    val bottom = if (wide) WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else peek
 
     val context = LocalContext.current
     // Every line is read in the listener's words and voice; with no voice for
@@ -473,9 +490,10 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
                                 voiced = voiced,
                                 editing = editing,
                                 onEditing = { editing = it },
+                                onHead = { head = it },
                             )
                         },
-                        sheetPeekHeight = PEEK_DP.dp,
+                        sheetPeekHeight = peek,
                         sheetContainerColor = MaterialTheme.colorScheme.background,
                         sheetShape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp),
                     ) {
@@ -501,8 +519,10 @@ private fun Panel(
     editing: Boolean,
     onEditing: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    onHead: (Dp) -> Unit = {},
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
     val qrArea = stringResource(R.string.qr_area)
     val qrPlace = stringResource(R.string.qr_place)
     val anchoring by model.anchors.collectAsState()
@@ -554,15 +574,17 @@ private fun Panel(
             return@Column
         }
         ui.doubt?.let { Doubted(it, onUse = model::correct, onKeep = model::keep) }
-        Head(
-            ui = ui,
-            saved = here,
-            onBookmark = { onEditing(true) },
-            speak = { speak(ui.spoken) },
-            share = { share(context, ui.formatted + "\n" + ui.link) },
-            copy = { copy(context, ui.formatted) },
-            showQr = { showing = Qr(qrPlace, ui.formatted, ui.link) },
-        )
+        Box(Modifier.onSizeChanged { onHead(with(density) { it.height.toDp() }) }) {
+            Head(
+                ui = ui,
+                saved = here,
+                onBookmark = { onEditing(true) },
+                speak = { speak(ui.spoken) },
+                share = { share(context, ui.formatted + "\n" + ui.link) },
+                copy = { copy(context, ui.formatted) },
+                showQr = { showing = Qr(qrPlace, ui.formatted, ui.link) },
+            )
+        }
         Nudge(ui.selection.code, ui.pad, onNudge = model::nudge)
         WrittenForms(ui.forms, copy = { copy(context, it) })
         GiveAddress(
@@ -948,13 +970,35 @@ private fun Found(
     }
 }
 
+/**
+ * Why a code was refused, in the website's words: the reason the library gave,
+ * told in terms of what was typed. Its own names for the reasons are never
+ * shown; a reason without words of its own is told as nothing this app reads.
+ */
+@Composable
+private fun unread(problem: Problem.Unread): String {
+    val cleaned = problem.cleaned
+    return when (problem.reason) {
+        "GPC_CHECK" -> stringResource(R.string.problem_check)
+        "GPC_LENGTH" ->
+            if (cleaned == null) stringResource(R.string.problem_unread)
+            else stringResource(R.string.problem_length, cleaned.length)
+        "GPC_CHAR" -> {
+            val strays = cleaned?.let(::straysIn).orEmpty()
+            if (strays.isEmpty()) {
+                stringResource(R.string.problem_alphabet_unnamed)
+            } else {
+                val named = strays.joinToString(", ") { "“$it”" }
+                pluralStringResource(R.plurals.problem_alphabet, strays.size, named)
+            }
+        }
+        else -> stringResource(R.string.problem_unread)
+    }
+}
+
 @Composable
 private fun describe(problem: Problem): String = when (problem) {
-    is Problem.Unread -> {
-        val reason = problem.reason
-        if (reason.isNullOrBlank()) stringResource(R.string.problem_unread)
-        else stringResource(R.string.problem_unread_reason, reason)
-    }
+    is Problem.Unread -> unread(problem)
     is Problem.Reserved -> stringResource(R.string.problem_reserved, problem.code)
     is Problem.UnreadShort -> stringResource(R.string.problem_short, problem.short)
     is Problem.Closed -> stringResource(R.string.problem_closed_what3words)
@@ -2139,20 +2183,24 @@ private fun Nudge(code: String, pad: Map<Compass, String>, onNudge: (Compass) ->
             Text(stringResource(R.string.nudge_pole), style = MaterialTheme.typography.bodySmall)
             return@Section
         }
-        Column(verticalArrangement = Arrangement.spacedBy(Space.step0)) {
-            PAD.chunked(3).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(Space.step0)) {
-                    row.forEach { direction ->
-                        val modifier = Modifier.weight(1f).height(58.dp)
-                        if (direction == null) {
-                            PadCell(label = stringResource(R.string.nudge_here), tail = code.takeLast(5), current = true, modifier = modifier)
-                        } else {
-                            OutlinedButton(
-                                onClick = { onNudge(direction) },
-                                shape = ButtonShape,
-                                modifier = modifier,
-                            ) {
-                                PadCell(label = direction.name, tail = pad.getValue(direction).takeLast(5), current = false)
+        // West stays on the left in a right-to-left language: the pad is a
+        // compass beside a map that does not turn round, not a line of text.
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Column(verticalArrangement = Arrangement.spacedBy(Space.step0)) {
+                PAD.chunked(3).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(Space.step0)) {
+                        row.forEach { direction ->
+                            val modifier = Modifier.weight(1f).height(58.dp)
+                            if (direction == null) {
+                                PadCell(label = stringResource(R.string.nudge_here), tail = code.takeLast(5), current = true, modifier = modifier)
+                            } else {
+                                OutlinedButton(
+                                    onClick = { onNudge(direction) },
+                                    shape = ButtonShape,
+                                    modifier = modifier,
+                                ) {
+                                    PadCell(label = direction.name, tail = pad.getValue(direction).takeLast(5), current = false)
+                                }
                             }
                         }
                     }

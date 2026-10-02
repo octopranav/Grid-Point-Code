@@ -74,9 +74,13 @@ private val NOT_LETTER_OR_DIGIT = Regex("[^a-z0-9]+")
 
 /**
  * Whether text should be looked up by name: nothing the reader already
- * understands as a code, a point or a link, and long enough to narrow.
+ * understands as a code, a point or a link, not written as a code, and long
+ * enough to narrow. A code with a check character that disagrees is still a
+ * code: looked up as a name it finds nothing, and the reader never learns that
+ * a character was mistyped.
  */
-fun isName(text: String): Boolean = read(text) is Reading.Unread && fold(text).length >= NAME_SHORTEST
+fun isName(text: String): Boolean =
+    read(text) is Reading.Unread && !writtenAsCode(text) && fold(text).length >= NAME_SHORTEST
 
 /**
  * Places whose name begins with [query], in the file's order: alphabetical, and

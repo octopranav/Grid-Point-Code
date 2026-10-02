@@ -23,6 +23,8 @@ androidxTestOrchestrator = "1.6.1"
 androidxTestServices = "1.6.0"
 espresso = "3.7.0"
 uiautomator = "2.4.0"
+robolectric = "4.17"
+roborazzi = "1.76.0"
 
 [libraries]
 # The format itself, installed from Maven Central like anybody else installs it.
@@ -95,8 +97,17 @@ compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 
+# The screens drawn on the computer, for the design's reference images: Robolectric
+# runs the app's own code on a desktop JVM, drawing with Android's real graphics
+# stack, and Roborazzi records each screen and compares it with the one kept.
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
+roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
+roborazzi-junit-rule = { module = "io.github.takahirom.roborazzi:roborazzi-junit-rule", version.ref = "roborazzi" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }

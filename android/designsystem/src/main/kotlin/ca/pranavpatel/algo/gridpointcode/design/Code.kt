@@ -4,6 +4,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.em
 
 /**
@@ -26,6 +27,11 @@ internal val Mono = FontFamily(
  * The style a code is set in: monospaced, tabular, and tracked so ten characters
  * never touch. The type scale sets a code in the mono family; this reads the
  * family directly rather than through the theme's lookup, for the reason above.
+ *
+ * Always left to right, as a code is printed on a sign, in a language written
+ * either way. Set in a right-to-left paragraph a short form's leading hyphen
+ * moved to its end, the hash left the front of a code, and a latitude and
+ * longitude could be drawn in the wrong order.
  */
 val CodeStyle: TextStyle = TextStyle(
     fontFamily = Mono,
@@ -34,4 +40,5 @@ val CodeStyle: TextStyle = TextStyle(
     fontWeight = FontWeight(TypeScale.code.weight),
     letterSpacing = CODE_TRACKING_EM.em,
     fontFeatureSettings = "tnum",
+    textDirection = TextDirection.Ltr,
 )

@@ -240,7 +240,14 @@
     <string name="aloud_add_voice">Add a voice</string>
 
     <string name="problem_unread">That is not a code, a pair of coordinates or a link this app can read.</string>
-    <string name="problem_unread_reason">That is not a code this app can read (%1$s).</string>
+    <!-- A code the library could read but would not accept, in the website's words for each reason. -->
+    <string name="problem_check">The code and its check character disagree, so one of them was mistyped. The check catches every single wrong character and every swapped pair, which is why it is worth adding when a code is read aloud or written down.</string>
+    <string name="problem_length">A code is exactly ten characters, everywhere on Earth. This one has %1$d.</string>
+    <plurals name="problem_alphabet">
+        <item quantity="one">%1$s is not in the alphabet. It has no vowels and no U, Q, V or Y, so a word can never be read as a code.</item>
+        <item quantity="other">%1$s are not in the alphabet. It has no vowels and no U, Q, V or Y, so a word can never be read as a code.</item>
+    </plurals>
+    <string name="problem_alphabet_unnamed">One of those characters is not in the alphabet.</string>
     <string name="problem_reserved">%1$s is from the reserved range. It is well formed, and it does not name a place.</string>
     <string name="locate">Find my location</string>
     <string name="basemap">Basemap</string>

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,9 +25,11 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -159,6 +162,10 @@ fun PlaceMap(
     control: MapControl? = null,
     onMenu: ((Point, Offset) -> Unit)? = null,
 ) {
+    if (LocalInspectionMode.current) {
+        MapStandIn(dark = resolve(basemap, dark).dark, padding = padding, creditEnd = creditEnd, modifier = modifier)
+        return
+    }
     val context = LocalContext.current
     val density = LocalDensity.current
     val direction = LocalLayoutDirection.current
@@ -370,6 +377,43 @@ fun PlaceMap(
         }
     }
 }
+
+/**
+ * The map where no map can be drawn: in a preview, and in the screens the design
+ * is checked against, which are drawn on a computer the map's native renderer
+ * does not run on. The ground the map is painted while it loads, the cell as a
+ * square in its brass at the centre of what can be seen, and the credit in its
+ * corner, so everything the screen lays out around the map is where it would be.
+ */
+@Composable
+private fun MapStandIn(dark: Boolean, padding: PaddingValues, creditEnd: Dp, modifier: Modifier) {
+    val brass = Color(inkFor(dark).brass)
+    Box(modifier.background(MaterialTheme.colorScheme.background)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier
+                    .size(STAND_IN_CELL)
+                    .background(brass.copy(alpha = 0.12f))
+                    .border(2.dp, brass),
+            )
+        }
+        Credit(
+            html = PROVIDER_CREDIT,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(padding)
+                .padding(start = Space.step1, bottom = Space.step1, end = creditEnd + Space.step1),
+        )
+    }
+}
+
+/** About the size the cell is drawn at the zoom a place opens at. */
+private val STAND_IN_CELL = 56.dp
 
 /**
  * Bottom to top: the device's accuracy, the neighbours, the cell, and the dot.
