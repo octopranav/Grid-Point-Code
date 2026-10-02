@@ -12,6 +12,8 @@ local.properties
 *.jks
 *.keystore
 
-# The root ignore file is written for .NET, where a folder called debug is build
-# output. Here it is the source set for debug builds, so it comes back.
+# The root ignore file is written for .NET, where folders called debug and
+# release are build output. Here they are the source sets for debug and release
+# builds, so they come back: the release's holds its baseline profile.
 !**/src/debug/
+!**/src/release/
