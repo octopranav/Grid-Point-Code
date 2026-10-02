@@ -26,6 +26,7 @@ import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.RoborazziRule
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import com.gridpointcode.Anchoring
+import com.gridpointcode.Finding
 import com.gridpointcode.NoConnection
 import com.gridpointcode.PlaceScreen
 import com.gridpointcode.PlaceViewModel
@@ -37,6 +38,7 @@ import com.gridpointcode.core.Source
 import com.gridpointcode.core.emergencyOf
 import com.gridpointcode.core.selectionAt
 import java.io.File
+import java.time.Duration
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RuntimeEnvironment
@@ -125,6 +127,22 @@ abstract class ScreenTest {
                     "${model.anchors.value.status} for ${model.anchors.value.code}, offline known ${model.offline.value.known}.",
                 timeout,
             )
+        }
+        rule.waitForIdle()
+    }
+
+    /**
+     * Types [text] in the search field and waits for the places it could mean:
+     * the saved ones at once, then, once the typing has paused, the ones looked
+     * up, which with no connection are the landmarks on the device.
+     */
+    protected fun searchedFor(text: String) {
+        rule.waitForIdle()
+        model.type(text)
+        rule.waitUntil(SETTLE_MS) {
+            // The pause is a delay on the main thread, whose clock moves only when told.
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
+            model.found.value.status !in setOf(Finding.Status.IDLE, Finding.Status.LOOKING)
         }
         rule.waitForIdle()
     }

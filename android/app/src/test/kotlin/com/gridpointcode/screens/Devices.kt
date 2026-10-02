@@ -19,4 +19,7 @@ object Devices {
 
     /** A tablet on its side, which takes the wide layout: the panel beside the map. */
     const val TABLET = "w1280dp-h800dp-xlarge-long-notround-any-240dpi-keyshidden-nonav"
+
+    /** A 7-inch tablet on its side: the wide layout too, on the least height it is drawn at. */
+    const val SMALL_TABLET = "w960dp-h600dp-large-long-notround-any-320dpi-keyshidden-nonav"
 }
