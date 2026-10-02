@@ -118,6 +118,12 @@ leakcanary-android-instrumentation = { module = "com.squareup.leakcanary:leakcan
 androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
 androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "benchmark" }
 
+# The car's templates and the watch's tile, checked on the computer: the Car App
+# Library's test car, and the tile service's test client and renderer.
+car-app-testing = { module = "androidx.car.app:app-testing", version.ref = "carApp" }
+wear-tiles-testing = { module = "androidx.wear.tiles:tiles-testing", version.ref = "wearTiles" }
+wear-tiles-renderer = { module = "androidx.wear.tiles:tiles-renderer", version.ref = "wearTiles" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }

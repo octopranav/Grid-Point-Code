@@ -645,24 +645,28 @@ jobs:
       # with them. Each app's list of what its release ships is held to what it
       # really resolves, and a notice copied from one release of a library is
       # held to that release, so neither can drift out of date unnoticed. The
-      # watch's rules for its tile and complication, and the car's reading of
-      # what is typed into it, are tested here too.
+      # car's screens, every template it is handed and what it hands on, and its
+      # reading of what is typed into it, are tested here too; the watch's tile
+      # and complication run with its screens below.
       - name: Every library each release ships is in its notices
-        run: ./gradlew --no-daemon :app:checkNotices :wear:checkNotices :automotive:checkNotices :notices:testDebugUnitTest :wear:testDebugUnitTest :car:testDebugUnitTest
+        run: ./gradlew --no-daemon :app:checkNotices :wear:checkNotices :automotive:checkNotices :notices:testDebugUnitTest :car:testDebugUnitTest
       # Every screen drawn here, by Android's own graphics stack under
-      # Robolectric, and compared with the image kept in the repository: light
-      # and dark, a small phone to a tablet, the largest text, a longer language
-      # and right to left. A screen that moved fails, and the old, the new and
-      # the difference between them are kept below. The app's other unit tests
-      # run in the same pass.
+      # Robolectric, and compared with the image kept in the repository: the
+      # phone in light and dark, a small phone to a tablet, the largest text, a
+      # longer language and right to left; and the watch on a round face, its
+      # tile as the watch's own renderer draws it. A screen that moved fails,
+      # and the old, the new and the difference between them are kept below.
+      # Each app's other unit tests run in the same pass.
       - name: Every screen matches its reference image
-        run: ./gradlew --no-daemon :app:verifyRoborazziDebug
+        run: ./gradlew --no-daemon :app:verifyRoborazziDebug :wear:verifyRoborazziDebug
       - name: Keep the screens that no longer match
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: screens-that-moved
-          path: android/app/build/outputs/roborazzi
+          path: |
+            android/app/build/outputs/roborazzi
+            android/wear/build/outputs/roborazzi
           if-no-files-found: ignore
       # Lint's errors fail the build in every module; its warnings do not. The
       # errors it has found so far were screens reading the device's language,

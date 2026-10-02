@@ -16,7 +16,7 @@ world, is set out at the end as a guide to work through before each release.
 | Design | Every screen against a reference image: light and dark, a small phone, a phone, a foldable and a tablet, the largest text, a longer language and right to left | `app/src/test/kotlin/com/gridpointcode/screens`, images in `app/src/test/screenshots` | CI, every PR |
 | Robustness | StrictMode and leak detection around every device test, a seeded stress run of random input, the process ended and the screen put back | `NoStrictModeViolations`, LeakCanary, `RandomInputTest`, `app/src/test/.../ProcessDeathTest.kt` | CI, every PR |
 | Performance | The baseline profile the release carries, and benchmarks of start-up and frames with it and without it | `benchmark`, `app/src/release/generated/baselineProfiles` | CI checks the profile reaches the release; benchmarks by hand |
-| The watch and the car | Their screens, the tile, the complication and the car's templates | next | |
+| The watch and the car | The car's templates and what they hand on; the watch's tile and complication, their timelines and how they draw; the watch's screens on a round face | `car/src/test`, `wear/src/test`, images in `wear/src/test/screenshots` | CI, every PR |
 
 ## Running them
 
@@ -158,6 +158,33 @@ folder when the check fails.
   there, the drawing and the map's own start-up are the cost, not the app's code
   waiting to be compiled. Whether the profile helps a reader is for a real
   phone to say, a low-end one most of all; see below.
+
+### How the watch and the car are checked
+
+- **The car's templates.** A car draws an app's screens itself, from templates,
+  and refuses one that breaks its rules. `CarScreensTest` hands each screen to
+  the Car App Library's own test car and reads what comes back, row by row and
+  action by action: a saved place's code, how it is said, how far and which way
+  with the directions to the door; where the car is, with how close and no way
+  to navigate to it; the list before a fix, newest first; a car with no phone;
+  search, a code offered as it is typed and a short form waiting for a fix; and
+  a car older than level 7. Navigate is pressed, and what it hands the driver's
+  navigation app is checked: a geo URI of the place, never the code.
+- **The watch's tile and complication.** Each is asked as a watch asks, over a
+  last fix planted in their store: the place for its hour, then the offer to
+  find one, both in one timeline whose first entry ends when the hour does. An
+  entry left without an end ends at zero, and the watch drew nothing; the tests
+  hold that. The tile is drawn by the Tiles renderer the watch itself uses, on a
+  round face, at a time held still, and kept as an image.
+- **The watch's screens.** Here, asking for location, finding, and with a place;
+  the saved places with their arrows; walking to one. Drawn on a round face
+  with the time along the top held at ten past ten, and verified with the
+  phone's images by `:wear:verifyRoborazziDebug`.
+- **One process, many tests.** Robolectric keeps the process from one test to
+  the next. Android's default factory for view models is kept for the process
+  too, so it handed every later watch test the first test's application, and
+  its files; the watch's screen tests make their view model with a factory of
+  their own.
 
 ### How the device tests are written
 

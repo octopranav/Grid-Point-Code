@@ -40,6 +40,7 @@ import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
+import androidx.wear.compose.material3.TimeText
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
@@ -111,10 +112,19 @@ private const val SAVED_ROUTE = "saved"
 private const val WALK_ROUTE = "walk"
 private const val NOTICES_ROUTE = "notices"
 
+/**
+ * The watch app's screens. [timeText] is the time along the top, the watch's
+ * own unless a test holds it still.
+ */
 @Composable
-fun WatchApp(model: WatchModel, speaker: WatchSpeaker, onAllow: () -> Unit) {
+fun WatchApp(
+    model: WatchModel,
+    speaker: WatchSpeaker,
+    onAllow: () -> Unit,
+    timeText: @Composable () -> Unit = { TimeText() },
+) {
     MaterialTheme(colorScheme = WatchColours) {
-        AppScaffold {
+        AppScaffold(timeText = timeText) {
             val navigation = rememberSwipeDismissableNavController()
             SwipeDismissableNavHost(navController = navigation, startDestination = HERE_ROUTE) {
                 composable(HERE_ROUTE) {
