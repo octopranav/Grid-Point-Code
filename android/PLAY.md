@@ -22,8 +22,11 @@ changes that page in the same pull request; it changes the
   applies.
 - [ ] **Create the app** as Grid Point Code, an app, free. The application ID is
   `com.gridpointcode` and is permanent once the first bundle is uploaded. The
-  default listing language is English (United Kingdom), which is the spelling
-  the app and the site use.
+  default listing language is English (Canada), where the project is made. The
+  app and the listing write metres, centre and licence, and use no word that
+  Canadian and British English spell differently, so either fits and United
+  States English does not. Readers in every language see this listing until a
+  translation exists.
 - [ ] **Play App Signing.** Google keeps the key the app is signed with for
   readers; this repository's four upload values (see
   [A release](README.md#a-release)) only prove an upload came from its owner.
