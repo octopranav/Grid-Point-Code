@@ -185,6 +185,7 @@ import androidx.compose.ui.unit.dp
 import ca.pranavpatel.algo.gridpointcode.design.ButtonShape
 import ca.pranavpatel.algo.gridpointcode.design.CodeMark
 import ca.pranavpatel.algo.gridpointcode.design.CodeStyle
+import ca.pranavpatel.algo.gridpointcode.design.leftToRight
 import ca.pranavpatel.algo.gridpointcode.design.LocalGpcColors
 import ca.pranavpatel.algo.gridpointcode.design.Radius
 import ca.pranavpatel.algo.gridpointcode.design.Space
@@ -394,7 +395,10 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
 
     // Any place arriving, a link, a saved place opened, a code, is shown on the
     // map, whichever tab it arrived on; and Back from the other tabs is the map.
-    LaunchedEffect(ui.selection) { tab = Tab.MAP }
+    // Except the device's own fix, which is not a choice: a reader who pressed
+    // locate and went on to Saved, to see what is nearest, was pulled back to
+    // the map the moment the fix arrived, and again each time it tightened.
+    LaunchedEffect(ui.selection) { if (ui.selection.source != Source.DEVICE) tab = Tab.MAP }
     BackHandler(enabled = tab != Tab.MAP) { tab = Tab.MAP }
 
     // Focusable, and focused from the start, so a key pressed before anything
@@ -636,7 +640,7 @@ private fun Doubted(doubt: Doubt, onUse: (String) -> Unit, onKeep: () -> Unit) {
             Text(
                 stringResource(
                     R.string.doubt_far,
-                    formatted(doubt.typed),
+                    leftToRight(formatted(doubt.typed)),
                     distance(doubt.metres),
                     direction(doubt.bearing),
                     reference,
@@ -673,7 +677,7 @@ private fun Doubted(doubt: Doubt, onUse: (String) -> Unit, onKeep: () -> Unit) {
                 }
             }
             Quiet(stringResource(R.string.doubt_checked, doubt.checked, reference))
-            TextButton(onClick = onKeep) { Text(stringResource(R.string.doubt_keep, formatted(doubt.typed))) }
+            TextButton(onClick = onKeep) { Text(stringResource(R.string.doubt_keep, leftToRight(formatted(doubt.typed)))) }
         }
     }
 }
@@ -999,14 +1003,14 @@ private fun unread(problem: Problem.Unread): String {
 @Composable
 private fun describe(problem: Problem): String = when (problem) {
     is Problem.Unread -> unread(problem)
-    is Problem.Reserved -> stringResource(R.string.problem_reserved, problem.code)
-    is Problem.UnreadShort -> stringResource(R.string.problem_short, problem.short)
+    is Problem.Reserved -> stringResource(R.string.problem_reserved, leftToRight(problem.code))
+    is Problem.UnreadShort -> stringResource(R.string.problem_short, leftToRight(problem.short))
     is Problem.Closed -> stringResource(R.string.problem_closed_what3words)
     is Problem.Unfollowed -> stringResource(R.string.problem_unfollowed_google)
     is Problem.Unplaced -> stringResource(
         if (problem.why == Problem.Unanchored.Why.UNREACHABLE) R.string.problem_unplaced_unreachable
         else R.string.problem_unplaced_not_found,
-        problem.code,
+        leftToRight(problem.code),
         problem.locality,
     )
     is Problem.Unanchored -> stringResource(
@@ -1016,7 +1020,7 @@ private fun describe(problem: Problem): String = when (problem) {
             Problem.Unanchored.Why.NOT_UNIQUE -> R.string.problem_anchor_not_unique
             Problem.Unanchored.Why.UNREACHABLE -> R.string.problem_anchor_unreachable
         },
-        problem.short,
+        leftToRight(problem.short),
         problem.reference,
     )
     Problem.LocationRefused -> stringResource(R.string.problem_location_refused)
@@ -1146,7 +1150,7 @@ private fun AreaHead(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Quiet(stringResource(R.string.area_note, area.cell))
+            Quiet(stringResource(R.string.area_note, leftToRight(area.cell)))
             Actions(speak = speak, share = share, copy = copy, showQr = showQr)
             if (onBack != null) TextButton(onClick = onBack) { Text(stringResource(R.string.area_back)) }
         }
@@ -1323,8 +1327,9 @@ private fun Away(metres: Double, octant: String) {
 @Composable
 private fun SavedLines(place: SavedPlace) {
     Column {
-        Text(place.label.ifEmpty { formatted(place.code) }, style = MaterialTheme.typography.bodyLarge)
-        val under = listOfNotNull(formatted(place.code).takeIf { place.label.isNotEmpty() }, place.note.ifEmpty { null })
+        val code = leftToRight(formatted(place.code))
+        Text(place.label.ifEmpty { code }, style = MaterialTheme.typography.bodyLarge)
+        val under = listOfNotNull(code.takeIf { place.label.isNotEmpty() }, place.note.ifEmpty { null })
         if (under.isNotEmpty()) {
             Text(
                 text = under.joinToString(" \u00b7 "),

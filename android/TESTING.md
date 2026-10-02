@@ -13,7 +13,7 @@ world, is set out at the end as a guide to work through before each release.
 | Accessibility | Google's Accessibility Test Framework over the whole screen after every action and at every screen the device tests reach | the same tests, through `accessibleRule()` | CI, every PR |
 | Hostile conditions | Turned on its side, the dark theme, the largest text, recreated by the system, location refused, no connection | `ResilienceTest`, `LocationRefusedTest`, `KeyboardAndSearchTest` | CI, every PR |
 | Static checks | Lint on every module, the notices, the release's merged manifests | Gradle, `gradle/notices.gradle.kts` | CI, every PR |
-| Design | Every screen against a reference image, light and dark, phone, tablet and foldable, large text, long and right-to-left text | next | |
+| Design | Every screen against a reference image: light and dark, a small phone, a phone, a foldable and a tablet, the largest text, a longer language and right to left | `app/src/test/kotlin/com/gridpointcode/screens`, images in `app/src/test/screenshots` | CI, every PR |
 | Robustness | StrictMode, leak detection, a stress run of random input, the process killed and restored | next | |
 | Performance | Start-up and frame timing, and a baseline profile so the release starts fast on a reader's phone | next | |
 | The watch and the car | Their screens, the tile, the complication and the car's templates | next | |
@@ -42,6 +42,54 @@ One class, while working on it:
 The report is `app/build/reports/androidTests/managedDevice/debug/phone/index.html`,
 with each test's logcat beside the results in
 `app/build/outputs/androidTest-results/managedDevice/debug/phone/`.
+
+The screens, drawn on this computer and compared with the images kept in the
+repository, which is what CI does:
+
+```
+./gradlew :app:verifyRoborazziDebug
+```
+
+After a change that is meant to move a screen, draw them again, look at every
+image that changed, and commit the new ones with the change, so the review
+shows the screens beside the code that moved them:
+
+```
+./gradlew :app:recordRoborazziDebug
+```
+
+A screen that no longer matches leaves the old image, the new one and the
+difference between them in `app/build/outputs/roborazzi/`, and CI keeps that
+folder when the check fails.
+
+### How the screens are drawn
+
+- **The real screen, on the computer.** Robolectric runs the app's own screen,
+  view model and resources on the desktop's JVM, drawing with Android 16's own
+  graphics stack, and Roborazzi records the whole screen, dialogs included.
+  Thirty-five screens take about a minute.
+- **Held still, so a change means something.** The map cannot be drawn off a
+  device, so `PlaceMap` draws a stand-in in inspection mode: the ground, the cell
+  and the credit where the real ones go. Every request to the network is turned
+  away at once by a proxy on the computer, so nothing the site serves can change
+  a screen. The landmarks are Toronto's shard of the archive, kept with the
+  tests and credited in `app/src/test/resources/landmarks/SOURCE.md`, found where
+  the app caches what it met while looking around.
+- **Each screen waits for its answers.** The landmarks and the offline standing
+  are worked out off the main thread, so a screen is recorded only once they are
+  in for the place shown. A dialog that opens with a text field never goes
+  still, since its cursor blinks; its clock is stopped and stepped by hand to
+  the same moment every time.
+- **Where the computer differs from a phone.** A dialog is drawn the full width
+  of the screen; on a device it has the platform's margins. Everything else
+  checked against the emulator matched, right to left included.
+- **Looked at, not only compared.** The images are for reading. Looking at the
+  first set found a code with a wrong check character searched as a name, the
+  library's reason codes shown to readers, codes, the compass pad and the
+  emergency card's coordinates turned round in right-to-left languages, the
+  code too wide for a 360 dp phone, and the card's actions hidden at the
+  largest text. Running the device tests over those fixes then found the map
+  taking a reader away from Saved the moment a fix arrived.
 
 ### How the device tests are written
 
