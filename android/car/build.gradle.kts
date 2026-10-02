@@ -18,6 +18,13 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    testOptions {
+        // The templates are built from the car module's own strings and icons.
+        unitTests.isIncludeAndroidResources = true
+        // Robolectric's Android 16 reaches into the JDK's own file descriptors.
+        unitTests.all { it.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED") }
+    }
+
     sourceSets {
         getByName("main") {
             // The palette as the resources design/build-tokens.mjs writes, day and
@@ -37,4 +44,7 @@ dependencies {
     api(libs.kotlinx.coroutines.core)
 
     testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.car.app.testing)
 }

@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.roborazzi)
 }
 
 // The same four values the phone app is signed with for upload, and the same
@@ -40,6 +41,14 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    testOptions {
+        // The watch's screens, tile and complication, drawn and read on the
+        // computer, need its strings, fonts and drawables.
+        unitTests.isIncludeAndroidResources = true
+        // Robolectric's Android 16 reaches into the JDK's own file descriptors.
+        unitTests.all { it.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED") }
     }
 
     signingConfigs {
@@ -102,7 +111,27 @@ dependencies {
     implementation(libs.androidx.concurrent.futures)
 
     testImplementation(libs.kotlin.test.junit)
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
+    testImplementation(libs.wear.tiles.testing)
+    // The renderer the watch draws tiles with, for the tile's reference images.
+    // In the debug build rather than the tests alone, because a library's own
+    // resources are made only for a build it is part of; the release never has it.
+    debugImplementation(libs.wear.tiles.renderer)
+    debugImplementation(libs.compose.ui.test.manifest)
 }
 
 // Holds the watch's notices to what its release really ships.
 apply(from = rootProject.file("gradle/notices.gradle.kts"))
+
+// The watch's reference images, beside the phone's: its screens on a round
+// face and its tile as the watch draws it. ./gradlew :wear:recordRoborazziDebug
+// draws them again; :wear:verifyRoborazziDebug, which CI runs, compares.
+roborazzi {
+    outputDir.set(file("src/test/screenshots"))
+}

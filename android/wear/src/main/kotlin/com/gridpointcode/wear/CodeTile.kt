@@ -40,12 +40,16 @@ import java.util.Date
  * entry of its timeline. Read aloud opens the app, which reads the next place
  * it finds: where the wrist is now, not the code on the tile.
  */
-class CodeTile : TileService() {
+class CodeTile(
+    // The time, for a test to hold still. The system makes the tile with none
+    // given, through the constructor with no arguments Kotlin writes for it.
+    private val clock: () -> Long = System::currentTimeMillis,
+) : TileService() {
 
     override fun onTileRequest(request: RequestBuilders.TileRequest): ListenableFuture<TileBuilders.Tile> {
         val device = request.deviceConfiguration
         val last = LastFixStore(this).read()
-        val now = System.currentTimeMillis()
+        val now = clock()
         val timeline = TimelineBuilders.Timeline.Builder()
         if (last != null && last.shown(now)) {
             timeline.addTimelineEntry(entry(found(this, device, last), end = last.shownUntil))

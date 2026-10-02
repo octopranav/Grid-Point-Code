@@ -92,7 +92,8 @@ class WatchModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { shelf.save(SavedPlace(here.code, label = "", note = "", savedAt = System.currentTimeMillis())) }
     }
 
-    private fun arrived(fix: WatchFix) {
+    /** A fix from the location listener, or from a test standing in for it. */
+    internal fun arrived(fix: WatchFix) {
         found.value = fix
         readAfter?.let { asked ->
             if (fix.at >= asked) {
