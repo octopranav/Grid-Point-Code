@@ -93,6 +93,8 @@ class SavedPlacesTest {
         // Standing at Union Station: the tower is nearest, then the market, then Kensington.
         reader.fix(43.64546, -79.38063)
         reader.tapDescribed(R.string.locate)
+        // Straight on to Saved, before the fix is in: it arrives there, and the
+        // list stays, measured from the reader, rather than giving way to the map.
         reader.tap(R.string.tab_saved)
         reader.waitFor { rule.onNodeWithText(reader.text(R.string.saved_from_you), substring = true) }
         val top = listOf("Tower base", "Market, north door", "Kensington Market").map { name ->

@@ -208,5 +208,9 @@ class NamesTest {
         assertFalse(isName("geo:43.65,-79.38"), "a geo URI")
         assertFalse(isName("-4318R"), "a short form")
         assertFalse(isName("T"), "too short to narrow")
+        // Refused as a code, and still a code: as a name it would find nothing,
+        // and the reader would never hear that the check disagrees.
+        assertFalse(isName("#G3RJM-8X3L1*Q"), "a code whose check character disagrees")
+        assertFalse(isName("G3RJM8X3L1*Q"), "the same, written without the hash")
     }
 }

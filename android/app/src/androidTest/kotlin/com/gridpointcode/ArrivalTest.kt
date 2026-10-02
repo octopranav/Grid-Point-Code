@@ -98,6 +98,15 @@ class ArrivalTest {
     }
 
     @Test
+    fun aCodeWhoseCheckDisagreesSaysSo() {
+        launch()
+        // Looked up as a name, this found nothing and said nothing about the check.
+        reader.search("#G3RJM-8X3L1*Q")
+        reader.waitForText(reader.text(R.string.problem_check))
+        reader.audit()
+    }
+
+    @Test
     fun coordinatesOpenAsTheirCode() {
         launch()
         reader.search("43.649061, -79.371679")

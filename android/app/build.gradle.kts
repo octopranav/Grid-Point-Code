@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.roborazzi)
 }
 
 // The key a release is signed with for upload never enters the repository. It
@@ -47,6 +48,12 @@ android {
     }
 
     testOptions {
+        // The screens drawn on the computer need the app's resources: its
+        // strings, fonts, colours and the pseudo-locales.
+        unitTests.isIncludeAndroidResources = true
+        // Robolectric's Android 16 reaches into the JDK's own file descriptors,
+        // which Java 17 and later keep closed unless asked.
+        unitTests.all { it.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED") }
         execution = "ANDROIDX_TEST_ORCHESTRATOR"
         animationsDisabled = true
         // The emulator the device tests run on, made and booted by Gradle, the
@@ -84,6 +91,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Two made-up languages for testing: en-XA, every word accented and
+            // a third longer, for text that will not fit; ar-XB, the English
+            // mirrored right to left, for a layout that does not turn round.
+            isPseudoLocalesEnabled = true
+        }
         release {
             // Shrunk and optimised. No rules of the app's own are needed: the
             // JSON it reads is parsed by hand with the platform's org.json, and
@@ -119,6 +132,13 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
 
     testImplementation(libs.kotlin.test.junit)
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
 
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
@@ -133,6 +153,14 @@ dependencies {
     androidTestUtil(libs.androidx.test.orchestrator)
     androidTestUtil(libs.androidx.test.services)
     debugImplementation(libs.compose.ui.test.manifest)
+}
+
+// The design's reference images live with the code, where a change that moves
+// a screen shows in review beside the change that moved it.
+// ./gradlew :app:recordRoborazziDebug draws them again; verifyRoborazziDebug,
+// which CI runs, fails on any screen that no longer matches.
+roborazzi {
+    outputDir.set(file("src/test/screenshots"))
 }
 
 // Holds the notices to what the release really ships; see the script.

@@ -6,8 +6,12 @@ import kotlin.math.roundToInt
 
 /** Why a piece of text, or a press of the locate button, did not become a place. */
 sealed interface Problem {
-    /** Nothing the reader understands, with the library's reason when it gave one. */
-    data class Unread(val reason: String?) : Problem
+    /**
+     * Nothing the reader understands, with the library's reason when it gave
+     * one, and the characters as the library reads them, when it could, so the
+     * reason can be explained in terms of what was typed.
+     */
+    data class Unread(val reason: String?, val cleaned: String? = null) : Problem
 
     /** A well-formed code from the reserved range. Not wrong, and not a place. */
     data class Reserved(val code: String) : Problem
@@ -140,7 +144,7 @@ fun PlaceState.opened(text: String, source: Source): PlaceState =
             is OtherFormat.Unfollowed -> copy(problem = Problem.Unfollowed(other.format))
         }
         is Reading.Reserved -> copy(problem = Problem.Reserved(reading.code))
-        is Reading.Unread -> copy(problem = Problem.Unread(reading.reason))
+        is Reading.Unread -> copy(problem = Problem.Unread(reading.reason, cleanedOf(text)))
     }
 
 /**

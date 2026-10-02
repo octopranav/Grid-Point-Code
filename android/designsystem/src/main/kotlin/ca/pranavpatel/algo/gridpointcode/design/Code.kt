@@ -1,9 +1,13 @@
 package ca.pranavpatel.algo.gridpointcode.design
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.em
 
 /**
@@ -26,6 +30,11 @@ internal val Mono = FontFamily(
  * The style a code is set in: monospaced, tabular, and tracked so ten characters
  * never touch. The type scale sets a code in the mono family; this reads the
  * family directly rather than through the theme's lookup, for the reason above.
+ *
+ * Always left to right, as a code is printed on a sign, in a language written
+ * either way. Set in a right-to-left paragraph a short form's leading hyphen
+ * moved to its end, the hash left the front of a code, and a latitude and
+ * longitude could be drawn in the wrong order.
  */
 val CodeStyle: TextStyle = TextStyle(
     fontFamily = Mono,
@@ -34,4 +43,16 @@ val CodeStyle: TextStyle = TextStyle(
     fontWeight = FontWeight(TypeScale.code.weight),
     letterSpacing = CODE_TRACKING_EM.em,
     fontFeatureSettings = "tnum",
+    textDirection = TextDirection.Ltr,
 )
+
+/**
+ * [text], a code, a short form or coordinates, kept left to right inside a
+ * sentence or a line of other words on a right-to-left screen: isolated as a run
+ * of its own, so the bidirectional algorithm cannot carry its hash or its leading
+ * hyphen to the far end, as it did on the saved list. On a left-to-right screen
+ * it is returned as it is, so nothing changes where nothing was wrong.
+ */
+@Composable
+fun leftToRight(text: String): String =
+    if (LocalLayoutDirection.current == LayoutDirection.Rtl) "\u2066$text\u2069" else text

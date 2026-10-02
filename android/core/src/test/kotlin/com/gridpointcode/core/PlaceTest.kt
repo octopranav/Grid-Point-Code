@@ -54,6 +54,26 @@ class PlaceTest {
         assertNull(confused.nudged(Compass.E).problem)
     }
 
+    /**
+     * A code refused for a reason the website explains keeps the characters as
+     * the library read them, so the screen can say what was wrong with these
+     * ones: which check failed, how many there were, which are not in the alphabet.
+     */
+    @Test
+    fun aRefusedCodeKeepsWhatWasTypedSoTheReasonCanBeExplained() {
+        val mischecked = assertIs<Problem.Unread>(start.opened("#G3RJM-8X3L1*Q", Source.CODE).problem)
+        assertEquals("GPC_CHECK", mischecked.reason)
+        assertEquals("G3RJM8X3L1", mischecked.cleaned)
+
+        val long = assertIs<Problem.Unread>(start.opened("G3RJM-8X3L12", Source.CODE).problem)
+        assertEquals("GPC_LENGTH", long.reason)
+        assertEquals(11, long.cleaned?.length)
+
+        val stray = assertIs<Problem.Unread>(start.opened("QQQQQYYYYY", Source.CODE).problem)
+        assertEquals("GPC_CHAR", stray.reason)
+        assertEquals(listOf('Q', 'Y'), straysIn(stray.cleaned!!))
+    }
+
     @Test
     fun aComplaintLeavesThePlaceWhereItWas() {
         val confused = start.opened("QQQQQYYYYY", Source.CODE)

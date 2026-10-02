@@ -633,7 +633,22 @@ jobs:
       # watch's rules for its tile and complication, and the car's reading of
       # what is typed into it, are tested here too.
       - name: Every library each release ships is in its notices
-        run: ./gradlew --no-daemon :app:checkNotices :wear:checkNotices :automotive:checkNotices :notices:testDebugUnitTest :app:testDebugUnitTest :wear:testDebugUnitTest :car:testDebugUnitTest
+        run: ./gradlew --no-daemon :app:checkNotices :wear:checkNotices :automotive:checkNotices :notices:testDebugUnitTest :wear:testDebugUnitTest :car:testDebugUnitTest
+      # Every screen drawn here, by Android's own graphics stack under
+      # Robolectric, and compared with the image kept in the repository: light
+      # and dark, a small phone to a tablet, the largest text, a longer language
+      # and right to left. A screen that moved fails, and the old, the new and
+      # the difference between them are kept below. The app's other unit tests
+      # run in the same pass.
+      - name: Every screen matches its reference image
+        run: ./gradlew --no-daemon :app:verifyRoborazziDebug
+      - name: Keep the screens that no longer match
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: screens-that-moved
+          path: android/app/build/outputs/roborazzi
+          if-no-files-found: ignore
       # Lint's errors fail the build in every module; its warnings do not. The
       # errors it has found so far were screens reading the device's language,
       # or a string, in a way a change of language would not redraw.

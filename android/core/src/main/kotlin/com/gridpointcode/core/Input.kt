@@ -41,6 +41,25 @@ sealed interface Reading {
     data class Unread(val reason: String?) : Reading
 }
 
+/** The characters a code is written in: no vowels, and no U, Q, V or Y, so no word is a code. */
+const val CODE_ALPHABET = "0123456789CDFGHJKLMNPRTWX"
+
+/**
+ * The characters of [text] as the library reads a code's, the hash, hyphen and
+ * spaces gone, look-alikes folded to their digits and any check character set
+ * apart; null when it cannot read them as a code's at all.
+ */
+fun cleanedOf(text: String): String? = runCatching { GPC.Normalise(text.trim())[0] }.getOrNull()
+
+/** The characters of a cleaned code that no code contains, each once, in the order typed. */
+fun straysIn(cleaned: String): List<Char> = cleaned.filter { it !in CODE_ALPHABET }.toList().distinct()
+
+/**
+ * Whether [text] is written as a code is written: with the hash in front, or a
+ * check character after a star. Text written so is a code however it reads.
+ */
+fun writtenAsCode(text: String): Boolean = text.trimStart().startsWith("#") || '*' in text
+
 /** Read one piece of text. */
 fun read(text: String): Reading {
     val given = text.trim()
