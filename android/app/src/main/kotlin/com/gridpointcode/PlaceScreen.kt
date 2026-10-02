@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.ui.zIndex
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.luminance
 import androidx.core.view.WindowCompat
@@ -330,7 +331,10 @@ fun PlaceScreen(model: PlaceViewModel, speaker: Speaker) {
                 onSettings = { openSettings(context) },
                 focus = search,
                 onLeave = { screen.requestFocus() },
+                // Over the map's buttons: on a short screen, such as a 7-inch
+                // tablet on its side, the places a name could mean reach past them.
                 modifier = Modifier
+                    .zIndex(1f)
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
                     .padding(Space.step2),

@@ -38,6 +38,25 @@ class TabletScreensTest : ScreenTest() {
     }
 }
 
+/** A 7-inch tablet on its side, where the wide layout is shortest. */
+@Config(qualifiers = Devices.SMALL_TABLET)
+class SmallTabletScreensTest : ScreenTest() {
+
+    @Test
+    fun aPlaceBesideTheMap() {
+        open { typed(Places.MARKET) }
+        record()
+    }
+
+    /** The list reaches down past the map's buttons, and lies over them. */
+    @Test
+    fun placesANameCouldMean() {
+        open { threeSaved() }
+        searchedFor("toronto")
+        record()
+    }
+}
+
 /** A foldable opened out: nearly square, and just short of the wide layout. */
 @Config(qualifiers = Devices.FOLDABLE)
 class FoldableScreensTest : ScreenTest() {
