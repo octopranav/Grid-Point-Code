@@ -185,6 +185,10 @@ Needs JDK 17 or later and the Android SDK with platform 37. Continuous
 integration runs these on every pull request, and lint on every module, where
 an error fails the build and a warning does not.
 
+How the app is tested, from the logic to the app driven on an emulator with an
+accessibility check after every action, and what to test by hand on real
+devices before a release, is in [`TESTING.md`](TESTING.md).
+
 To try the map against a local copy of the styles, for instance on a machine
 that cannot reach the tile host, point a debug build at it:
 

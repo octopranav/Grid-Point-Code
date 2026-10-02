@@ -36,6 +36,30 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         buildConfigField("String", "PACKS", "\"$packs\"")
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Every test starts from the app as a fresh install leaves it: the
+        // orchestrator runs each in its own process and clears the app's data.
+        testInstrumentationRunnerArguments["clearPackageData"] = "true"
+        // A test that hangs fails after three minutes, with its report, rather
+        // than holding up the run: one turned on its side once waited an hour.
+        testInstrumentationRunnerArguments["timeout_msec"] = "180000"
+    }
+
+    testOptions {
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
+        animationsDisabled = true
+        // The emulator the device tests run on, made and booted by Gradle, the
+        // same one here and in CI: ./gradlew :app:phoneDebugAndroidTest
+        managedDevices {
+            allDevices {
+                create<com.android.build.api.dsl.ManagedVirtualDevice>("phone") {
+                    device = "Pixel 7"
+                    apiLevel = 36
+                    systemImageSource = "google"
+                }
+            }
+        }
     }
 
     compileOptions {
@@ -95,6 +119,20 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
 
     testImplementation(libs.kotlin.test.junit)
+
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.rules)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.espresso.core)
+    androidTestImplementation(libs.espresso.intents)
+    androidTestImplementation(libs.espresso.accessibility)
+    androidTestImplementation(libs.uiautomator)
+    androidTestImplementation(libs.kotlin.test.junit)
+    androidTestUtil(libs.androidx.test.orchestrator)
+    androidTestUtil(libs.androidx.test.services)
+    debugImplementation(libs.compose.ui.test.manifest)
 }
 
 // Holds the notices to what the release really ships; see the script.
