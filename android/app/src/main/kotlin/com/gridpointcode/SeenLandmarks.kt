@@ -14,10 +14,13 @@ import org.json.JSONObject
  * with the areas kept, since a reader pressing it wants the space back and does
  * not care which store held it.
  */
-class SeenLandmarks(private val dir: File) {
+class SeenLandmarks(folder: () -> File) {
 
-    private val shards = File(dir, "shards")
-    private val manifest = File(dir, "manifest.json")
+    // Found the first time it is used, off the main thread, as the kept areas' is.
+    private val dir by lazy(folder)
+
+    private val shards by lazy { File(dir, "shards") }
+    private val manifest by lazy { File(dir, "manifest.json") }
 
     /** The archive last served, so the shards cut from it can be found by name offline. */
     fun source(): KeptLandmarks.Source? = runCatching {

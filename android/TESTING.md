@@ -14,7 +14,7 @@ world, is set out at the end as a guide to work through before each release.
 | Hostile conditions | Turned on its side, the dark theme, the largest text, recreated by the system, location refused, no connection | `ResilienceTest`, `LocationRefusedTest`, `KeyboardAndSearchTest` | CI, every PR |
 | Static checks | Lint on every module, the notices, the release's merged manifests | Gradle, `gradle/notices.gradle.kts` | CI, every PR |
 | Design | Every screen against a reference image: light and dark, a small phone, a phone, a foldable and a tablet, the largest text, a longer language and right to left | `app/src/test/kotlin/com/gridpointcode/screens`, images in `app/src/test/screenshots` | CI, every PR |
-| Robustness | StrictMode, leak detection, a stress run of random input, the process killed and restored | next | |
+| Robustness | StrictMode and leak detection around every device test, a seeded stress run of random input, the process ended and the screen put back | `NoStrictModeViolations`, LeakCanary, `RandomInputTest`, `app/src/test/.../ProcessDeathTest.kt` | CI, every PR |
 | Performance | Start-up and frame timing, and a baseline profile so the release starts fast on a reader's phone | next | |
 | The watch and the car | Their screens, the tile, the complication and the car's templates | next | |
 
@@ -90,6 +90,37 @@ folder when the check fails.
   code too wide for a 360 dp phone, and the card's actions hidden at the
   largest text. Running the device tests over those fixes then found the map
   taking a reader away from Saved the moment a fix arrived.
+
+### How robustness is held
+
+- **StrictMode, on every device test.** The debug build turns it on before
+  anything else runs (`DebugApplication`): a file read or written on the main
+  thread, a request to the network there, anything left open or registered.
+  `NoStrictModeViolations` fails a test on any violation the app's own code
+  caused, judged by the first frame that is not the platform's or the
+  language's, so a font Compose loads is Compose's and a preferences read in
+  `Preferences` is the app's. The few small reads the first frame needs are
+  made on purpose, in `beforeTheFirstFrame`, where the choice can be seen.
+- **Leaks, after every device test that passes.** LeakCanary watches every
+  activity, view model and view the debug build throws away, and fails the test
+  on any still held. The first run found the map writing into a screen already
+  thrown away when the phone was turned, which kept the destroyed activity
+  alive, 1.5 MB at every turn.
+- **Random input, from fixed seeds.** `RandomInputTest` taps whatever the app
+  shows, types codes, coordinates, links, names and text no field expects,
+  swipes the map, presses Back and turns the phone, 120 times for each of three
+  seeds, with the accessibility checks on every tap. Any exception the app
+  throws fails it; each action is logged under `RandomInput`, so a failure can
+  be replayed from its seed. It stays inside the app and leaves alone what only
+  downloads, and links, which open the browser.
+- **The process ended, and the screen put back.** Android ends a background
+  app whenever it wants the memory. `ProcessDeathTest` saves an activity's state,
+  throws the activity and its view model away, and makes new ones from the saved
+  state alone: the place and its directions, an open emergency card and a code
+  half typed all come back. It runs on the computer, under Robolectric, because
+  on the emulator "Don't keep activities" set from a shell is not seen by the
+  system and the activity only stops, so a device test passes whether or not
+  anything was saved.
 
 ### How the device tests are written
 
@@ -232,6 +263,14 @@ The automated checks find what can be measured. These find what cannot:
   no SIM.
 - [ ] Read the card to someone as you would to a dispatcher: the coordinates are
   enough on their own.
+
+### The app put away and brought back
+
+- [ ] On the low-end phone, open the emergency card, go to the telephone app,
+  open several other apps, and come back: the card is still open, and so is the
+  place behind it.
+- [ ] Type half a code, switch to a messaging app to copy the rest, come back:
+  what was typed is still there.
 
 ### Performance on a real phone
 

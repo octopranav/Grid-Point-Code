@@ -8,6 +8,8 @@ import com.google.android.apps.common.testing.accessibility.framework.Accessibil
 import com.google.android.apps.common.testing.accessibility.framework.integrations.espresso.AccessibilityValidator
 import com.google.android.apps.common.testing.accessibility.framework.AccessibilityViewCheckResult
 import java.util.Locale
+import leakcanary.DetectLeaksAfterTestSuccess
+import org.junit.rules.RuleChain
 import org.junit.rules.TestRule
 
 /**
@@ -15,11 +17,15 @@ import org.junit.rules.TestRule
  * whole screen after every action the test takes, and fails the test on any
  * error it finds: a control too small to touch, text too faint to read, an
  * image with nothing for a screen reader to say. The app launches itself in
- * each test, so the rule launches nothing; it readies the device first.
+ * each test, so the rule launches nothing. It readies the device first, and
+ * after the test fails it on anything the app leaked or any StrictMode
+ * violation of the app's own.
  */
 fun accessibleRule(): AndroidComposeTestRule<TestRule, ComponentActivity> =
     AndroidComposeTestRule<TestRule, ComponentActivity>(
-        activityRule = ReadyDevice,
+        activityRule = RuleChain.outerRule(ReadyDevice)
+            .around(DetectLeaksAfterTestSuccess())
+            .around(NoStrictModeViolations),
         activityProvider = { error("Each test launches the app itself.") },
     ).apply {
         val validator = AccessibilityValidator()

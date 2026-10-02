@@ -20,7 +20,11 @@ import org.json.JSONObject
  * fetched again, and out of the cache, which the system may empty when space
  * runs short. Everything here blocks, and is called off the main thread.
  */
-class KeptLandmarks(private val dir: File) {
+class KeptLandmarks(folder: () -> File) {
+
+    // Found the first time it is used, which is off the main thread: asking
+    // the system for the folder makes it, and that is a write to the disk.
+    private val dir by lazy(folder)
 
     /** The archive the kept shards were cut from. */
     data class Source(val level: Int, val built: String)
@@ -39,9 +43,9 @@ class KeptLandmarks(private val dir: File) {
         val built: String,
     )
 
-    private val shards = File(dir, "shards")
-    private val manifest = File(dir, "manifest.json")
-    private val index = File(dir, "areas.json")
+    private val shards by lazy { File(dir, "shards") }
+    private val manifest by lazy { File(dir, "manifest.json") }
+    private val index by lazy { File(dir, "areas.json") }
 
     fun source(): Source? = runCatching {
         val json = JSONObject(manifest.readText())

@@ -32,7 +32,7 @@ import org.json.JSONObject
  * cut short is thrown away. Kept in the app's no-backup storage, as the kept
  * landmark areas are, since it can always be fetched again.
  */
-class PlacePacks(context: Context, private val base: String = BuildConfig.PACKS) {
+class PlacePacks(private val context: Context, private val base: String = BuildConfig.PACKS) {
 
     /** A country's pack as the list offers it. */
     data class Offered(val code: String, val name: String, val download: Long, val lines: Int, val bytes: Long)
@@ -40,7 +40,9 @@ class PlacePacks(context: Context, private val base: String = BuildConfig.PACKS)
     /** A pack kept on the phone. */
     data class Kept(val code: String, val name: String, val bytes: Long, val built: String)
 
-    private val dir = File(context.noBackupFilesDir, "place-packs")
+    // Found the first time it is used, which is off the main thread: asking
+    // the system for the folder makes it, and that is a write to the disk.
+    private val dir by lazy { File(context.noBackupFilesDir, "place-packs") }
     private val lock = Mutex()
     private var manifest: JSONObject? = null
     private val sources = mutableMapOf<String, NameSource>()
