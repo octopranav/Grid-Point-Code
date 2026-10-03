@@ -24,7 +24,7 @@
 //
 // **No image library.** PNG is a signature, three chunks and a CRC, and the
 // deflate it needs is in the standard library. A dependency here would be a
-// dependency in a project that ships none, for four rectangles.
+// dependency in a project that ships none, for rectangles and a few lines.
 //
 // `--check` regenerates and compares, so CI can prove the committed icons are
 // what the tokens currently say. Deflate is deterministic for the same input,
@@ -177,42 +177,108 @@ function png(size, shape = MASKED) {
 }
 
 /**
- * The feature graphic across the top of the app's Play listing: the four bars on
- * the page's ground, 1024 by 500, sized against the height as the masked icon is
- * against its side. Written as plain truecolour, because Play refuses one with
- * an alpha channel. No words: Play sets the app's name beside it, and a picture
- * of text is the first thing to look wrong in another language's listing.
+ * Which of the 25 parts of a cell each of the north door's last three
+ * characters names, as columns from the west and rows from the north. The door
+ * is #G3RJM-8X3L1, St. Lawrence Market's, which the listing's screenshots show;
+ * the reference implementation puts its 3 in the top row's second part, its L
+ * in the second row's middle, and its 1 in the bottom row's second part.
  */
-function feature(width = 1024, height = 500, shape = MASKED) {
-    const [gr, gg, gb] = channels(ground);
+const DOOR = [[1, 0], [2, 1], [1, 4]];
+
+/**
+ * The feature graphic across the top of the app's Play listing, 1024 by 500:
+ * the format itself. Every character names one of 25 parts of the cell before
+ * it, five by five, so a code is a place inside a place. Three cells are drawn
+ * cut into their 25 parts, each lighting the part the next is drawn from, down
+ * to one doorway in brass.
+ *
+ * In the icon's four tints: level one is the ground, and the three cells are
+ * levels four, seven and ten, the masthead's ramp from the world to a doorway.
+ * Play asks for a graphic that extends the icon rather than repeats it, and for
+ * a ground that will not vanish into its own white. The brass is the dark
+ * theme's, which is the one drawn to be read on a ground this deep.
+ *
+ * Written as plain truecolour, because Play refuses one with an alpha channel.
+ * No words: Play sets the app's name beside it, and a picture of text is the
+ * first thing to look wrong in another language's listing. When the listing's
+ * video does not play by itself, Play lays its play button over the centre,
+ * which falls on the middle cell and leaves the doorway showing.
+ */
+function feature(width = 1024, height = 500) {
+    const levels = tokens.level.light.tint;
+    const deep = channels(levels[0]);
+    const brass = channels(tokens.colour.dark.brass);
     const row = width * 3 + 1;
     const raw = Buffer.alloc(row * height);
-    for (let y = 0; y < height; y += 1) {
-        for (let x = 0; x < width; x += 1) {
-            const at = y * row + 1 + x * 3;
-            raw[at] = gr;
-            raw[at + 1] = gg;
-            raw[at + 2] = gb;
-        }
-    }
 
-    const gap = shape.gap * height;
-    const bar = (shape.band * height - gap * 3) / 4;
-    const tall = shape.tall * height;
-    const top = Math.round((height - tall) / 2);
-    const left = (width - shape.band * height) / 2;
-    tints.forEach((tint, index) => {
-        const [r, g, b] = channels(tint);
-        const from = Math.round(left + index * (bar + gap));
-        const to = Math.round(from + bar);
-        for (let y = top; y < top + tall; y += 1) {
-            for (let x = from; x < to; x += 1) {
-                const at = y * row + 1 + x * 3;
-                raw[at] = r;
-                raw[at + 1] = g;
-                raw[at + 2] = b;
+    const put = (x, y, [r, g, b], cover = 1) => {
+        if (x < 0 || y < 0 || x >= width || y >= height || cover <= 0) return;
+        const at = y * row + 1 + x * 3;
+        raw[at] = Math.round(raw[at] + (r - raw[at]) * cover);
+        raw[at + 1] = Math.round(raw[at + 1] + (g - raw[at + 1]) * cover);
+        raw[at + 2] = Math.round(raw[at + 2] + (b - raw[at + 2]) * cover);
+    };
+    const fill = (x0, y0, x1, y1, colour) => {
+        for (let y = Math.round(y0); y < Math.round(y1); y += 1) {
+            for (let x = Math.round(x0); x < Math.round(x1); x += 1) put(x, y, colour);
+        }
+    };
+    const frame = (x0, y0, x1, y1, thick, colour) => {
+        fill(x0, y0, x1, y0 + thick, colour);
+        fill(x0, y1 - thick, x1, y1, colour);
+        fill(x0, y0, x0 + thick, y1, colour);
+        fill(x1 - thick, y0, x1, y1, colour);
+    };
+    // A straight line, its edge softened by how far each pixel's centre lies from it.
+    const line = (ax, ay, bx, by, thick, colour, strength) => {
+        const dx = bx - ax;
+        const dy = by - ay;
+        const length = Math.hypot(dx, dy);
+        for (let y = Math.floor(Math.min(ay, by) - thick); y <= Math.ceil(Math.max(ay, by) + thick); y += 1) {
+            for (let x = Math.floor(Math.min(ax, bx) - thick); x <= Math.ceil(Math.max(ax, bx) + thick); x += 1) {
+                const px = x + 0.5 - ax;
+                const py = y + 0.5 - ay;
+                const along = Math.max(0, Math.min(length, (px * dx + py * dy) / length));
+                const away = Math.hypot(px - (along * dx) / length, py - (along * dy) / length);
+                put(x, y, colour, strength * Math.max(0, Math.min(1, thick / 2 + 0.5 - away)));
             }
         }
+    };
+
+    fill(0, 0, width, height, deep);
+
+    const side = 236;
+    const gap = 76;
+    const cell = side / 5;
+    const rule = 3;
+    const top = (height - side) / 2;
+    const left = (width - (3 * side + 2 * gap)) / 2;
+    const shades = [3, 6, 9].map((i) => channels(levels[i]));
+
+    DOOR.forEach(([col, part], k) => {
+        const x = left + k * (side + gap);
+        const px = x + col * cell;
+        const py = top + part * cell;
+        const last = k === DOOR.length - 1;
+        // The lit part is filled to its edges before the rules are laid over it,
+        // so one on the cell's outer edge meets that edge rather than stopping short.
+        fill(x, top, x + side, top + side, shades[k]);
+        fill(px, py, px + cell, py + cell, last ? brass : shades[k + 1]);
+        for (let i = 1; i < 5; i += 1) {
+            fill(x + i * cell - rule / 2, top, x + i * cell + rule / 2, top + side, deep);
+            fill(x, top + i * cell - rule / 2, x + side, top + i * cell + rule / 2, deep);
+        }
+        if (!last) frame(px + rule / 2, py + rule / 2, px + cell - rule / 2, py + cell - rule / 2, 3, brass);
+    });
+
+    // The lines that carry each lit part out to the cell drawn from it.
+    DOOR.slice(0, 2).forEach(([col, part], k) => {
+        const x = left + k * (side + gap);
+        const next = x + side + gap;
+        const px = x + (col + 1) * cell;
+        const py = top + part * cell;
+        line(px, py, next, top, 2.5, brass, 0.9);
+        line(px, py + cell, next, top + side, 2.5, brass, 0.9);
     });
 
     const header = Buffer.alloc(13);
