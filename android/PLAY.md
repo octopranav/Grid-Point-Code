@@ -30,12 +30,14 @@ changes that page in the same pull request; it changes the
 - [ ] **Play App Signing.** Google keeps the key the app is signed with for
   readers; this repository's four upload values (see
   [A release](README.md#a-release)) only prove an upload came from its owner.
-- [ ] **Verified links.** Copy the SHA-256 of the app signing key from Setup,
-  App signing, into
+- [x] **Verified links.**
   [`web/public/.well-known/assetlinks.json`](../web/public/.well-known/assetlinks.json)
-  as [Not here yet](README.md#not-here-yet) shows, merge, and let the site
-  deploy before the first install anyone keeps: a device that checked before the
-  file was right keeps its answer until the app is installed again.
+  names the three keys Play Console's Android developer verification lists for
+  `com.gridpointcode`, and the upload key. The app signing key under Test and
+  release, App integrity, App signing must be one of the three; if Play ever
+  shows another, it goes in beside them. Let the site deploy before the first
+  install anyone keeps: a device that checked before the file was right keeps
+  its answer until the app is installed again.
 - [ ] **The bundles.** `./gradlew :app:bundleRelease :wear:bundleRelease
   :automotive:bundleRelease` with the four upload values set. All three share
   the application ID, so each upload needs its own version code; the ranges are

@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.gridpointcode",
+      "sha256_cert_fingerprints": [
+        "81:FA:A3:B1:0D:4E:5E:A4:19:AA:06:08:8A:FB:14:79:74:35:7C:85:99:46:E5:18:AC:4A:52:A2:84:E6:BD:A9",
+        "F5:DF:36:39:15:5D:99:AE:3C:0F:1F:7C:4C:D1:8A:02:10:A8:D9:F1:B4:27:82:0C:C4:F4:42:43:F9:C5:00:65",
+        "2B:FF:F9:E7:9C:B1:D7:33:D5:98:FC:F4:BA:DA:29:58:C5:37:C6:05:F5:EF:E7:5F:61:32:B6:38:7D:05:EE:A0",
+        "DB:42:9E:40:51:66:72:90:AC:56:BB:99:A9:A0:0B:61:0B:85:7C:A0:7A:FB:A9:E1:75:5C:4D:B0:B0:70:A8:C5"
+      ]
+    }
+  }
+]
