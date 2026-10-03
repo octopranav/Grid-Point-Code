@@ -45,8 +45,8 @@ changes that page in the same pull request; it changes the
   published by the Landmarks workflow, run by hand.
 - [ ] **Store listing, graphics and screenshots**, as [below](#store-listing).
   The icon, the feature graphic and the screenshots, phone, 7-inch and 10-inch
-  tablet, desktop and watch, are made. The Android XR section is left empty, as
-  the [graphics](#graphics) say.
+  tablet, desktop, watch and Android Automotive OS, are made. The Android XR
+  section is left empty, as the [graphics](#graphics) say.
 - [ ] **App content**: the privacy policy, ads, app access, content rating,
   target audience and Data safety, as [below](#app-content).
 - [ ] **Form factors.** The watch and the car are opted in separately, under
@@ -132,6 +132,7 @@ address the site is run from.
 | 10-inch tablet screenshots | the same | four in [`play/screenshots/tablet-10`](play/screenshots/tablet-10), 1920 by 1080 drawn at 1280 by 720 dp, the wide layout: a place, search by name beside the map, the short form anchored, and the dark theme over its night basemap |
 | Desktop screenshots | the same as a tablet's; Play's help still calls them Chromebook screenshots | four in [`play/screenshots/desktop`](play/screenshots/desktop), 1920 by 1080 drawn at 1536 by 864 dp, a 14-inch laptop's screen at 125%: a place, search by name, the menu a right-click on the map opens, and the dark theme |
 | Wear OS screenshots | at least 384 by 384, square | four in [`play/screenshots/wear`](play/screenshots/wear), 454 by 454: the code where the watch is, saved places, walking to one, and the tile |
+| Android Automotive OS screenshots | required for a point of interest app: at least 2 portrait at 800 by 1280 and 2 landscape at 1024 by 768, of the generic system UI from the Android Automotive OS emulator, with no frames | four of each in [`play/screenshots/car`](play/screenshots/car), `landscape` and `portrait`: where the car is, how to say its code, going to a code typed while parked, and that place with Navigate and Read aloud |
 | Android XR screenshots | 4 to 8 at 8:5, 1920 by 1200 or larger, to show an app off on headsets | none. The app reaches headsets from the phone release, as a window, with nothing to set; real screenshots would need Google's XR emulator, whose licence is the developer's to accept. If Play Console will not save the listing without them, the choice is between that and excluding headsets in the device catalog until the app has been tried on one |
 
 All are 24-bit PNG with no alpha, as Play asks. A phone that draws at 1080 by
@@ -151,6 +152,13 @@ adb shell wm density 200
 
 The desktop's menu was opened with a long press, which opens the same menu a
 right-click does; adb's input command has no right button to send.
+
+The car's are from the generic Android Automotive OS system image, API 35:
+landscape on the SDK's 1024 by 768 car profile, and portrait on the same image
+with the screen made 800 by 1280, so the car's own system UI lays itself out
+for each. On that image the driver is user 10, and location starts switched off
+for them, so it was switched on for that user, as a driver would in the car's
+settings. The fix is Union Station's, and the code typed is the north door's.
 
 with `adb shell wm size reset` and `adb shell wm density reset` afterwards. The
 status bar is Android's demo mode, so the clock reads 9:30 and nothing waits in
