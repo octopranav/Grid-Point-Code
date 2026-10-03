@@ -519,10 +519,12 @@ kilobytes.
 **A link opens the app only when the site says so.** The filter for
 `https://gridpointcode.com/play` asks Android to verify it, and Android asks the
 site, which answers at `/.well-known/assetlinks.json` with the app's package
-name and the keys it may be signed with. Those are the three Google holds for
-the app, as Play Console's Android developer verification lists them, the app
-signing key among them, and the upload key, so a release signed here and
-installed by hand verifies too. A device that checked before the file named them
+name and the keys it may be signed with. Play signs a new app with
+quantum-ready hybrid signing, so it has three app signing keys: a classical one
+for devices before Android 17, and from Android 17 a classical and a
+post-quantum one signing together. All three are listed, as Google's help asks,
+and the upload key with them, so a release signed here and installed by hand
+verifies too. A device that checked before the file named them
 keeps its answer until the app is installed again; after that, `adb shell
 pm get-app-links com.gridpointcode` says `verified` for `gridpointcode.com`.
 Without it, from Android 12 a link opens in the browser unless the reader turns
