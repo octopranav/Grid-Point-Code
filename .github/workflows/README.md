@@ -6,9 +6,11 @@
 | `release-python.yml` | a `v*` tag | Builds and publishes the Python package to PyPI |
 | `release-npm.yml` | a `v*` tag | Builds and publishes the TypeScript package to npm |
 | `release-nuget.yml` | a `v*` tag | Builds and publishes the C# package to NuGet |
+| `landmarks.yml` | Mondays at 05:43 UTC, and by hand | Builds the landmark archive, the name index and the app's place-name packs from the day's GeoNames dump, and publishes them as the `landmarks` and `place-packs` releases, unless they shrank against what is published |
+| `pages.yml` | a push to main that touches the site, a Landmarks run that published, and by hand | Builds the website with the published landmark data and deploys it to GitHub Pages |
 
-Nothing publishes on a push to a branch. A release happens because a version
-tag was pushed, and for no other reason.
+No package publishes on a push to a branch. A package release happens because a
+version tag was pushed, and for no other reason.
 
 ## What CI proves that a single port's tests cannot
 

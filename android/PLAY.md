@@ -46,7 +46,7 @@ changes that page in the same pull request; it changes the
   already apart, the phone from 1, the watch from 1001 and the car from 2001,
   and each is raised with every upload of that bundle.
 - [ ] **The place-name packs** are live as the `place-packs` release. They are
-  published by the Landmarks workflow, run by hand.
+  published by the Landmarks workflow, every Monday and by hand.
 - [ ] **Store listing, graphics and screenshots**, as [below](#store-listing).
   The icon, the feature graphic and the screenshots, phone, 7-inch and 10-inch
   tablet, desktop, watch and Android Automotive OS, are made. The Android XR

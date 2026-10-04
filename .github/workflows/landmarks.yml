@@ -20,11 +20,20 @@
 # say which references are near enough -- and outside that range recovery does
 # not fail, it returns somewhere else entirely.
 #
-# It is a job of its own, run by hand, for two reasons. It downloads 400 MB and
-# spends five minutes on it, which is not a thing to do on every push to a
-# stylesheet. And the data changing is a decision rather than a side effect: a
-# new archive here does not reach the site until the next Pages run, which is
-# the right way round for something a reader is asked to trust.
+# It is a job of its own because it downloads 400 MB and spends five minutes on
+# it, which is not a thing to do on every push to a stylesheet. It runs once a
+# week, since GeoNames rewrites its dump every day and a week of edits is worth
+# having, and by hand whenever the data is wanted sooner. A run that publishes
+# starts the Pages workflow, so the site and the packs move together.
+#
+# Nobody reads a scheduled run before it publishes, so the run reads itself:
+# the new data is measured against what is published and refused if it shrank
+# (see "Compare with what is published"). Shrinking on purpose stays possible,
+# by hand, as a decision rather than a side effect.
+#
+# GitHub stops the schedule of a public repository after 60 days with no
+# activity in it, and says so by email first. Turn it back on under Actions,
+# Landmarks.
 #
 # Actions are pinned to a commit rather than a tag: a tag can be moved to point
 # at different code, a commit cannot. The release itself is made with `gh`,
@@ -43,6 +52,15 @@ on:
         description: 'Passes over the dump; more passes, less memory'
         required: false
         default: '8'
+      shrink:
+        description: 'Publish even if the data shrank'
+        type: boolean
+        required: false
+        default: false
+  schedule:
+    # Mondays, two hours after GeoNames writes the day's dump (about 03:35 UTC),
+    # and clear of the hour, when scheduled runs queue longest.
+    - cron: '43 5 * * 1'
 
 # Enough to write the release, and nothing else.
 permissions:
@@ -88,14 +106,18 @@ jobs:
           echo "rows: $(wc -l < allCountries.txt)"
 
       # Slices keep the peak under about 2 GB. Without them this needs more
-      # than 4 and is one runner change away from failing.
+      # than 4 and is one runner change away from failing. A scheduled run has
+      # no inputs, so the defaults are said twice, here and above.
       - name: Build the shards
+        env:
+          LEVEL: ${{ inputs.level || '4' }}
+          SLICES: ${{ inputs.slices || '8' }}
         run: |
           node scripts/build-landmarks.mjs \
             --geonames ../geonames \
             --out landmarks \
-            --level '${{ inputs.level }}' \
-            --slices '${{ inputs.slices }}' | tee ../report.txt
+            --level "$LEVEL" \
+            --slices "$SLICES" | tee ../report.txt
         working-directory: web
 
       # The other direction. The archive answers "what is near this point"; this
@@ -131,6 +153,55 @@ jobs:
           tar -czf landmarks.tar.gz -C web/landmarks .
           tar -czf names.tar.gz -C web/names .
           ls -l landmarks.tar.gz names.tar.gz
+
+      # A dump cut short, or a change in its format, builds without an error
+      # and would publish a world with most of its places missing, to the site
+      # and to every phone that keeps a pack. So the new data is measured
+      # against what is published now: the landmarks, their shards, the names
+      # packed for the app, and every country with a pack. A week of GeoNames
+      # edits moves these by thousands in millions; a fall of one in twenty is
+      # not an edit, and nor is a country with no pack. Failing here publishes
+      # nothing, and the release stays as it was.
+      - name: Compare with what is published
+        if: ${{ !inputs.shrink }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir before
+          if ! gh release download place-packs --pattern packs.json --dir before; then
+            echo 'Nothing published yet, so nothing to compare with.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gh release download landmarks --pattern landmarks.tar.gz --output - \
+            | tar -xzO ./manifest.json > before/manifest.json
+          node -e '
+            const fs = require("fs");
+            const read = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
+            const lines = (packs) => Object.values(packs.countries).reduce((sum, c) => sum + c.lines, 0);
+            const was = { archive: read("before/manifest.json"), packs: read("before/packs.json") };
+            const now = { archive: read("web/landmarks/manifest.json"), packs: read("web/packs/packs.json") };
+            const measured = [
+              ["landmarks", was.archive.landmarks, now.archive.landmarks],
+              ["shards", was.archive.shards, now.archive.shards],
+              ["packed names", lines(was.packs), lines(now.packs)],
+              ["country packs", Object.keys(was.packs.countries).length, Object.keys(now.packs.countries).length],
+            ];
+            const summary = ["| | published | built | change |", "| --- | ---: | ---: | ---: |"];
+            const refused = [];
+            for (const [what, before, after] of measured) {
+              const change = ((after - before) / before) * 100;
+              summary.push(`| ${what} | ${before.toLocaleString("en")} | ${after.toLocaleString("en")} | ${change.toFixed(2)}% |`);
+              if (after < before * 0.95) refused.push(`${what} fell from ${before} to ${after}`);
+            }
+            const gone = Object.keys(was.packs.countries).filter((cc) => !(cc in now.packs.countries));
+            if (gone.length) refused.push(`no pack any more for ${gone.join(", ")}`);
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join("\n") + "\n\n");
+            console.log(summary.join("\n"));
+            for (const reason of refused) {
+              console.log(`::error::${reason}. Nothing was published. If the data really did shrink, run this by hand with "Publish even if the data shrank".`);
+            }
+            if (refused.length) process.exit(1);
+          '
 
       # One moving tag rather than a dated one, so the Pages build has a fixed
       # name to ask for. Asking for `latest` would hand it whichever release is
