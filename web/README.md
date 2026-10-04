@@ -322,13 +322,17 @@ integration that serves the files in development and copies them into the output
 at the end of a build.
 
 `landmarks/` is generated and **not committed**. It is built by
-[`.github/workflows/landmarks.yml`](../.github/workflows/landmarks.yml), run by
-hand, and published as a release asset under the `landmarks` tag. The Pages
-build downloads that asset; if there is none it warns and carries on, and the
-reference list says it could not be loaded.
+[`.github/workflows/landmarks.yml`](../.github/workflows/landmarks.yml), every
+Monday and by hand, and published as a release asset under the `landmarks` tag.
+The Pages build downloads that asset; if there is none it warns and carries on,
+and the reference list says it could not be loaded.
 
-Rebuilding the data is therefore a decision rather than a side effect: a new
-archive does not reach the site until the next Pages run.
+A run that publishes starts the Pages workflow, so a new archive reaches the site
+the same morning. Before publishing, the run measures what it built against what
+is published, and refuses data that shrank by more than one part in twenty or
+lost a country, since a dump cut short builds without an error. Publishing a
+smaller archive on purpose is done by hand, with the workflow's "Publish even if
+the data shrank" box ticked.
 
 ## Working offline
 

@@ -53,6 +53,13 @@ on:
       - 'typescript/README.md'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
+  # The landmark archive and the name index are fetched from a release, so a
+  # new one changes nothing in this tree and no push would bring it here. The
+  # Landmarks workflow rebuilds them weekly; this follows each run, and builds
+  # only after one that published (see `if:` on the build job).
+  workflow_run:
+    workflows: [Landmarks]
+    types: [completed]
 
 # Read the tree, mint the token Pages needs to accept a deployment, and nothing
 # else. The build job below drops even the read permission it does not use.
@@ -71,6 +78,9 @@ jobs:
 
   build:
     name: Build
+    # A Landmarks run that failed or was refused published nothing, and the
+    # site already has what is published.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
