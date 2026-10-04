@@ -1,12 +1,14 @@
 package com.gridpointcode
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
 import com.gridpointcode.core.formatted
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -124,6 +126,23 @@ class ArrivalTest {
     fun aGeoUriFromAnotherAppOpensItsPlace() {
         launch(Intent(Intent.ACTION_VIEW, Uri.parse("geo:43.649061,-79.371679")))
         reader.assertShowing("G3RJM8X3L1")
+    }
+
+    /**
+     * The tests above name the activity, so they never touch the manifest. A
+     * browser does not: it offers only apps whose filter says browsable, and
+     * Play counts a link without it as broken.
+     */
+    @Test
+    fun aBrowserCanHandEachLinkToTheApp() {
+        for (link in listOf("https://gridpointcode.com/play?c=G3RJM8X3L1", "geo:43.649061,-79.371679")) {
+            val tapped = Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                .addCategory(Intent.CATEGORY_BROWSABLE)
+                .setPackage(reader.context.packageName)
+            @Suppress("DEPRECATION")
+            val found = reader.context.packageManager.queryIntentActivities(tapped, PackageManager.MATCH_DEFAULT_ONLY)
+            assertEquals(link, listOf(MainActivity::class.java.name), found.map { it.activityInfo.name })
+        }
     }
 
     @Test

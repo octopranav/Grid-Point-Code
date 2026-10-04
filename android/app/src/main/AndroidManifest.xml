@@ -57,10 +57,13 @@
                 <data android:scheme="https" android:host="gridpointcode.com" android:pathPrefix="/play" />
             </intent-filter>
 
-            <!-- Any other app's "open location" opens here too. -->
+            <!-- Any other app's "open location" opens here too, and so does a
+                 geo link tapped in a browser, which only offers apps that say
+                 they are browsable. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="geo" />
             </intent-filter>
 
